@@ -96,11 +96,18 @@ async function partnersChecks() {
   check("计数 2 partners、两家公司都在", await evaluate("return $txt().includes('2 partners') && !!$row('Partner A') && !!$row('Partner B');"));
   check("Add 直接存进系统 ⇒ 蓝色提交键（Annie 2026-10-30：直接存的 Add 保留蓝色；先加在页面上的才是灰绿）", await evaluate("const b = $btn('Add'); return $bg(b) === 'rgb(59, 130, 246)';"));
 
-  // 添加
+  // ── 第 8 件（Annie 11-20「8-Q7–Q11 都 A | 动手」；Q5「我需要每个partner一页」）：列表页只列公司（Q10 A）──
+  check("第 8 件 列表：表头 Partner | Tours with products | Status | Open，没有价钱列、团 / 产品行、上车点", await evaluate("const h = [...document.querySelector('section[aria-label=Partners] thead').querySelectorAll('th')].map(x => x.textContent.trim()).join('|'); return h === 'Partner|Tours with products|Status|Open' && !document.querySelector('tr[data-rate-row]') && !document.querySelector('[aria-label=\"Pick-up locations\"]');"), await evaluate("return [...document.querySelectorAll('section[aria-label=Partners] th')].map(x => x.textContent.trim()).join('|');"));
+  check("第 8 件 列表：Tours with products = 有产品的团 / 全部团（Partner A 1 of 2、Partner B 1 of 2），Status Active", await evaluate("const c = (n) => $row(n).querySelector('[data-tours-with-products]').textContent.trim(); return c('Partner A') === '1 of 2' && c('Partner B') === '1 of 2' && $row('Partner A').querySelector('[data-status]').textContent.trim() === 'Active';"));
+  check("第 8 件 列表：名字和 Open › 都连到这家的页 /settings/farm-out-partners/1（Open › 不是蓝色）；列表上没有 Rename / Locations / Timetable / Deactivate", await evaluate("const r = $row('Partner A'); const as = [...r.querySelectorAll('a')]; const open = as.find(a => a.textContent.trim() === 'Open ›'); const keys = [...document.querySelectorAll('section[aria-label=Partners] a, section[aria-label=Partners] button')].map(b => b.textContent.trim()); return as.length === 2 && as.every(a => a.getAttribute('href') === '/settings/farm-out-partners/1') && !!open && $bg(open) !== 'rgb(59, 130, 246)' && !['Rename', 'Locations', 'Timetable', 'Deactivate'].some(t => keys.includes(t));"));
+
+  // 添加：Q9 A 加好直接打开新公司的页
   await evaluate("await $set($byLabel('New partner name'), 'ZZ Test Partner'); $btn('Add').click(); return 1;");
-  check("添加：出现新的一行、计数 3、✓ Added", await waitFor("$row('ZZ Test Partner') && $txt().includes('3 partners') && $txt().includes('✓ Added')"));
-  check("POST 只带名字", (await lastCall("POST", /\/partners$/))?.body?.name === "ZZ Test Partner");
-  check("新公司自动展开，没有上车点", await waitFor("document.querySelector('[aria-label=\"Pick-up locations\"]') && $txt().includes('No locations yet.')"));
+  check("POST 只带名字", (await waitCall("POST", /\/partners$/, 1)) && (await lastCall("POST", /\/partners$/))?.body?.name === "ZZ Test Partner");
+  check("第 8 件 添加后直接打开新公司的页（Q9 A）：网址 /settings/farm-out-partners/50、标题 ZZ Test Partner、上车点一直显示（No locations yet.）", await waitFor("location.pathname === '/settings/farm-out-partners/50' && document.querySelector('[data-partner-title]')?.textContent === 'ZZ Test Partner' && document.querySelector('[aria-label=\"Pick-up locations\"]') && $txt().includes('No locations yet.')", 30000));
+  check("第 8 件 新公司两个团都没产品：Tours with products 写 No tours with products yet.、折叠行 ▸ 2 tours with no products yet", await waitFor("$txt().includes('No tours with products yet.') && document.querySelector('[data-empty-count]')?.textContent.trim() === '▸ 2 tours with no products yet'"));
+  await open(URL, "document.querySelector('tr[data-partner]')");
+  check("回到列表：计数 3、新公司在列表里", await waitFor("$txt().includes('3 partners') && !!$row('ZZ Test Partner')"));
   await evaluate("await $set($byLabel('New partner name'), 'partner a'); $btn('Add').click(); return 1;");
   check("重名：显示后端原话", await waitFor("$txt().includes('\"partner a\" already exists')"));
   await evaluate("await $set($byLabel('New partner name'), ''); $btn('Add').click(); return 1;");
@@ -115,12 +122,20 @@ async function partnersChecks() {
   };
   const getRates = async (pid) => (await fetch(`${MOCK}/api/farm-out/partners/${pid}/rates`)).json();
   const slim = (list, mid, products) => list.map((r) => (r.manifest_id === mid ? { manifest_id: r.manifest_id, products } : { manifest_id: r.manifest_id }));
+  const P1 = `${APP}/settings/farm-out-partners/1`;
+  check("第 8 件 单家页打开（Partner A）", await open(P1, "document.querySelector('tr[data-rate-row]')"));
+  check("第 8 件 单家页顺序：信息行 → Tours with products → Pick-up locations → 折叠行；Q8 A 上车点一直显示、没有 Locations 键", await evaluate("const secs = [...document.querySelectorAll('main section')]; const i = (f) => secs.findIndex(f); const a = i(x => x.getAttribute('aria-label') === 'Partner'), b = i(x => x.getAttribute('aria-label') === 'Tours with products'), c = i(x => !!x.querySelector('[aria-label=\"Pick-up locations\"]')), d = i(x => x.hasAttribute('data-empty-tours')); return a === 0 && a < b && b < c && c < d && !$btn('Locations') && !$btn('Close locations');"));
+  check("第 8 件 页头：‹ Partners 回列表、Partner 下拉现在是 Partner A（Q7 A）；信息行 Partner A · Status: Active · Rename / Timetable / Deactivate", await evaluate("const back = [...document.querySelectorAll('nav[aria-label=Back] a')].find(a => a.textContent.trim() === '‹ Partners'); const sel = document.querySelector('[data-partner-select]'); const info = document.querySelector('section[aria-label=Partner]'); return back?.getAttribute('href') === '/settings/farm-out-partners' && $selLabel(sel) === 'Partner A' && info.querySelector('[data-partner-title]').textContent === 'Partner A' && info.querySelector('[data-status]').textContent.trim() === 'Status: Active' && !!$btn('Rename', info) && !!$btn('Deactivate', info) && info.querySelector('[data-timetable-link]').getAttribute('href') === '/settings/farm-out-partners/1/timetable';"));
+  check("第 8 件 Partner 下拉：所有公司都在（Partner A / Partner B / ZZ Test Partner）", JSON.stringify((await evaluate("return (await $selOptions(document.querySelector('[data-partner-select]'))).map(o => o.label);"))) === JSON.stringify(["Partner A", "Partner B", "ZZ Test Partner"]), JSON.stringify(await evaluate("return (await $selOptions(document.querySelector('[data-partner-select]'))).map(o => o.label);")));
+  check("第 8 件 折叠行（146 Q1 / Q4 A）：打开时收着，电脑写团名「▸ 1 tour with no products yet : Zion · Show」，Zion 不在 Tours with products 里", await evaluate("const b = document.querySelector('[data-empty-tours] button'); return b.getAttribute('aria-expanded') === 'false' && document.querySelector('[data-empty-count]').textContent.trim() === '▸ 1 tour with no products yet' && document.querySelector('[data-empty-names]').textContent.trim() === ': Zion' && b.textContent.includes('Show') && !document.querySelector('tr[data-rate-row=\"Partner A|Zion\"]') && !!document.querySelector('section[aria-label=\"Tours with products\"] tr[data-rate-row=\"Partner A|West Rim\"]');"));
   {
-    const headText = await evaluate("return [...document.querySelector('table > thead').querySelectorAll('th')].map(x => x.textContent.trim()).join('|');");
-    check("列表头：Partner / Tour / Product、Adult、Child、Infant、Status、Actions", headText === "Partner / Tour / Product|Adult|Child|Infant|Status|Actions", headText);
+    const headText = await evaluate("return [...document.querySelector('section[aria-label=\"Tours with products\"] thead').querySelectorAll('th')].map(x => x.textContent.trim()).join('|');");
+    check("Tours with products 表头：Tour / Product、Adult、Child、Infant、（Status）、Actions", headText === "Tour / Product|Adult|Child|Infant|Status|Actions", headText);
     check("团只是标题（没有价钱），下面一个产品一行三列：Premium Pass $98.00 / $98.00 / —，Admission Only $83.00 / — / —", await evaluate(`const a = ${prow("Partner A", "West Rim", "Premium Pass")}, b = ${prow("Partner A", "West Rim", "Admission Only")}; const c = (r, k) => r.querySelector('[data-price=' + k + ']').textContent; return !${rrow("Partner A", "West Rim")}.textContent.includes('$') && c(a,'adult') === '$98.00' && c(a,'child') === '$98.00' && c(a,'infant') === '—' && c(b,'adult') === '$83.00' && c(b,'child') === '—';`));
     check("产品名悬停是后端拼好的全名「West Rim Premium Pass - Partner A」", await evaluate(`return ${prow("Partner A", "West Rim", "Premium Pass")}.cells[0].title === 'West Rim Premium Pass - Partner A';`));
-    check("没产品的团：下面红字斜体 No products yet.", await evaluate(`const n = ${rrow("Partner A", "Zion")}.nextElementSibling; return n.textContent.trim() === 'No products yet.' && getComputedStyle(n.cells[0]).fontStyle === 'italic';`));
+    await evaluate("document.querySelector('[data-empty-tours] button').click(); return 1;");
+    await waitFor(`${rrow("Partner A", "Zion")}`);
+    check("没产品的团（点折叠行打开）：下面红字斜体 No products yet.", await evaluate(`const n = ${rrow("Partner A", "Zion")}.nextElementSibling; return n.textContent.trim() === 'No products yet.' && getComputedStyle(n.cells[0]).fontStyle === 'italic';`));
     const putsBefore = (await calls("PUT", /\/partners\/1\/rates$/)).length;
     await evaluate(`$btn('Edit', ${rrow("Partner A", "West Rim")}).click(); return 1;`);
     check("点 Edit：每个产品一个名字框、旁边灰字全名、价格行（下拉 + 价钱）；没改时 Save 灰", (await waitFor("$byLabel('West Rim product 2 name')")) && (await evaluate(`return $byLabel('West Rim product 1 name').value === 'Premium Pass' && $byLabel('West Rim product 2 name').value === 'Admission Only' && document.querySelector('[data-display-name]').textContent === 'West Rim Premium Pass - Partner A' && $byLabel('Premium Pass adult price').value === '98.00' && $byLabel('Premium Pass child price').value === '98.00' && $btn('Save', ${rrow("Partner A", "West Rim")}).disabled;`)));
@@ -196,15 +211,14 @@ async function partnersChecks() {
     check("过期 id：红字照后端原话，还在编辑、改的价钱留着", (await waitFor(`${rrow("Partner A", "West Rim")}.querySelector('[role=alert]')?.textContent.includes('A product in the price list no longer exists. Reload the page and try again.')`)) && (await evaluate("return $byLabel('Premium Pass adult price').value === '99';")));
     await evaluate(`$btn('Cancel', ${rrow("Partner A", "West Rim")}).click(); return 1;`);
     await waitFor("!$byLabel('West Rim product 1 name')");
-    check("How to use 换成 G263 v3 定稿：全名那句、改价不动已有应付（题 b B）、导入短名 / 全名都认", await evaluate("const t = $txt(); return t.includes('Find the partner, then the tour, and click Edit.') && t.includes('Everywhere else the system shows the full name: tour, product and partner, for example West Rim Premium Pass - C Tour.') && t.includes('Changing a price here does not change orders that already have a payable.') && t.includes('the product can be the short name (Premium Pass) or the full name (West Rim Premium Pass - C Tour)') && !t.includes('Infants are never counted') && !t.includes('Click ＋ on a tour');"));
-    // 重开页面，读回别人刚改过的那份（后面 Import 模板按它核）
-    await open(URL, "document.querySelector('tr[data-partner]')");
+    check("第 8 件 单家页 How to use：第 1 条换成找团 / 折叠行那句（preview v2），全名那句、改价不动已有应付照旧；上车点、Timetable、换公司先问；Import rates 那条不在这一页", await evaluate("const t = $txt(); return t.includes('How to use — Farm out Partner') && t.includes('Find the tour and click Edit. Tours with no products yet are folded into one line at the bottom of the page') && t.includes('Once a tour is saved with a product, it moves up with the other tours.') && t.includes('Everywhere else the system shows the full name: tour, product and partner, for example West Rim Premium Pass - C Tour.') && t.includes('Changing a price here does not change orders that already have a payable.') && t.includes('Pick-up locations are this partner\\'s own hotels') && t.includes('Timetable opens this partner\\'s timetable.') && t.includes('If you have unsaved prices or locations, you are asked first.') && !t.includes('Find the partner, then the tour') && !t.includes('⬆ Import rates');"));
+    // 重开页面，读回别人刚改过的那份
+    await open(P1, "document.querySelector('tr[data-rate-row]')");
   }
 
-  // 展开 Partner A 的上车点
-  await evaluate("$btn('Locations', $row('Partner A')).click(); return 1;");
-  await waitFor("document.querySelector('[aria-label=\"Pick-up locations\"]')");
-  check("Save locations 是蓝色提交键；展开区里没有结算价表", await evaluate("return $bg($btn('Save locations')) === 'rgb(59, 130, 246)' && !document.querySelector('[aria-label=\"Settlement rates\"]');"));
+  // Partner A 的上车点（单家页一直显示）
+  await waitFor("document.querySelector('[aria-label=\"Pick-up locations\"]') && $byLabel('Hotel name 1')");
+  check("Save locations 是蓝色提交键；没有结算价表", await evaluate("return $bg($btn('Save locations')) === 'rgb(59, 130, 246)' && !document.querySelector('[aria-label=\"Settlement rates\"]');"));
 
   // 上车点
   check("上车点按顺序列出", await evaluate("return $byLabel('Hotel name 1').value === 'Bellagio' && $byLabel('Hotel name 2').value === 'Venetian' && $byLabel('Spot 1').value === 'Underground South Tour Lobby' && $byLabel('Map link 2').value === 'https://goo.gl/maps/bbb';"));
@@ -292,12 +306,10 @@ async function partnersChecks() {
 
   // ── ⬆ Import 结算价（全站通用导入，Annie 2026-10-29「批量导入同意全部推荐。动手」；后端 G220 第二批 c8c0b739 的形状）──
   {
-    const card = "[...document.querySelectorAll('section')].find(s => s.querySelector('h2')?.textContent.includes('Partners & rates'))";
-    check("Import：Partners & rates 卡头有 ⬆ Import（灰白，不是蓝的）", await evaluate(`const b = $btn('⬆ Import', ${card}); return !!b && !b.disabled && $bg(b) !== 'rgb(59, 130, 246)';`));
-    await evaluate(`$btn('Edit', ${rrow("Partner A", "Zion")}).click(); return 1;`);
-    check("正在改一个团的价：⬆ Import 灰掉", await waitFor(`$btn('⬆ Import', ${card}).disabled`));
-    await evaluate(`$btn('Cancel', ${rrow("Partner A", "Zion")}).click(); return 1;`);
-    check("Cancel 后：⬆ Import 又能点", await waitFor(`!$btn('⬆ Import', ${card}).disabled`));
+    check("第 8 件 单家页没有 ⬆ Import rates（Q9 A，只有上车点自己的 ⬆ Import）", await evaluate("return [...document.querySelectorAll('main button')].filter(b => b.textContent.trim() === '⬆ Import').every(b => !!b.closest('[aria-label=\"Pick-up locations\"]'));"));
+    await open(URL, "document.querySelector('tr[data-partner]')");
+    const card = "document.querySelector('section[aria-label=Partners]')";
+    check("Import：列表页 Partners 卡头有 ⬆ Import（灰白，不是蓝的）（Q9 A）", await evaluate(`const b = $btn('⬆ Import', ${card}); return !!b && !b.disabled && $bg(b) !== 'rgb(59, 130, 246)';`));
     await evaluate(`
       window.__blob = null; window.__download = null;
       const orig = URL.createObjectURL;
@@ -326,7 +338,7 @@ async function partnersChecks() {
     await ctl({ importFail: true });
     await evaluate("$btn('Save 3 rows').click(); return 1;");
     await waitFor("document.querySelector('[data-bulk-import] [role=alert]')?.textContent.includes('Not saved')");
-    check("存不上：红字 Not saved — nothing was changed，列表价钱没动", await evaluate(`const a = document.querySelector('[data-bulk-import] [role=alert]'); return a.textContent.startsWith('Not saved — nothing was changed.') && getComputedStyle(a).color === 'rgb(179, 38, 30)' && ${prow("Partner A", "West Rim", "Premium Pass")}.querySelector('[data-price=adult]').textContent === '$98.00';`));
+    check("存不上：红字 Not saved — nothing was changed，列表没动（Partner A 还是 1 of 2）", await evaluate("const a = document.querySelector('[data-bulk-import] [role=alert]'); return a.textContent.startsWith('Not saved — nothing was changed.') && getComputedStyle(a).color === 'rgb(179, 38, 30)' && $row('Partner A').querySelector('[data-tours-with-products]').textContent.trim() === '1 of 2';"));
     await ctl({ importFail: false, importConflict: true });
     await evaluate("$btn('Save 3 rows').click(); return 1;");
     await waitFor("document.querySelector('[data-bulk-import] [role=alert]')?.textContent.includes('Someone changed')");
@@ -335,10 +347,10 @@ async function partnersChecks() {
     before = (await mockLog()).length;
     await evaluate("$btn('Save 3 rows').click(); return 1;");
     await waitFor("document.querySelector('[data-bulk-import] [role=status]')?.textContent.includes('Saved')");
-    check("Save：绿字 Saved — 1 new, 2 updated. 2 rows with errors were not saved.；列表静悄悄重拉出新价和新产品、上车点还展开着", (await waitFor(`${prow("Partner A", "West Rim", "Premium Pass")}.querySelector('[data-price=adult]').textContent === '$109.00' && !!${prow("Partner A", "Zion", "ZZ Test Day Pass")}`)) && (await evaluate("const s = document.querySelector('[data-bulk-import] [role=status]'); return s.textContent.includes('Saved — 1 new, 2 updated. 2 rows with errors were not saved.') && getComputedStyle(s).color === 'rgb(30, 107, 67)' && !!document.querySelector('[aria-label=\"Pick-up locations\"]');")) && (await mockLog()).slice(before).some((e) => e.path === "/api/farm-out/rates/import/commit" && e.hasFile), await evaluate("return document.querySelector('[data-bulk-import] [role=status]')?.textContent;"));
+    check("Save：绿字 Saved — 1 new, 2 updated. 2 rows with errors were not saved.；列表静悄悄重拉：Partner A 的 Zion 有了新产品 ⇒ 2 of 2", (await waitFor("$row('Partner A').querySelector('[data-tours-with-products]').textContent.trim() === '2 of 2'")) && (await evaluate("const s = document.querySelector('[data-bulk-import] [role=status]'); return s.textContent.includes('Saved — 1 new, 2 updated. 2 rows with errors were not saved.') && getComputedStyle(s).color === 'rgb(30, 107, 67)';")) && (await mockLog()).slice(before).some((e) => e.path === "/api/farm-out/rates/import/commit" && e.hasFile), await evaluate("return document.querySelector('[data-bulk-import] [role=status]')?.textContent;"));
     await evaluate("$btn('Close', document.querySelector('[data-bulk-import]')).click(); return 1;");
     check("Close：Import 块收起", await waitFor("!document.querySelector('[data-bulk-import]')"));
-    check("How to use 说明 ⬆ Import rates 六列、对不上的产品新建", await evaluate("return $txt().includes('⬆ Import rates: the file has the columns Partner, Tour, Product, Adult, Child, Infant.') && $txt().includes('A product name that is not on the tour yet is added as a new product.');"));
+    check("列表页 How to use（preview v2 原文）：点名字开这家的页、Add 后打开、Tours with products、⬆ Import rates (all partners in one file) 六列 + 短名 / 全名、停用的在最底", await evaluate("const t = $txt(); return t.includes(\"Click a partner's name to open its own page: its tours and prices, its pick-up locations and its timetable.\") && t.includes('Its page opens so you can add its tours, prices and pick-up locations.') && t.includes(\"Tours with products shows how many of the partner's tours already have a product with a price.\") && t.includes('⬆ Import rates (all partners in one file): the file has the columns Partner, Tour, Product, Adult, Child, Infant.') && t.includes('the product can be the short name (Premium Pass) or the full name (West Rim Premium Pass - C Tour)') && t.includes('A product name that is not on the tour yet is added as a new product.') && t.includes('Inactive partners are greyed out at the bottom of the list. Open one to reactivate it.');"));
     // 后端 c2：预览每行带 label（全名「<Tour> <Product> - <Partner>」，error 行 ""）⇒ Product 栏写全名；error 行照文件里写的
     await ctl({ importLabel: true });
     await evaluate(`$btn('⬆ Import', ${card}).click(); return 1;`);
@@ -368,21 +380,59 @@ async function partnersChecks() {
     await waitFor("!document.querySelector('[data-bulk-import]')");
   }
 
-  // 改名 / 停用
-  await evaluate("$btn('Rename', $row('Partner B')).click(); return 1;");
+  // 改名 / 停用（第 8 件：搬到每家自己的页）
+  const P2 = `${APP}/settings/farm-out-partners/2`;
+  const info = "document.querySelector('section[aria-label=Partner]')";
+  await open(P2, "document.querySelector('[data-partner-title]')");
+  await evaluate(`$btn('Rename', ${info}).click(); return 1;`);
   await waitFor("$byLabel('Partner name')");
   check("改名的 Save name 是蓝色提交键", await evaluate("return $bg($btn('Save name')) === 'rgb(59, 130, 246)';"));
   await evaluate("await $set($byLabel('Partner name'), 'Partner B2'); $btn('Save name').click(); return 1;");
-  check("改名：行上换成新名字", await waitFor("$row('Partner B2') && !$row('Partner B')"));
+  check("改名：信息行和 Partner 下拉换成新名字", await waitFor("document.querySelector('[data-partner-title]')?.textContent === 'Partner B2' && $selLabel(document.querySelector('[data-partner-select]')) === 'Partner B2'"));
   check("PATCH 只带 name", JSON.stringify((await lastCall("PATCH", /\/partners\/2$/))?.body) === JSON.stringify({ name: "Partner B2" }));
-  await evaluate("$btn('Deactivate', $row('Partner B2')).click(); return 1;");
+  await evaluate(`$btn('Deactivate', ${info}).click(); return 1;`);
   check("停用要确认", await waitFor("document.querySelector('[role=dialog]')"));
   await evaluate("$btn('Deactivate', document.querySelector('[role=dialog]')).click(); return 1;");
-  check("停用：状态变 Inactive、出现 Reactivate", await waitFor("$row('Partner B2').textContent.includes('Inactive') && $btn('Reactivate', $row('Partner B2'))"));
+  check("停用：状态变 Inactive、出现 Reactivate", await waitFor(`${info}.querySelector('[data-status]').textContent.includes('Inactive') && $btn('Reactivate', ${info})`));
   check("PATCH is_active=false", (await lastCall("PATCH", /\/partners\/2$/))?.body?.is_active === false);
   check("停用的合作公司：产品照样列着、团没有 Edit", await evaluate("return !!document.querySelector('tr[data-product-row=\"Partner B2|West Rim|VOF-H/D\"]') && !$btn('Edit', document.querySelector('tr[data-rate-row=\"Partner B2|West Rim\"]'));"));
-  await evaluate("$btn('Reactivate', $row('Partner B2')).click(); return 1;");
-  check("恢复：不用确认、变回 Active", await waitFor("$row('Partner B2').textContent.includes('Active') && !$row('Partner B2').textContent.includes('Inactive')"));
+  await open(URL, "document.querySelector('tr[data-partner]')");
+  check("第 8 件 列表：停用的排最底、变灰、Status Inactive", await evaluate("const rows = [...document.querySelectorAll('tr[data-partner]')]; const last = rows[rows.length - 1]; return last.dataset.partner === 'Partner B2' && last.querySelector('[data-status]').textContent.trim() === 'Inactive' && Number(getComputedStyle(last).opacity) < 1;"));
+  await open(P2, "document.querySelector('[data-partner-title]')");
+  await evaluate(`$btn('Reactivate', ${info}).click(); return 1;`);
+  check("恢复：不用确认、变回 Active", await waitFor(`${info}.querySelector('[data-status]').textContent.trim() === 'Status: Active' && !!$btn('Deactivate', ${info})`));
+
+  // ── 第 8 件：折叠行里的团存好有产品 ⇒ 马上上移（146 Q2 / Q3 A）、离开先问、找不到这家 ──
+  await ctl({ reset: true });
+  await open(P1, "document.querySelector('[data-empty-tours]')");
+  await evaluate("document.querySelector('[data-empty-tours] button').click(); return 1;");
+  await waitFor(`${rrow("Partner A", "Zion")}`);
+  check("折叠行打开：▾ … · Hide，团名不写（展开了）", await evaluate("const b = document.querySelector('[data-empty-tours] button'); return b.getAttribute('aria-expanded') === 'true' && b.textContent.includes('Hide') && !document.querySelector('[data-empty-names]') && document.querySelector('[data-empty-count]').textContent.trim() === '▾ 1 tour with no products yet';"));
+  await evaluate(`$btn('Edit', ${rrow("Partner A", "Zion")}).click(); return 1;`);
+  await waitFor("document.querySelector('[data-add-product]')");
+  check("在折叠行里编辑 Zion：Hide 灰掉（Q2 A）、别的团的 Edit 灰掉", await evaluate(`return document.querySelector('[data-empty-tours] button').disabled && $btn('Edit', ${rrow("Partner A", "West Rim")}).disabled;`));
+  await evaluate("document.querySelector('[data-add-product]').click(); return 1;");
+  await waitFor("$byLabel('Zion product 1 name')");
+  await evaluate("await $set($byLabel('Zion product 1 name'), 'ZZ Test Zion Pass'); await $set($byLabel('ZZ Test Zion Pass adult price'), '45'); return 1;");
+  // 有没存的价格：换 Partner 下拉先问；按取消就留在这家
+  await evaluate("window.__confirms = []; window.confirm = (m) => { window.__confirms.push(m); return false; }; return 1;");
+  await evaluate("await $sel(document.querySelector('[data-partner-select]'), '2'); return 1;");
+  await sleep(600);
+  check("第 8 件 有没存的价格时换 Partner 下拉：先问「You have unsaved changes on Partner A. Leave without saving?」，取消就留在这家、改的还在", await evaluate("return JSON.stringify(window.__confirms) === JSON.stringify(['You have unsaved changes on Partner A. Leave without saving?']) && location.pathname === '/settings/farm-out-partners/1' && $byLabel('Zion product 1 name')?.value === 'ZZ Test Zion Pass';"), await evaluate("return JSON.stringify(window.__confirms) + ' ' + location.pathname;"));
+  await evaluate(`$btn('Save', ${rrow("Partner A", "Zion")}).click(); return 1;`);
+  check("第 8 件 存好 Zion（Q3 A）：马上移到 Tours with products（排在 West Rim 后面，同原来顺序），团名旁绿字 ✓ Saved；折叠行没有了", await waitFor(`!!document.querySelector('section[aria-label="Tours with products"] tr[data-rate-row="Partner A|Zion"] [role=status]') && !document.querySelector('[data-empty-tours]')`) && (await evaluate("const rows = [...document.querySelectorAll('section[aria-label=\"Tours with products\"] tr[data-rate-row]')].map(r => r.dataset.rateRow); return JSON.stringify(rows) === JSON.stringify(['Partner A|West Rim', 'Partner A|Zion']) && document.querySelector('tr[data-rate-row=\"Partner A|Zion\"] [role=status]').textContent === '✓ Saved';")));
+  // 有没存的上车点：也要先问（以前只问价格）
+  await evaluate("await $set($byLabel('Spot 1'), 'ZZ Test changed'); return 1;");
+  await sleep(200);
+  await evaluate("window.__confirms = []; [...document.querySelectorAll('nav[aria-label=Back] a')].find(a => a.textContent.trim() === '‹ Partners').click(); return 1;");
+  await sleep(600);
+  check("第 8 件 有没存的上车点时点 ‹ Partners：也先问，取消就不走", await evaluate("return window.__confirms.length === 1 && window.__confirms[0] === 'You have unsaved changes on Partner A. Leave without saving?' && location.pathname === '/settings/farm-out-partners/1';"));
+  await evaluate("window.confirm = (m) => { window.__confirms.push(m); return true; }; await $sel(document.querySelector('[data-partner-select]'), '2'); return 1;");
+  check("第 8 件 答应离开：Partner 下拉打开 Partner B 的页（网址 /2），改的上车点丢掉", await waitFor("location.pathname === '/settings/farm-out-partners/2' && document.querySelector('[data-partner-title]')?.textContent === 'Partner B' && $byLabel('Hotel name 1')?.value === 'Strat'", 20000), await evaluate("return location.pathname + ' | ' + document.querySelector('[data-partner-title]')?.textContent + ' | ' + $byLabel('Hotel name 1')?.value + ' | ' + JSON.stringify(window.__confirms) + ' | ' + document.querySelector('main')?.textContent.slice(0,200);"));
+  check("第 8 件 Partner B：折叠行照样收着（每次打开都收着）", await evaluate("return document.querySelector('[data-empty-tours] button').getAttribute('aria-expanded') === 'false';"));
+  await goto(`${APP}/settings/farm-out-partners/999`);
+  check("第 8 件 网址里的公司不存在：写 This partner was not found. Go back to Partners and pick a partner.，不崩、有 ‹ Partners", (await waitFor("document.body.textContent.includes('This partner was not found. Go back to Partners and pick a partner.')")) && !(await evaluate("return document.body.textContent.includes('Application error');")) && (await evaluate("return [...document.querySelectorAll('nav[aria-label=Back] a')].some(a => a.getAttribute('href') === '/settings/farm-out-partners');")));
+  await ctl({ reset: true });
 
   // 权限 / 后端没上线 / 未登录
   await ctl({ staff: true });
@@ -414,12 +464,15 @@ async function partnersChecks() {
     const mark = (await (await fetch(`${MOCK}/__log`)).json()).length;
     await open(URL, "document.querySelector('tr[data-partner]')");
     await sleep(500);
-    const st = await evaluate("const h = [...document.querySelectorAll('th')].map(t => t.textContent.trim()); const titles = [...document.querySelectorAll('h2')].map(x => x.textContent.trim()); return { adult: h.includes('Adult'), rows: document.querySelectorAll('tr[data-rate-row]').length, imp: [...document.querySelectorAll('button')].some(b => b.offsetParent !== null && b.textContent.includes('⬆ Import') && !b.closest('[data-partner-detail]')), title: titles.includes('Partners & rates'), plain: titles.includes('Partners'), timetable: [...document.querySelectorAll('a')].some(a => a.textContent.trim() === 'Timetable'), howPrice: document.body.textContent.includes('+ Add price') };");
+    const lst = await evaluate("const h = [...document.querySelectorAll('th')].map(t => t.textContent.trim()); return { col: h.includes('Tours with products'), imp: [...document.querySelectorAll('button')].some(b => b.offsetParent !== null && b.textContent.includes('⬆ Import')), plain: [...document.querySelectorAll('h2')].some(x => x.textContent.trim() === 'Partners'), howPrice: document.body.textContent.includes('Tours with products shows') };");
+    await open(`${APP}/settings/farm-out-partners/1`, "document.querySelector('[data-partner-title]') && document.querySelector('[aria-label=\"Pick-up locations\"]')");
+    await sleep(500);
+    const st = await evaluate("const h = [...document.querySelectorAll('th')].map(t => t.textContent.trim()); return { adult: h.includes('Adult'), rows: document.querySelectorAll('tr[data-rate-row]').length, fold: !!document.querySelector('[data-empty-tours]'), timetable: [...document.querySelectorAll('a')].some(a => a.textContent.trim() === 'Timetable'), howPrice: document.body.textContent.includes('+ Add price'), locs: !!document.querySelector('[aria-label=\"Pick-up locations\"]') };");
     const asked = (await (await fetch(`${MOCK}/__log`)).json()).slice(mark).some((e) => /\/partners\/\d+\/rates$/.test(e.path));
     const ok = see
-      ? st.adult && st.rows > 0 && st.imp && st.title && st.howPrice && asked
-      : !st.adult && st.rows === 0 && !st.imp && st.plain && !st.howPrice && !asked;
-    check(`${label}：${see ? "有" : "没有"} Adult / Child / Infant 列、团和产品行、⬆ Import rates、价格请求；卡片标题 ${see ? "Partners & rates" : "Partners"}；Timetable 照旧`, ok && st.timetable, JSON.stringify({ ...st, asked }));
+      ? lst.col && lst.imp && lst.howPrice && st.adult && st.rows > 0 && st.fold && st.howPrice && asked
+      : !lst.col && !lst.imp && !lst.howPrice && !st.adult && st.rows === 0 && !st.fold && !st.howPrice && !asked;
+    check(`${label}：列表${see ? "有" : "没有"} Tours with products 列、⬆ Import rates；单家页${see ? "有" : "没有"} Adult / Child / Infant、团和产品行、折叠行、价格请求；卡片标题 Partners；上车点、Timetable 照旧`, ok && lst.plain && st.timetable && st.locs, JSON.stringify({ lst, st, asked }));
   }
   await ctl({ ticks: null });
 
@@ -471,7 +524,7 @@ async function timetableChecks() {
   fs.writeFileSync(csv, "Hotel,Spot,West Rim,Zion\nBellagio,Underground South Tour Lobby,6:45,6:20\n");
   await ctl({ reset: true, fail401: false, staff: false, unavailable: false });
   check("时刻表页打开", await open(URL, "document.querySelector('[data-timetable]')"));
-  check("标题是这家公司、没有 Partner 下拉、有 ‹ Partners 返回", await evaluate("return document.querySelector('[data-partner-title]').textContent.trim() === 'Partner A' && !$byLabel('Partner') && [...document.querySelectorAll('a')].some(a => a.getAttribute('href') === '/settings/farm-out-partners' && a.textContent.includes('Partners'));"));
+  check("标题是这家公司、没有 Partner 下拉；第 8 件 Q11 A 返回键「‹ Partner A」回这家自己的页", await evaluate("const b = document.querySelector('[data-back-to-partner]'); return document.querySelector('[data-partner-title]').textContent.trim() === 'Partner A' && !$byLabel('Partner') && b.getAttribute('href') === '/settings/farm-out-partners/1' && b.textContent.trim() === '‹ Partner A';"));
   check("说明：check-in = 10 min earlier", await evaluate("return $txt().includes('check-in = 10 min earlier');"));
   check("表头：酒店 · 团名", await evaluate("return [...document.querySelectorAll('[data-timetable] thead th')].map(t => t.textContent.trim()).join('|') === 'Hotel|West Rim|Zion';"));
   check("行是这家公司的酒店 + 上车点；时间显示 h:mm AM/PM", await evaluate("const r = [...document.querySelectorAll('[data-timetable] tbody tr')].map(tr => tr.children[0].textContent + '=' + [...tr.querySelectorAll('input')].map(i => i.value).join(',')); return r.join(' ; ') === 'Bellagio=6:50 AM,6:20 AM ; Venetian=6:50 AM,';"));
@@ -542,7 +595,7 @@ async function timetableChecks() {
   await open(URL_B, "document.querySelector('[data-timetable]')");
   check("Partner B 的子页：显示它自己的酒店和时间", await waitFor("$byLabel('Strat West Rim departure') && $byLabel('Strat West Rim departure').value === '6:30 AM' && !$byLabel('Bellagio West Rim departure') && document.querySelector('[data-partner-title]').textContent.includes('Partner B')"));
   await goto(`${APP}/settings/farm-out-partners/999/timetable`);
-  check("没有这家：写 not found、不崩", (await waitFor("document.body.textContent.includes('This partner was not found.')")) && !(await evaluate("return document.body.textContent.includes('Application error');")));
+  check("没有这家：写 not found、不崩；返回键照旧「‹ Partners」回列表", (await waitFor("document.body.textContent.includes('This partner was not found.')")) && !(await evaluate("return document.body.textContent.includes('Application error');")) && (await evaluate("const b = document.querySelector('[data-back-to-partner]'); return b.getAttribute('href') === '/settings/farm-out-partners' && b.textContent.trim() === '‹ Partners';")));
   await goto(`${APP}/settings/farm-out-timetable`);
   check("旧网址 /settings/farm-out-timetable 跳到 Partners", await waitFor("location.pathname === '/settings/farm-out-partners'"));
   await open(URL_B, "document.querySelector('[data-tour-meta]')");
@@ -586,14 +639,65 @@ async function navChecks() {
   // G199：Partners 搬进 Supplier › Farm out；Timetable 不单列；Settings 组里没有 Farm out 了。
   check("侧栏 Supplier 组：Farm out › Partners，没有单列的 Timetable", await evaluate("const sup = document.querySelector('section[aria-label=Supplier]'); if (!sup) return false; const fo = sup.querySelector('[role=group][aria-label=\"Farm out\"]'); const hrefs = [...document.querySelectorAll('a')].map(a => a.getAttribute('href')); return !!fo && [...fo.querySelectorAll('a')].some(a => a.getAttribute('href') === '/settings/farm-out-partners' && a.textContent.trim() === 'Partners') && !hrefs.includes('/settings/farm-out-timetable');"));
   check("Settings 组里没有 Farm out Partners", await evaluate("const s = document.querySelector('section[aria-label=Settings]'); return !!s && ![...s.querySelectorAll('a')].some(a => (a.getAttribute('href') || '').startsWith('/settings/farm-out'));"));
-  check("Partners 页每家一个 Timetable 键（不是蓝色），指向这家的子页", await evaluate("const a = document.querySelector('tr[data-partner=\"Partner A\"] [data-timetable-link]'); return !!a && a.getAttribute('href') === '/settings/farm-out-partners/1/timetable' && $bg(a) !== 'rgb(59, 130, 246)';"));
   check("侧栏 Operations 组有 Farm out Report", await evaluate("return [...document.querySelectorAll('a')].some(a => a.getAttribute('href') === '/farm-out-report' && a.textContent.includes('Farm out Report'));"));
+  await open(`${APP}/settings/farm-out-partners/1`, "document.querySelector('[data-timetable-link]')");
+  check("每家的页上有 Timetable 键（不是蓝色），指向这家的子页（第 8 件：从列表搬到单家页）", await evaluate("const a = document.querySelector('section[aria-label=Partner] [data-timetable-link]'); return !!a && a.getAttribute('href') === '/settings/farm-out-partners/1/timetable' && $bg(a) !== 'rgb(59, 130, 246)';"));
+}
+
+// ── 第 8 件 手机（< 640px，手机版统一规则）+ 截图（SHOT_DIR 设了才存）──
+async function phoneChecks() {
+  const SHOTS = process.env.SHOT_DIR || "";
+  const shot = async (name) => {
+    if (!SHOTS) return;
+    fs.mkdirSync(SHOTS, { recursive: true });
+    const m = await cdp("Page.getLayoutMetrics");
+    const w = Math.ceil(m.cssContentSize.width), h = Math.ceil(m.cssContentSize.height);
+    const r = await cdp("Page.captureScreenshot", { format: "png", captureBeyondViewport: true, clip: { x: 0, y: 0, width: w, height: h, scale: 1 } });
+    fs.writeFileSync(path.join(SHOTS, name), Buffer.from(r.data, "base64"));
+  };
+  const LIST = `${APP}/settings/farm-out-partners`;
+  const P1 = `${APP}/settings/farm-out-partners/1`;
+  const vis = "const vis = (el) => !!el && el.getBoundingClientRect().width > 0 && el.getBoundingClientRect().height > 0;";
+  await ctl({ reset: true, fail401: false, staff: false, unavailable: false, partner: false, ticks: null });
+
+  // 电脑截图
+  await open(LIST, "document.querySelector('tr[data-partner]')");
+  await sleep(400);
+  await shot("desktop-list-1600.png");
+  await open(P1, "document.querySelector('[data-empty-tours]') && document.querySelector('[aria-label=\"Pick-up locations\"] input')");
+  await sleep(400);
+  await shot("desktop-partner-folded-1600.png");
+  await evaluate("document.querySelector('[data-empty-tours] button').click(); return 1;");
+  await waitFor("document.querySelector('tr[data-rate-row=\"Partner A|Zion\"]')");
+  await evaluate("[...document.querySelectorAll('button')].find(b => b.getAttribute('aria-label') === 'Edit Zion products').click(); return 1;");
+  await waitFor("document.querySelector('[data-add-product]')");
+  await sleep(300);
+  await shot("desktop-partner-editing-folded-tour-1600.png");
+  await evaluate("$btn('Cancel', document.querySelector('tr[data-rate-row=\"Partner A|Zion\"]')).click(); return 1;");
+
+  // 手机 390×844
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  await open(LIST, "document.querySelector('tr[data-partner]')");
+  await sleep(600);
+  const pl = await evaluate(`${vis} const card = document.querySelector('section[aria-label=Partners]'); const how = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use')); return { sw: document.documentElement.scrollWidth, vw: innerWidth, thead: vis(card.querySelector('thead')), sub: $row('Partner A').querySelector('td span').textContent.trim(), form: vis($byLabel('New partner name')), more: vis(card.querySelector('[data-phone-more]')), imp: [...card.querySelectorAll('button')].some(b => b.textContent.trim() === '⬆ Import' && vis(b)), howLast: !!how && how.getBoundingClientRect().top > card.getBoundingClientRect().bottom };`);
+  check("第 8 件 手机列表：整页不左右晃；表头藏，名字下一行写「1 of 2 tours with products · Active」；Add 表单默认收起；⬆ Import 收进 ⋯；How to use 在最底", pl.sw <= pl.vw + 1 && !pl.thead && pl.sub === "1 of 2 tours with products · Active" && !pl.form && pl.more && !pl.imp && pl.howLast, JSON.stringify(pl));
+  await shot("phone-list-390.png");
+
+  await open(P1, "document.querySelector('[data-empty-tours]') && document.querySelector('[aria-label=\"Pick-up locations\"] input')");
+  await sleep(600);
+  const pp = await evaluate(`${vis} const info = document.querySelector('section[aria-label=Partner]'); const how = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use')); const last = document.querySelector('[data-empty-tours]'); return { sw: document.documentElement.scrollWidth, vw: innerWidth, rename: vis($btn('Rename', info)), more: vis(info.querySelector('[data-phone-more]')), names: vis(document.querySelector('[data-empty-names]')), count: document.querySelector('[data-empty-count]').textContent.trim(), hint: [...document.querySelectorAll('[aria-label=\"Pick-up locations\"] span')].some(s => vis(s) && s.textContent.includes('not linked to our Pickup')), i: vis(document.querySelector('[aria-label=\"About pick-up locations\"]')), sel: vis(document.querySelector('[data-partner-select]')), saveLoc: (() => { const b = $btn('Save locations'); const r = b.getBoundingClientRect(); return vis(b) && r.right <= innerWidth && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) === b; })(), howLast: !!how && how.getBoundingClientRect().top > last.getBoundingClientRect().bottom };`);
+  check("第 8 件 手机单家页：整页不左右晃（表格在卡片里横滑）；Rename / Timetable / Deactivate 收进 ⋯；折叠行只写数目（146 Q1 A）；上车点说明收进 i、Save locations 在屏幕里点得到；Partner 下拉在；How to use 在最底", pp.sw <= pp.vw + 1 && !pp.rename && pp.more && !pp.names && pp.count === "▸ 1 tour with no products yet" && !pp.hint && pp.i && pp.sel && pp.saveLoc && pp.howLast, JSON.stringify(pp));
+  await evaluate("document.querySelector('section[aria-label=Partner] [data-phone-more]').click(); return 1;");
+  check("第 8 件 手机单家页：⋯ 在白卡片上是深色字看得见；点开出 Rename / Timetable / Deactivate，菜单不被卡片切掉（点得到 Deactivate）", (await evaluate("return getComputedStyle(document.querySelector('section[aria-label=Partner] [data-phone-more]')).color === 'rgb(26, 26, 26)';")) && (await waitFor("[...document.querySelectorAll('[data-phone-more-menu] a, [data-phone-more-menu] button')].map(b => b.textContent.trim()).join('|') === 'Rename|Timetable|Deactivate'")) && (await evaluate("const b = [...document.querySelectorAll('[data-phone-more-menu] button')].find(x => x.textContent.trim() === 'Deactivate'); const r = b.getBoundingClientRect(); return document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) === b;")), await evaluate("return [...document.querySelectorAll('[data-phone-more-menu] a, [data-phone-more-menu] button')].map(b => b.textContent.trim()).join('|');"));
+  await shot("phone-partner-390.png");
+  await cdp("Emulation.clearDeviceMetricsOverride");
 }
 
 async function run() {
   await partnersChecks();
   await timetableChecks();
   await navChecks();
+  await phoneChecks();
 }
 
 async function main() {

@@ -303,11 +303,17 @@ export function TimetableView({ partnerId: fixedId }: { partnerId: number }) {
         title={`🕖 ${partner ? `${partner.name} · ` : ""}Farm out Timetable`}
       />
       <nav aria-label="Back" className="mb-3.5">
+        {/* 第 8 件 Q11 A：回到这家自己的页「‹ C Tour」；找不到这家时照旧回 Partners 列表。 */}
         <Link
-          href="/settings/farm-out-partners"
+          href={
+            partner
+              ? `/settings/farm-out-partners/${partner.id}`
+              : "/settings/farm-out-partners"
+          }
+          data-back-to-partner
           className="inline-flex h-7 items-center rounded-lg border border-[rgba(147,197,253,.35)] px-[11px] text-[13px] text-[#93c5fd] no-underline hover:bg-white/[.07]"
         >
-          ‹ Partners
+          ‹ {partner ? partner.name : "Partners"}
         </Link>
       </nav>
 
@@ -414,8 +420,8 @@ export function TimetableView({ partnerId: fixedId }: { partnerId: number }) {
               </p>
             ) : table.hotels.length === 0 ? (
               <p className="px-4 py-6 text-center text-[12px] text-[#1a1a1a] night:text-white/60">
-                This partner has no pick-up locations yet. Add them in Supplier
-                → Partners (Locations), or upload a file.
+                This partner has no pick-up locations yet. Add them on this
+                partner&apos;s page (‹ back), or upload a file.
               </p>
             ) : (
               <div className="overflow-x-auto px-2 pb-3">
@@ -707,8 +713,9 @@ function HowToUse() {
     >
       <li>
         This is one partner&apos;s timetable. Each partner has its own pick-up
-        locations and its own set of times. To open another partner, go back to
-        Partners and click Timetable on that partner (add locations there too).
+        locations and its own set of times. ‹ goes back to this partner&apos;s
+        page (add locations there). To open another partner&apos;s timetable,
+        open that partner&apos;s page and click Timetable.
       </li>
       <li>
         Type a departure time straight into a cell (for example 6:20 or 6:20
