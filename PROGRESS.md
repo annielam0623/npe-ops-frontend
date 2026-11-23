@@ -9,7 +9,7 @@
 ## 2026-11-23 收工交接：前端主窗口 `今天前端主窗口-5e`[54a3a7]（公司电脑，14:30 下班）
 - **今天上 main**：第 8 件 Farm out 每家一页 451d4497；第 13 件 Main manifest 手机收键 8fc13aca；7c–e 快捷回复搬 Content Studio 9a3ae1fc；G363 按车型算导游工资前端 aad89428；Order List 搜索提示加 product code 197616f1；Products How to use 门票设置节 c826f333；nav-test 时序修复 34374a6f。✅ Tracking 不限日期搜索 **01f53bc5**（bb，功能 5a85de19 + 404 改中性句「No order X found on any date.」；47 PASS；tt 249、tk 164、nav 40）。📌 Annie 线上试：Tour Tracking 别的日子输 CHDWQLV4Z 按 Enter ⇒ 跳 11-26、Also 列 Admin fee；CHDXQYEQG ⇒ 带到 Tickets Tracking 11-16。
 - **分支等着（未合）**：
-  - Mirror task/order-mirror c95da628（9b）：95 PASS，📌 等 Annie 看截图 C:\Users\annzh\Downloads\order-mirror\ 说可以。
+  - Mirror task/order-mirror c95da628（9b）：95 PASS；✅ Annie（原话）「Mirror 可以，动手」⇒ 已让 9b 合 main（SHA 见当天记录；没见到就是还没合，下个窗口接着合）。
   - G374 门票显示名 task/g374-ticket-labels-fe 63f25045（bb）：等 Annie 跑 v183 SQL + 后端 47 上 main + PASS + Annie 看截图 C:\Users\annzh\Downloads\g374-ticket-labels\。
   - 146 Farm out 上传 task/farm-out-photo-upload ea85f9f8（89）：合同 v1 对齐，等 Annie 对后端方案说动手 + 后端 28 上 main + PASS。
   - 半屏适配 task/schedule-half-screen **29b5b0db**（2c，WIP，worktree C:\Code\ops-wt-2c-red）：6 页代码写完（排班每天最窄 72px、表最窄 650、时间一行缩到最小 6px、标签挪名字下；Bus Manifest 编辑页 ≥640 最窄 650、打印照旧；Order List / Order Log / Farm out Report / Sales Report 640–1279 最窄 650）。950 宽六页都不滑；760 宽 Order List / Sales Report / Bus Manifest 编辑页还差一点要滑（不能折的内容）。tsc / eslint / build；man 586、orders 178、fr 31、olog 24、sales 63、nav 40 过；sch 534/546（12 条新半屏检查 mock 状态问题，已加复位未重跑）、mf 374/375（旧 151 检查要 980 已改未重跑）。下次：合 main → 重跑 sch / mf → 拍改后截图 C:\Users\annzh\Downloads\half-screen-fit\ → 推 main。
