@@ -725,19 +725,19 @@ async function run() {
   await sleep(200);
   check("Lankun：G197 整列字号跟着列键走（Hotel 那一列 +3 = 19.5px）",
     await evaluate("return getComputedStyle(document.querySelector('tr[data-guest=CHD1]').children[2]).fontSize === '19.5px' && document.querySelector('tr[data-guest=CHD1]').children[2].textContent === 'Excalibur';"));
-  check("Lankun：不另出午餐表（定 19）；合计一排最后多一格 TOTAL SANDWICH（5 = 1 B 2 T 2 V）",
-    await evaluate("const t = document.querySelector('section[aria-label=\"Bus 2041=A\"] [data-total-sandwich]'); return !document.querySelector('section[data-lunch]') && !!t && t.textContent.replace(/\\s+/g, ' ').includes('TOTAL SANDWICH5= 1 B 2 T 2 V');"),
-    await evaluate("return document.querySelector('[data-total-sandwich]')?.textContent;"));
-  check("Lankun：合计下面的餐厅块只放店名（NPE Lunch Box - 店名 · Bus）、两行 Contact（亮黄）、这车合计",
-    await evaluate("const r = document.querySelector('section[aria-label=\"Bus 2041=A\"] [data-restaurant]'); const f = r.children[1]; return r.children[0].textContent === \"NPE Lunch Box - ZZ Test Bee'sBus 2041=A\" && f.children.length === 2 && getComputedStyle(f).backgroundColor === 'rgb(255, 255, 0)' && r.querySelector('[data-restaurant-totals]').textContent.replace(/\\s+/g, ' ').trim() === 'This bus: 5 = 1 B 2 T 2 V' && r.children.length === 3;"),
-    await evaluate("return document.querySelector('[data-restaurant]')?.textContent;"));
+  // Annie 2026-11-22「Lankun 餐单两个都选A，动手」：Lankun 也单独一张午餐单（同 General），合计下面不再放餐厅块；TOTAL SANDWICH 照旧（定 18）。
+  check("Lankun：A 车后面接午餐单（同 General，NPE Lunch Box - 店名）；合计一排最后照旧一格 TOTAL SANDWICH（5 = 1 B 2 T 2 V）",
+    await evaluate("const t = document.querySelector('section[aria-label=\"Bus 2041=A\"] [data-total-sandwich]'); const l = document.querySelector('section[aria-label=\"Bus 2041=A\"]').nextElementSibling; return !!l && l.matches('section[data-lunch]') && l.getAttribute('aria-label') === 'Lunch 2041=A' && l.textContent.includes(\"NPE Lunch Box - ZZ Test Bee's\") && !!t && t.textContent.replace(/\\s+/g, ' ').includes('TOTAL SANDWICH5= 1 B 2 T 2 V');"),
+    await evaluate("const l = document.querySelector('section[aria-label=\"Bus 2041=A\"]').nextElementSibling; return [l?.tagName, l?.getAttribute('aria-label'), document.querySelector('[data-total-sandwich]')?.textContent].join(' | ');"));
+  check("Lankun：合计下面没有餐厅块（店名 / Contact 已在午餐单上）",
+    await evaluate("return !document.querySelector('[data-restaurant]') && !document.querySelector('section[aria-label=\"Bus 2041=A\"]').textContent.includes('This bus:');"));
   // Marcello：字大的 General
   before = (await mockLog()).length;
   await evaluate("const s = document.querySelector('[data-version-select]'); return $sel(s, 'marcello'); return 1;");
   await sleep(150);
   await evaluate("document.querySelector('[data-page-save]').click(); return 1;");
   await waitReq(before, "/api/dispatch/manifest/version");
-  await waitFor("document.querySelector('[data-version-select]').value === 'marcello' && !document.querySelector('[data-restaurant]')");
+  await waitFor("document.querySelector('[data-version-select]').value === 'marcello' && !document.querySelector('[data-total-sandwich]')");
   check("Marcello：列同 General（有 ✓），午餐表照旧，没有餐厅块",
     await evaluate(`return JSON.stringify(${headsOf("2041=A")}) === JSON.stringify(["Order Number","Pick-up Time","Pick-up Location","Last Name","First Name","Customer Phone","#","Quantities","Lunch","Special Requirements","Bus","✓"]) && !!document.querySelector('section[data-lunch]') && !document.querySelector('[data-total-sandwich]');`));
   check("Marcello：默认字大（正文 21px、人数 24px、表头 12px、节标题 21px），G197 调的照样加上（Pick-up Location +3 = 24px）",
@@ -1133,7 +1133,7 @@ async function run() {
   const attr = await evaluate("return [...document.querySelectorAll('[role=group][aria-label$=\"Confirmation Information\"] input')].map((i) => i.readOnly);");
   check("partner manifest 页：景点黄框的格子只读", attr.length === 0 || attr.every(Boolean), JSON.stringify(attr));
   check("partner manifest 页（G197）：看得到存好的字号，但没有 Text size 键、没有改动历史", await evaluate("const r = document.querySelector('tr[data-guest=CHD1]'); return !document.querySelector('[data-text-size-button]') && !document.querySelector('[data-text-size-history]') && getComputedStyle(r.children[2]).fontSize === '19.5px';"));
-  check("partner manifest 页（三版式）：只写「Version: Lankun」文字，没有下拉；照团存的 Lankun 画", await evaluate("const t = document.querySelector('[data-version-text]'); return !!t && t.textContent === 'Version: Lankun' && !document.querySelector('[data-version-select]') && !!document.querySelector('[data-restaurant]');"));
+  check("partner manifest 页（三版式）：只写「Version: Lankun」文字，没有下拉；照团存的 Lankun 画（TOTAL SANDWICH 照旧、没有餐厅块）", await evaluate("const t = document.querySelector('[data-version-text]'); return !!t && t.textContent === 'Version: Lankun' && !document.querySelector('[data-version-select]') && !document.querySelector('[data-restaurant]') && !!document.querySelector('[data-total-sandwich]');"));
   await sleep(500);
   reqs = (await mockLog()).slice(before);
   check("partner manifest 页：一次写请求都没有", reqs.every((r) => r.method === "GET"), JSON.stringify(reqs.filter((r) => r.method !== "GET").map((r) => `${r.method} ${r.path}`)));
