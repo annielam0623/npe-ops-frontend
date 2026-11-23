@@ -84,6 +84,7 @@ import {
   sentLabel,
   CHECK_BIG,
 } from "./config";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /**
  * Manifests 页勾选客人后的三个发送弹窗（后端 main-manifest-sections ②③，Annie 2026-10-09 定，样稿第 3 版）：
@@ -1922,22 +1923,22 @@ export function TourConfirmDialog({
                 />
               ) : (
                 <div>
-                  <select
+                  <SelectMenu
                     aria-label={`Tour type for ${g.title}`}
-                    value={pickFor(g)}
+                    value={String(pickFor(g))}
+                    options={[
+                      { value: "", label: "— Don&apos;t send —" },
+                      ...(types ?? []).map((t) => ({
+                        value: String(t.key),
+                        label: String(t.label),
+                      })),
+                    ]}
                     disabled={!types}
-                    onChange={(e) =>
-                      setPicks((p) => ({ ...p, [g.key]: e.target.value }))
+                    onChange={(next) =>
+                      setPicks((p) => ({ ...p, [g.key]: next }))
                     }
                     className="w-full rounded-md border border-stone-300 bg-paper px-2 py-1.5 text-[13px] text-stone-900"
-                  >
-                    <option value="">— Don&apos;t send —</option>
-                    {(types ?? []).map((t) => (
-                      <option key={t.key} value={t.key}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
+                  />
                   {/* 预填的来源 / 没预填的原因（Annie 2026-10-15 看过预览）；staff 自己改过就不再写。 */}
                   {!picked && types ? (
                     def.key ? (

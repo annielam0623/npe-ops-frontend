@@ -13,6 +13,7 @@ import {
 } from "@/lib/leave-api";
 import { useLeaveGuard } from "@/lib/use-leave-guard";
 import type { TeamRef } from "@/types";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /*
  * G282 Reporting lines（Annie 2026-11-11「同意全部推荐。动手」，preview v3 Team 页）：admin 只读、Super Admin 改。
@@ -222,14 +223,28 @@ export function ReportingLinesPanel({
                   </td>
                   <td className="px-2 py-2">
                     {canEdit ? (
-                      <select
+                      <SelectMenu
                         id={`team-lead-${t.id}`}
                         data-team-lead={t.id}
-                        value={lead === null ? "" : String(lead)}
-                        onChange={(e) => {
-                          const v = e.target.value
-                            ? Number(e.target.value)
-                            : null;
+                        value={String(lead === null ? "" : String(lead))}
+                        options={[
+                          { value: "", label: "—" },
+                          ...(lead !== null &&
+                          !candidates.some((c) => c.user_id === lead)
+                            ? [
+                                {
+                                  value: String(String(lead)),
+                                  label: String(nameOf(lead)),
+                                },
+                              ]
+                            : []),
+                          ...candidates.map((c) => ({
+                            value: String(String(c.user_id)),
+                            label: String(c.name),
+                          })),
+                        ]}
+                        onChange={(next) => {
+                          const v = next ? Number(next) : null;
                           setDraft((d) => {
                             const next = new Map(d);
                             if (v === saved) next.delete(t.id);
@@ -239,18 +254,7 @@ export function ReportingLinesPanel({
                           setSave({ kind: "idle" });
                         }}
                         className="max-w-full rounded-[8px] border border-[#ddd] bg-paper px-2 py-1 text-[13px] text-black"
-                      >
-                        <option value="">—</option>
-                        {lead !== null &&
-                        !candidates.some((c) => c.user_id === lead) ? (
-                          <option value={String(lead)}>{nameOf(lead)}</option>
-                        ) : null}
-                        {candidates.map((c) => (
-                          <option key={c.user_id} value={String(c.user_id)}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     ) : (
                       <span data-team-lead-ro={t.id}>
                         {lead === null ? "—" : nameOf(lead)}

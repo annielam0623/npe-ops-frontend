@@ -39,6 +39,7 @@ import type {
   TestSendPreview,
   TestSendResult,
 } from "@/types/test-send";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /**
  * Settings › Test send（Annie 2026-11-18 原话「我要新增加一个做测试订单的功能，就做很简单的……收件人默认是登陆人，发送默认sms和email」；
@@ -239,42 +240,43 @@ export function TestSendView() {
           <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3 max-sm:grid-cols-1">
             <label className={LABEL}>
               Module
-              <select
+              <SelectMenu
                 id="ts-module"
                 data-ts="module"
                 className={field}
-                value={moduleKey}
-                onChange={(e) => pickModule(e.target.value)}
-              >
-                {options.modules.map((m) => (
-                  <option key={m.key} value={m.key}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
+                value={String(moduleKey)}
+                options={[
+                  ...options.modules.map((m) => ({
+                    value: String(m.key),
+                    label: String(m.label),
+                  })),
+                ]}
+                onChange={(next) => pickModule(next)}
+              />
             </label>
             {mod?.choice_label ? (
               <label className={LABEL}>
                 {mod.choice_label}
-                <select
+                <SelectMenu
                   id="ts-choice"
                   data-ts="choice"
                   className={field}
-                  value={choice}
-                  onChange={(e) => {
-                    setChoice(e.target.value);
+                  value={String(choice)}
+                  options={[
+                    {
+                      value: "",
+                      label: `Pick a ${mod.choice_label.toLowerCase()}…`,
+                    },
+                    ...mod.choices.map((c) => ({
+                      value: String(c.value),
+                      label: String(c.label),
+                    })),
+                  ]}
+                  onChange={(next) => {
+                    setChoice(next);
                     resetOutput();
                   }}
-                >
-                  <option value="">
-                    Pick a {mod.choice_label.toLowerCase()}…
-                  </option>
-                  {mod.choices.map((c) => (
-                    <option key={c.value} value={c.value}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
+                />
               </label>
             ) : null}
             <label className={LABEL}>

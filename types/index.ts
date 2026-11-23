@@ -100,6 +100,7 @@ export type {
   OrderDetail,
   OrderListPage,
   OrderListQuery,
+  OrderSource,
   OrderPatch,
   OrderRefreshResult,
   OrderRow,

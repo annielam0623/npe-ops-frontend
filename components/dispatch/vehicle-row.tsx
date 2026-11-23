@@ -27,6 +27,11 @@ import {
   effectiveSeats,
   isLargeBus,
 } from "./seat-adjust";
+import {
+  SelectMenu,
+  type SelectMenuItem,
+  type SelectMenuOption,
+} from "@/components/ui/select-menu";
 
 const TYPE_NEW = "__type";
 const TYPED_KEEP = "__typed";
@@ -154,32 +159,60 @@ function DriverSelect({
   let shown = 0;
   let ticked = 0;
   let found = false;
-  const top: React.ReactNode[] = [];
-  const rest: React.ReactNode[] = [];
+  const top: SelectMenuOption[] = [];
+  const rest: SelectMenuOption[] = [];
   for (const d of L.day.drivers) {
     const ok = canRun(d, row.shift);
     if (ok) ticked++;
     if ((!ok || d.license_blocked) && d.id !== sel) continue;
     if (d.id === sel) found = true;
     if (ok && !d.license_blocked) shown++;
-    const opt = (
-      <option key={d.id} value={d.id}>
-        {d.name}
-        {d.license_blocked ? " (license expired)" : ""}
-        {ok ? "" : " (not marked for this section)"}
-      </option>
-    );
+    const opt: SelectMenuOption = {
+      value: String(d.id),
+      label: `${d.name}${d.license_blocked ? " (license expired)" : ""}${ok ? "" : " (not marked for this section)"}`,
+    };
     (cands.has(d.id) ? top : rest).push(opt);
   }
   const section =
     META.assignment_labels[META.shift_assignment[row.shift]] || row.shift;
   const value = row.driver_typed_name ? TYPED_KEEP : sel ? String(sel) : "";
+  const driverOptions: SelectMenuItem[] = [
+    { value: "", label: "Choose driver..." },
+    ...(top.length ? [{ group: "Who CCL meant", options: top }] : []),
+    ...rest,
+    ...(!shown
+      ? [
+          {
+            value: "",
+            label: ticked
+              ? `Every driver for ${section} has a license that will have expired by this day`
+              : L.day.drivers.length
+                ? `No driver for ${section} - every driver has other sections ticked under Assignment in Human Resource`
+                : "No drivers yet - set Position to Driver in Human Resource",
+            disabled: true,
+          },
+        ]
+      : []),
+    ...(sel && !found
+      ? [
+          {
+            value: String(sel),
+            label: "No longer on the driver list - pick someone else",
+          },
+        ]
+      : []),
+    ...(row.driver_typed_name
+      ? [{ value: TYPED_KEEP, label: `${row.driver_typed_name} (typed)` }]
+      : []),
+    { value: TYPE_NEW, label: "Not in the list? Type a name..." },
+  ];
   return (
-    <select
+    <SelectMenu
       data-f="driver"
       aria-label="Driver"
       value={value}
-      onChange={(e) => onPick(e.target.value)}
+      options={driverOptions}
+      onChange={(next) => onPick(next)}
       className={selCls(
         !hasDriver(row) &&
           (isRelay(row.shift)
@@ -187,29 +220,7 @@ function DriverSelect({
               !!row.ccl?.driver_text && NEED
             : TODO),
       )}
-    >
-      <option value="">Choose driver...</option>
-      {top.length ? <optgroup label="Who CCL meant">{top}</optgroup> : null}
-      {rest}
-      {!shown ? (
-        <option value="" disabled>
-          {ticked
-            ? `Every driver for ${section} has a license that will have expired by this day`
-            : L.day.drivers.length
-              ? `No driver for ${section} - every driver has other sections ticked under Assignment in Human Resource`
-              : "No drivers yet - set Position to Driver in Human Resource"}
-        </option>
-      ) : null}
-      {sel && !found ? (
-        <option value={sel}>
-          No longer on the driver list - pick someone else
-        </option>
-      ) : null}
-      {row.driver_typed_name ? (
-        <option value={TYPED_KEEP}>{row.driver_typed_name} (typed)</option>
-      ) : null}
-      <option value={TYPE_NEW}>Not in the list? Type a name...</option>
-    </select>
+    />
   );
 }
 
@@ -230,16 +241,12 @@ function GuideSelect({
       ? (row.ccl.guide_candidates ?? []).map((c) => c.id)
       : [],
   );
-  const top: React.ReactNode[] = [];
-  const rest: React.ReactNode[] = [];
+  const top: SelectMenuOption[] = [];
+  const rest: SelectMenuOption[] = [];
   let found = false;
   for (const g of L.day.guides) {
     if (g.id === sel) found = true;
-    const opt = (
-      <option key={g.id} value={g.id}>
-        {g.name}
-      </option>
-    );
+    const opt: SelectMenuOption = { value: String(g.id), label: g.name };
     (cands.has(g.id) ? top : rest).push(opt);
   }
   const hasGuide = !!(row.guide_hr_id || row.guide_typed_name);
@@ -251,37 +258,46 @@ function GuideSelect({
         ? String(sel)
         : "";
   return (
-    <select
+    <SelectMenu
       data-f="guide"
       aria-label="Guide"
       value={value}
-      onChange={(e) => onPick(e.target.value)}
+      options={[
+        {
+          value: DRIVER_GUIDE,
+          label: `Driver Guide${
+            can || dg
+              ? ""
+              : row.driver_hr_id
+                ? " (driver is not Driver + Guide)"
+                : " (pick the driver first)"
+          }`,
+          disabled: !can && !dg,
+        },
+        { value: "", label: "Choose guide..." },
+        ...(top.length ? [{ group: "Who CCL meant", options: top }] : []),
+        ...rest,
+        ...(!L.day.guides.length
+          ? [
+              {
+                value: "",
+                label:
+                  "No one is marked as Guide under Position in Human Resource",
+                disabled: true,
+              },
+            ]
+          : []),
+        ...(sel && !found
+          ? [{ value: String(sel), label: "Guide no longer on the list" }]
+          : []),
+        ...(row.guide_typed_name
+          ? [{ value: TYPED_KEEP, label: `${row.guide_typed_name} (typed)` }]
+          : []),
+        { value: TYPE_NEW, label: "Not in the list? Type a name..." },
+      ]}
+      onChange={(next) => onPick(next)}
       className={selCls(!hasGuide && TODO)}
-    >
-      <option value={DRIVER_GUIDE} disabled={!can && !dg}>
-        Driver Guide
-        {can || dg
-          ? ""
-          : row.driver_hr_id
-            ? " (driver is not Driver + Guide)"
-            : " (pick the driver first)"}
-      </option>
-      <option value="">Choose guide...</option>
-      {top.length ? <optgroup label="Who CCL meant">{top}</optgroup> : null}
-      {rest}
-      {!L.day.guides.length ? (
-        <option value="" disabled>
-          No one is marked as Guide under Position in Human Resource
-        </option>
-      ) : null}
-      {sel && !found ? (
-        <option value={sel}>Guide no longer on the list</option>
-      ) : null}
-      {row.guide_typed_name ? (
-        <option value={TYPED_KEEP}>{row.guide_typed_name} (typed)</option>
-      ) : null}
-      <option value={TYPE_NEW}>Not in the list? Type a name...</option>
-    </select>
+    />
   );
 }
 
@@ -299,24 +315,26 @@ function VehicleSelect({
   const sel = row.vehicle_id;
   const found = !!sel && L.day.vehicles.some((v) => v.id === sel);
   return (
-    <select
+    <SelectMenu
       data-f="vehicle"
       aria-label="Vehicle"
-      value={sel ? String(sel) : ""}
-      onChange={(e) => onPick(e.target.value)}
+      value={String(sel ? String(sel) : "")}
+      options={[
+        { value: "", label: "No vehicle yet" },
+        ...L.day.vehicles.map((v) => ({
+          value: String(v.id),
+          label: String(
+            // 没定位的车在下拉里就写出来（Annie 2026-11-03 No tracking 题 2 选 A）。
+            v.has_tracking ? v.van_no : `${v.van_no} · No tracking`,
+          ),
+        })),
+        ...(sel && !found
+          ? [{ value: String(sel), label: "Vehicle retired from the pool" }]
+          : []),
+      ]}
+      onChange={(next) => onPick(next)}
       className={selCls(todo && !sel && TODO)}
-    >
-      <option value="">No vehicle yet</option>
-      {L.day.vehicles.map((v) => (
-        <option key={v.id} value={v.id}>
-          {/* 没定位的车在下拉里就写出来（Annie 2026-11-03 No tracking 题 2 选 A）；下拉是浏览器自带的，只能写字。 */}
-          {v.has_tracking ? v.van_no : `${v.van_no} · No tracking`}
-        </option>
-      ))}
-      {sel && !found ? (
-        <option value={sel}>Vehicle retired from the pool</option>
-      ) : null}
-    </select>
+    />
   );
 }
 
@@ -332,28 +350,32 @@ function TourSelect({
   const sel = row.manifest_id;
   const found = !!sel && L.day.tours.some((t) => t.id === sel);
   return (
-    <select
+    <SelectMenu
       data-f="tour"
       aria-label="Tour"
-      value={row.custom_tour_name ? TYPED_KEEP : sel ? String(sel) : ""}
-      onChange={(e) => onPick(e.target.value)}
+      value={String(row.custom_tour_name ? TYPED_KEEP : sel ? String(sel) : "")}
+      options={[
+        { value: "", label: "No tour yet" },
+        ...L.day.tours.map((t) => ({
+          value: String(t.id),
+          label: `${t.display_name}${t.is_active ? "" : " (inactive)"}`,
+        })),
+        ...(sel && !found
+          ? [{ value: String(sel), label: "Tour no longer in the list" }]
+          : []),
+        ...(row.custom_tour_name
+          ? [
+              {
+                value: String(TYPED_KEEP),
+                label: `Custom: ${row.custom_tour_name}`,
+              },
+            ]
+          : []),
+        { value: String(TYPE_NEW), label: "Custom - type a tour name..." },
+      ]}
+      onChange={(next) => onPick(next)}
       className={selCls(!sel && !row.custom_tour_name && TODO)}
-    >
-      <option value="">No tour yet</option>
-      {L.day.tours.map((t) => (
-        <option key={t.id} value={t.id}>
-          {t.display_name}
-          {t.is_active ? "" : " (inactive)"}
-        </option>
-      ))}
-      {sel && !found ? (
-        <option value={sel}>Tour no longer in the list</option>
-      ) : null}
-      {row.custom_tour_name ? (
-        <option value={TYPED_KEEP}>Custom: {row.custom_tour_name}</option>
-      ) : null}
-      <option value={TYPE_NEW}>Custom - type a tour name...</option>
-    </select>
+    />
   );
 }
 
@@ -370,23 +392,28 @@ function OrderSelect({
   const sel = row.order_number ?? "";
   const found = !sel || orders.some((o) => o.order_number === sel);
   return (
-    <select
+    <SelectMenu
       data-f="order"
       aria-label="Order"
-      value={sel}
-      onChange={(e) => onPick(e.target.value)}
+      value={String(sel)}
+      options={[
+        { value: "", label: "No order yet" },
+        ...orders.map((o) => ({
+          value: String(o.order_number),
+          label: `${o.order_number} · ${o.guest_name} · ${o.pax} pax`,
+        })),
+        ...(!found
+          ? [
+              {
+                value: String(sel),
+                label: `${sel} (order no longer in the list)`,
+              },
+            ]
+          : []),
+      ]}
+      onChange={(next) => onPick(next)}
       className={selCls(!sel ? TODO : !found ? NEED : null)}
-    >
-      <option value="">No order yet</option>
-      {orders.map((o) => (
-        <option key={o.order_number} value={o.order_number}>
-          {o.order_number} · {o.guest_name} · {o.pax} pax
-        </option>
-      ))}
-      {!found ? (
-        <option value={sel}>{sel} (order no longer in the list)</option>
-      ) : null}
-    </select>
+    />
   );
 }
 
@@ -398,20 +425,20 @@ function BusSelect({
   onPick: (v: string) => void;
 }) {
   return (
-    <select
+    <SelectMenu
       data-f="bus"
       aria-label="Bus letter"
-      value={row.bus_label ?? ""}
-      onChange={(e) => onPick(e.target.value)}
+      value={String(row.bus_label ?? "")}
+      options={[
+        { value: "", label: "No bus letter" },
+        ...META.bus_labels.map((b) => ({
+          value: String(b),
+          label: `Bus ${b}`,
+        })),
+      ]}
+      onChange={(next) => onPick(next)}
       className={selCls(null)}
-    >
-      <option value="">No bus letter</option>
-      {META.bus_labels.map((b) => (
-        <option key={b} value={b}>
-          Bus {b}
-        </option>
-      ))}
-    </select>
+    />
   );
 }
 
@@ -443,50 +470,46 @@ function StopSelect({
       else if (row.shift === META.bus_tour_shift) shared.set(l, who);
     }
   });
-  const option = (l: DispatchDay["locations"][number]) => (
-    // 正常的酒店名黑字（Annie 2026-10-31「酒店名字的颜色不要用灰色，换成黑色」「占了的还是发灰」）；被占的照旧浏览器的灰。
-    <option
-      key={l.id}
-      value={l.id}
-      disabled={taken.has(l.id)}
-      className={taken.has(l.id) ? undefined : "text-black"}
-    >
-      {l.name}
-      {taken.has(l.id) ? ` - ${taken.get(l.id)}` : ""}
-      {shared.has(l.id) ? ` (also ${shared.get(l.id)})` : ""}
-    </option>
-  );
+  // 正常的酒店名黑字（Annie 2026-10-31「酒店名字的颜色不要用灰色，换成黑色」「占了的还是发灰」）；被占的灰（disabled）。
+  const option = (l: DispatchDay["locations"][number]): SelectMenuOption => ({
+    value: String(l.id),
+    label: `${l.name}${taken.has(l.id) ? ` - ${taken.get(l.id)}` : ""}${shared.has(l.id) ? ` (also ${shared.get(l.id)})` : ""}`,
+    disabled: taken.has(l.id),
+    // 菜单挂在 body 上，不在 Dispatch 的 main 里：照旧黑字、500（Annie「你把页面上400的都改成500」）。
+    className: "text-black font-medium",
+  });
   const { lasVegas, shuttle } = groupStops(
     L.day.locations.filter(
       (l) => l.active !== false && !row.location_ids.includes(l.id),
     ),
   );
   return (
-    <select
+    <SelectMenu
       data-f="addstop"
       aria-label="Add hotel"
       value=""
-      onChange={(e) => e.target.value && onAdd(Number(e.target.value))}
+      options={[
+        { value: "", label: "Add hotel" },
+        ...lasVegas.map(option),
+        ...(shuttle
+          ? [
+              {
+                // Annie 2026-10-31：「~~~~~shuttle Pick up ~~~~~~，用save键的那个颜色」，preview TWJUhJcMkrgzpxigBNNAU6 选 H。
+                // 分隔行不能选；照旧蓝字加粗（不跟着 disabled 变淡）。
+                value: "",
+                label: "~~~~~ Shuttle Pick up ~~~~~",
+                disabled: true,
+                className: "!font-semibold text-[#3b82f6] !opacity-100",
+              },
+              ...shuttle.map(option),
+            ]
+          : []),
+      ]}
+      onChange={(next) => next && onAdd(Number(next))}
+      caret={false}
       className={ADDSTOP}
       style={{ backgroundImage: ADDSTOP_CARET }}
-    >
-      <option value="">Add hotel</option>
-      {lasVegas.map(option)}
-      {shuttle ? (
-        <>
-          <option
-            value=""
-            disabled
-            data-stop-divider
-            // Annie 2026-10-31：「~~~~~shuttle Pick up ~~~~~~，用save键的那个颜色」，preview TWJUhJcMkrgzpxigBNNAU6 选 H。
-            className="!font-semibold text-[#3b82f6]"
-          >
-            ~~~~~ Shuttle Pick up ~~~~~
-          </option>
-          {shuttle.map(option)}
-        </>
-      ) : null}
-    </select>
+    />
   );
 }
 

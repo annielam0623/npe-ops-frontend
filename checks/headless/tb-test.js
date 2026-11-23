@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -107,6 +108,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
 
   try {
@@ -133,7 +135,7 @@ async function setFiles(selector, files) {
   await cdp("DOM.setFileInputFiles", { nodeId, files: files.map((f) => `${DIR}/${f}`) });
 }
 const H2 = `
-window.$sel = (el, v) => { Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('change', { bubbles: true })); };
+${SELECT_HELPERS}
 window.$cards = () => [...document.querySelectorAll('article')].map(a => a.querySelector('[data-card-title]')?.textContent);
 window.$card = (n) => [...document.querySelectorAll('article')].find(a => a.textContent.includes(n));
 window.$tab = (n) => [...document.querySelectorAll('[role=tab]')].find(t => t.textContent.startsWith(n));
@@ -159,12 +161,12 @@ async function run() {
   check("搜索负责人", (await evaluate("return $cards().join('|');")) === "ZZ Normal task");
   await evaluate("$setValue(document.querySelector('main input[type=search],main input[inputmode=search]'), '');");
   let before = (await mockLog()).length;
-  await evaluate("$sel(document.querySelector('[aria-label=Sprint]'), 's1');");
+  await evaluate("await $sel(document.querySelector('[aria-label=Sprint]'), 's1');");
   await waitFor("$cards().includes('ZZ old sprint task')");
   check("换 Sprint 拉对应列表", (await since(before, (e) => e.query === "?list_id=s1")).length >= 1);
 
   // ── 评论（🧩 前缀） ──
-  await evaluate("$sel(document.querySelector('[aria-label=Sprint]'), 's2');");
+  await evaluate("await $sel(document.querySelector('[aria-label=Sprint]'), 's2');");
   await waitFor("!!$card('ZZ Normal')");
   await evaluate("$card('ZZ Normal').querySelector('[role=button]').click();");
   await waitFor("$card('ZZ Normal').textContent.includes('Task Board')");
@@ -194,7 +196,7 @@ async function run() {
   await evaluate(`$btn('Submit', ${dialog}).click();`);
   await sleep(100);
   check("没标题：请填写 Title", (await evaluate(`return ${dialog}.textContent;`)).includes("请填写 Title"));
-  await evaluate(`$setValue(${dialog}.querySelector('input[placeholder="标题"]'), 'ZZ Test new'); $sel([...${dialog}.querySelectorAll('select')][0], '2'); $sel([...${dialog}.querySelectorAll('select')][1], '7'); $setValue(${dialog}.querySelector('input[type=date]'), '2026-10-20');`);
+  await evaluate(`$setValue(${dialog}.querySelector('input[placeholder="标题"]'), 'ZZ Test new'); await $sel([...${dialog}.querySelectorAll('select, [data-select-menu]')][0], '2'); await $sel([...${dialog}.querySelectorAll('select, [data-select-menu]')][1], '7'); $setValue(${dialog}.querySelector('input[type=date]'), '2026-10-20');`);
   await setFiles("[role=dialog] input[type=file]", ["manifest.csv"]);
   await ctl({ failUpload: true });
   before = (await mockLog()).length;

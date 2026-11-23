@@ -58,6 +58,7 @@ import type {
   ManifestSetupGroup,
   ManifestSetupProduct,
 } from "@/types";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 const DEFAULT_GREY = "#c8cdd3";
 
@@ -165,27 +166,47 @@ export function ManifestSetupPanel({
 
   // 手机上标题后的灰字收进「i」（Annie 2026-11-01 手机版规则）。
   const headInfo = usePhoneInfo("About Bus Manifest setup");
+  // 大项折叠（Annie 2026-11-21「动手」）：默认收起；收起只藏，不卸载（没存的改动不丢）。跳到 Forecast 那一项时自动展开。
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (jumpTo) setOpen(true);
+  }, [jumpTo]);
 
   return (
     // .ms-card
     <section className="mb-4 overflow-hidden rounded-[12px] border-[0.5px] border-black/10 bg-paper text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90">
       <div className="flex flex-wrap items-center gap-3 border-b-[0.5px] border-black/[.08] bg-paper px-4 py-[11px] night:border-white/10 night:bg-white/[.03]">
-        <h2 className="text-[14.5px] font-bold">Bus Manifest setup</h2>
+        <button
+          type="button"
+          data-setup-toggle
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          className="flex cursor-pointer items-center gap-1.5 text-left"
+        >
+          <span aria-hidden className="inline-block w-3 text-[12px]">
+            {open ? "▾" : "▸"}
+          </span>
+          <h2 className="text-[14.5px] font-bold">Bus Manifest setup</h2>
+          {!open && data ? (
+            <span className="text-[12px] font-medium opacity-70">
+              {data.groups.length} tours
+            </span>
+          ) : null}
+        </button>
         {headInfo.button}
-        {data && data.groups.length ? (
-          <select
+        {open && data && data.groups.length ? (
+          <SelectMenu
             aria-label="Tour group"
-            value={groupId ?? ""}
-            onChange={(event) => void switchGroup(Number(event.target.value))}
+            value={String(groupId ?? "")}
+            options={[
+              ...data.groups.map((g) => ({
+                value: String(g.id),
+                label: `${g.display_name}${g.is_active ? "" : " (inactive)"}`,
+              })),
+            ]}
+            onChange={(next) => void switchGroup(Number(next))}
             className="h-[30px] rounded-[7px] border-[0.5px] border-black/25 bg-paper px-1.5 text-[13px] text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90"
-          >
-            {data.groups.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.display_name}
-                {g.is_active ? "" : " (inactive)"}
-              </option>
-            ))}
-          </select>
+          />
         ) : null}
         <span className={cn(HINT, headInfo.hide)}>
           How the printed Bus Manifest looks for this tour.
@@ -199,7 +220,7 @@ export function ManifestSetupPanel({
           </span>
         ) : null}
       </div>
-      <div className="flex flex-col gap-3.5 px-4 pt-3 pb-4">
+      <div hidden={!open} className="flex flex-col gap-3.5 px-4 pt-3 pb-4">
         {!data ? (
           loadError ? null : (
             <span className={HINT}>Loading…</span>
@@ -924,24 +945,23 @@ function GroupEditor({
               onChange={(event) => setBulkSec(event.target.value)}
               className="rounded-[6px] border-[0.5px] border-white/25 bg-[#2a2a2a] px-2 py-1 text-[12px] text-white"
             />
-            <select
+            <SelectMenu
               aria-label="Type for selected"
-              value={bulkType}
-              onChange={(event) => setBulkType(event.target.value)}
+              value={String(bulkType)}
+              options={[
+                { value: "", label: "— type: leave as is —" },
+                ...setup.kinds.map((k) => ({
+                  value: String(k.value),
+                  label: String(k.label),
+                })),
+                ...group.extras.map((e) => ({
+                  value: `extra:${e.id}`,
+                  label: `Extra: ${e.name}`,
+                })),
+              ]}
+              onChange={(next) => setBulkType(next)}
               className={BULK_SELECT_CLASS}
-            >
-              <option value="">— type: leave as is —</option>
-              {setup.kinds.map((k) => (
-                <option key={k.value} value={k.value}>
-                  {k.label}
-                </option>
-              ))}
-              {group.extras.map((e) => (
-                <option key={`extra:${e.id}`} value={`extra:${e.id}`}>
-                  Extra: {e.name}
-                </option>
-              ))}
-            </select>
+            />
           </BulkBar>
         </BulkBarRow>
       ) : null}
@@ -1463,19 +1483,19 @@ function GroupEditor({
                   hint="Not printed. On Dispatch, the round whose relay cars bring this tour's hotel guests to Treasure Island. Not on Morning Relay: the tour bus picks up its own hotel guests. Click Save to keep it."
                 >
                   <div className="flex items-center gap-3">
-                    <select
+                    <SelectMenu
                       aria-label="Morning Relay round"
-                      value={relay}
+                      value={String(relay)}
+                      options={[
+                        ...setup.relay_rounds.map((o) => ({
+                          value: String(o.value),
+                          label: String(o.label),
+                        })),
+                      ]}
                       disabled={relayBlock.state.kind === "saving"}
-                      onChange={(event) => setRelayEdit(event.target.value)}
+                      onChange={(next) => setRelayEdit(next)}
                       className={cn(SELECT, relayBlock.dirty && CHANGED_RING)}
-                    >
-                      {setup.relay_rounds.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
+                    />
                     <SaveControl block={relayBlock} />
                   </div>
                 </MapField>
@@ -1739,24 +1759,24 @@ function SectionTourTypeRow({
     <tr data-section-tour-type={entry.section}>
       <td className={cn(TD, "font-medium")}>{label}</td>
       <td className={TD}>
-        <select
+        <SelectMenu
           aria-label={`Tour type for ${label}`}
-          value={value}
+          value={String(value)}
+          options={[
+            { value: "", label: "(not set)" },
+            ...options.map((t) => ({
+              value: String(t.key),
+              label: String(t.label),
+            })),
+            // 清单里已经没有的旧键照实显示，不让下拉落到别的选项上。
+            ...(value && !options.some((t) => t.key === value)
+              ? [{ value: String(value), label: String(value) }]
+              : []),
+          ]}
           disabled={disabled}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(next) => onChange(next)}
           className={cn(SELECT, changed && CHANGED_RING)}
-        >
-          <option value="">(not set)</option>
-          {options.map((t) => (
-            <option key={t.key} value={t.key}>
-              {t.label}
-            </option>
-          ))}
-          {/* 清单里已经没有的旧键照实显示，不让下拉落到别的选项上。 */}
-          {value && !options.some((t) => t.key === value) ? (
-            <option value={value}>{value}</option>
-          ) : null}
-        </select>
+        />
       </td>
     </tr>
   );
@@ -1827,24 +1847,23 @@ function SectionRow({
         />
       </td>
       <td className={TD}>
-        <select
+        <SelectMenu
           aria-label={`Type for ${p.product_code}`}
-          value={draft.type}
+          value={String(draft.type)}
+          options={[
+            ...setup.kinds.map((k) => ({
+              value: String(k.value),
+              label: String(k.label),
+            })),
+            ...extras.map((e) => ({
+              value: `extra:${e.id}`,
+              label: `Extra: ${e.name}`,
+            })),
+          ]}
           disabled={disabled}
-          onChange={(event) => onDraft({ type: event.target.value })}
+          onChange={(next) => onDraft({ type: next })}
           className={cn(SELECT, ring("type"))}
-        >
-          {setup.kinds.map((k) => (
-            <option key={k.value} value={k.value}>
-              {k.label}
-            </option>
-          ))}
-          {extras.map((e) => (
-            <option key={`extra:${e.id}`} value={`extra:${e.id}`}>
-              Extra: {e.name}
-            </option>
-          ))}
-        </select>
+        />
         {draft.type === "roundtrip" ? (
           <div className="mt-1 grid gap-[3px]">
             <input

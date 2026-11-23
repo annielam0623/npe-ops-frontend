@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -58,7 +59,7 @@ async function goto(url) {
 }
 
 // 页面里用的小工具（每次导航后重新注入）。
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$t = (sel) => [...document.querySelectorAll(sel)].map(e => e.textContent.trim());
 window.$rows = () => [...document.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent.trim()));
 window.$heads = () => [...document.querySelectorAll('thead th')].map(th => th.textContent.replace('⠿','').trim());
@@ -107,6 +108,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
 
   try {
@@ -116,6 +118,7 @@ async function main() {
     await runLayoutText();
     await runColumns();
     await runViewOnly();
+    await runPhoneFit();
   } finally {
     ws.close();
     chrome.kill();
@@ -379,7 +382,7 @@ async function run() {
   check("G65：主 Manifest 找不到的单，单号下不再写橙字「Not in main manifest — check Rezdy」（Annie 2026-10-30「4 全按推荐 动手」：订单流固定，不再叫人去 Rezdy），人数照算（仍在车上）", await evaluate("const r = document.querySelector('tr[data-guest=CHD3]'); return !!r && !r.querySelector('[data-sync-missing]') && !document.body.textContent.includes('check Rezdy') && r.closest('section').getAttribute('aria-label') === 'Bus 2041=A';"));
   check("G65：取消 / 改期单独一块在最下面（How to use 之前）：0 (was N)、原来的车、原因；不在车上和 Not on a bus 里", await evaluate("const s = document.querySelector('section[data-gone]'); if (!s) return false; const c = s.querySelector('tr[data-gone-row=CHD21]'); const m = s.querySelector('tr[data-gone-row=CHD22]'); const after = [...document.querySelectorAll('section[aria-label^=\"Bus\"], section[aria-label=\"Not on a bus yet\"]')].every(x => x.compareDocumentPosition(s) & Node.DOCUMENT_POSITION_FOLLOWING); return s.textContent.includes('Cancelled / moved · 2 orders') && s.textContent.includes('0 pax — not counted, not printed') && c.textContent.includes('0(was 3)') && c.textContent.includes('Cancelled in Rezdy (Oct 14, 8:12 PM)') && [...c.children][5].textContent === 'A' && m.textContent.includes('Moved to 10/15 South Rim') && [...m.children][5].textContent === '—' && !document.querySelector('tr[data-guest=CHD21], tr[data-guest=CHD22]') && after;"), await evaluate("return document.querySelector('section[data-gone]')?.textContent;"));
   check("G65：页头总数不含取消 / 改期（仍是 4 orders, 8 pax）、How to use 写了只增不删、不再写「check Rezdy」那条（Annie 2026-10-30）", await evaluate("const t = document.body.textContent; return t.includes('4 orders, 8 pax') && t.includes('Orders are never taken off the list by an update.') && !t.includes('means the order is gone from the main manifest but we') && !t.includes('check Rezdy');"));
-  check("没分车的客人：Not on a bus yet 区块、下拉标橙", await evaluate("const s = document.querySelector('section[aria-label=\"Not on a bus yet\"]'); return s && s.textContent.includes('Not on a bus yet · 2 pax') && s.querySelector('select').className.includes('e0a63a');"));
+  check("没分车的客人：Not on a bus yet 区块、下拉标橙", await evaluate("const s = document.querySelector('section[aria-label=\"Not on a bus yet\"]'); return s && s.textContent.includes('Not on a bus yet · 2 pax') && s.querySelector('select, [data-select-menu]').className.includes('e0a63a');"));
   check("Footer 格子：照接口顺序画、null 显示 —、Extra 的 SEATS LEFT 格另一种底色", await evaluate("const b = document.querySelector('section[aria-label=\"Bus 2041=A\"]'); return b.textContent.includes('AVAILABLE SEATS LEFT—') && b.textContent.indexOf('Heli SEATS LEFT') > b.textContent.indexOf('AVAILABLE SEATS LEFT') && b.textContent.indexOf('INBOUND') > b.textContent.indexOf('Heli SEATS LEFT') && [...b.querySelectorAll('span')].some(s => s.textContent === 'Heli SEATS LEFT' && s.className.includes('ddd0f0'));"), await evaluate("return document.querySelector('section[aria-label=\"Bus 2041=A\"]').textContent.slice(-200);"));
   // ── No show 改方向（Annie 2026-11-17「动手」，N5 A）：✓ 列显示最终值；staff 在 Morning Tracking 改过写「Edited by …」，鼠标移上去两行；纸样不动 ──
   await ctl({ staffBoard: true });
@@ -442,14 +445,13 @@ async function run() {
   check("整页 Save 在工具条最前面（Print all 左边）", await evaluate("const b = document.querySelector('[data-page-save]'); const p = [...document.querySelectorAll('main a')].find(a => a.textContent.trim().startsWith('Print all buses')); return !p || !!(b.compareDocumentPosition(p) & Node.DOCUMENT_POSITION_FOLLOWING);"));
   before = (await mockLog()).length;
   await evaluate(`
-    const sel = document.querySelector('section[aria-label="Not on a bus yet"] select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'B');
-    sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const sel = document.querySelector('section[aria-label="Not on a bus yet"] :is(select,[data-select-menu])');
+    return $sel(sel, 'B');`);
   await sleep(200);
   check("选车：不发请求（先放在页面上）", (await since(before, "/api/dispatch/manifests/guest-bus")).length === 0);
   check(
     "选车：客人马上挪到 B 车（Q4），Not on a bus yet 空了就不见；下拉标琥珀色、写 from no bus · not saved",
-    await evaluate("const b = document.querySelector('section[aria-label=\"Bus 2042=B\"]'); const r = b && b.querySelector('tr[data-guest=CHD2]'); return !document.querySelector('section[aria-label=\"Not on a bus yet\"]') && !!r && r.querySelector('select').value === 'B' && r.querySelector('[data-moved-from]').textContent === 'from no bus · not saved';"),
+    await evaluate("const b = document.querySelector('section[aria-label=\"Bus 2042=B\"]'); const r = b && b.querySelector('tr[data-guest=CHD2]'); return !document.querySelector('section[aria-label=\"Not on a bus yet\"]') && !!r && r.querySelector('select, [data-select-menu]').value === 'B' && r.querySelector('[data-moved-from]').textContent === 'from no bus · not saved';"),
   );
   check(
     "工具条下面琥珀色一句写清哪样没存，整页 Save 变能点",
@@ -465,22 +467,19 @@ async function run() {
   );
   // 换回原车 = 没改
   await evaluate(`
-    const sel = document.querySelector('tr[data-guest=CHD2] select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'A');
-    sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const sel = document.querySelector('tr[data-guest=CHD2] :is(select,[data-select-menu])');
+    return $sel(sel, 'A');`);
   await sleep(150);
   await evaluate(`
-    const sel = document.querySelector('tr[data-guest=CHD2] select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'B');
-    sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const sel = document.querySelector('tr[data-guest=CHD2] :is(select,[data-select-menu])');
+    return $sel(sel, 'B');`);
   await sleep(150);
   check("换走又换回原来那辆：算没改（没有琥珀色、Save 灰着）", await evaluate("return !document.querySelector('[data-moved-from]') && !document.querySelector('[data-page-unsaved]') && document.querySelector('[data-page-save]').disabled;"));
   // 存失败：后端原话红字，没存上的继续标
   await ctl({ busFail: "That guest is no longer on the list. Reload the page." });
   await evaluate(`
-    const sel = document.querySelector('tr[data-guest=CHD2] select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'A');
-    sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const sel = document.querySelector('tr[data-guest=CHD2] :is(select,[data-select-menu])');
+    return $sel(sel, 'A');`);
   await sleep(150);
   await evaluate("document.querySelector('[data-page-save]').click(); return 1;");
   check(
@@ -490,9 +489,8 @@ async function run() {
   );
   await ctl({ busFail: "" });
   await evaluate(`
-    const sel = document.querySelector('tr[data-guest=CHD2] select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'B');
-    sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const sel = document.querySelector('tr[data-guest=CHD2] :is(select,[data-select-menu])');
+    return $sel(sel, 'B');`);
   await sleep(150);
 
   // 黄框
@@ -547,7 +545,8 @@ async function run() {
   // 手机宽：最多 +4（屏幕上），整列 +3 +整行 +2 = +5 ⇒ 显示 +4
   await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await sleep(500);
-  check("G197 手机（< 600px）最多 +4：+3 +2 的格子显示 20.5px", await evaluate("return getComputedStyle(document.querySelector('tr[data-guest=CHD3]').children[2]).fontSize === '20.5px';"));
+  // 151 起手机竖屏只出 6 列（Pick-up Location 是第 2 格）、字按 0.62 缩：最多 +4 的 20.5px ⇒ 12.5px（没 clamp 的 21.5 会是 13.5）。
+  check("G197 手机（< 600px）最多 +4：+3 +2 的格子显示 20.5px（151 手机缩字后 12.5px）", await evaluate("return getComputedStyle(document.querySelector('tr[data-guest=CHD3]').children[1]).fontSize === '12.5px';"), await evaluate("return getComputedStyle(document.querySelector('tr[data-guest=CHD3]').children[1]).fontSize;"));
   await waitFor(`!!${A}.querySelector('[data-text-size-phone]')`);
   const mph = await evaluate(`const t = ${A}.querySelector('[data-text-size-phone]'); const gs = [...t.querySelectorAll('[data-text-size-group]')];
     return { groups: gs.map(g => g.dataset.textSizeGroup).join(','), quick: [...t.querySelectorAll('[data-text-size-group=quick] button')].map(b => b.textContent.trim()).join('|'), keyH: Math.round(t.querySelector('[data-text-size-group=apply] button').getBoundingClientRect().height), finH: Math.round(t.querySelector('[data-text-size-cancel]').getBoundingClientRect().height), noMenu: !t.querySelector('[data-text-size-reset-menu]'), spacing: !!t.querySelector('[data-relay-spacing]'), scrollX: document.documentElement.scrollWidth <= window.innerWidth + 1 };`);
@@ -572,9 +571,8 @@ async function run() {
   await evaluate(`${TA}.querySelector('[aria-label=Bigger]').click(); return 1;`);
   await sleep(150);
   await evaluate(`
-    const sel = document.querySelector('tr[data-guest=CHD3] select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'B');
-    sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const sel = document.querySelector('tr[data-guest=CHD3] :is(select,[data-select-menu])');
+    return $sel(sel, 'B');`);
   await sleep(200);
   await evaluate(`[...${TB}.querySelectorAll('button')].find(b => b.textContent === 'Row').click(); return 1;`);
   await sleep(150);
@@ -669,9 +667,8 @@ async function run() {
   // 打印 / 下载前：有没存的改动先问（Q3「Save before printing?」）
   await evaluate(TRAP);
   await evaluate(`
-    const sel = document.querySelector('tr[data-guest=CHD3] select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'B');
-    sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const sel = document.querySelector('tr[data-guest=CHD3] :is(select,[data-select-menu])');
+    return $sel(sel, 'B');`);
   await sleep(150);
   await evaluate("[...document.querySelectorAll('main a')].find(a => a.textContent.trim().startsWith('Print all buses')).click(); return 1;");
   await waitFor("document.querySelector('[data-save-first-dialog]')", 3000);
@@ -694,9 +691,8 @@ async function run() {
   await sleep(200);
   check("Print anyway：开整团打印页（这时库里已经是存好的）", await evaluate("return window.__opened.length === 1 && window.__opened[0].includes('/admin/dispatch/manifest/print?date=2026-10-05&tour=3');"), await evaluate("return JSON.stringify(window.__opened);"));
   await evaluate(`
-    const sel = document.querySelector('tr[data-guest=CHD3] select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'A');
-    sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const sel = document.querySelector('tr[data-guest=CHD3] :is(select,[data-select-menu])');
+    return $sel(sel, 'A');`);
   await sleep(150);
   await evaluate("[...document.querySelectorAll('main button')].find(b => b.textContent.trim() === 'Download').click(); return 1;");
   await waitFor("document.querySelector('[data-save-first-dialog]')", 3000);
@@ -708,7 +704,7 @@ async function run() {
   check("Save and download → Download anyway：存好后交下载表单", await evaluate("return window.__submitted === 1 && !document.querySelector('[data-moved-from]');"));
   // 换成 Lankun：页面马上照 Lankun 画，整页 Save 才 PUT {tour, version}
   before = (await mockLog()).length;
-  await evaluate("const s = document.querySelector('[data-version-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'lankun'); s.dispatchEvent(new Event('change', { bubbles: true })); return 1;");
+  await evaluate("const s = document.querySelector('[data-version-select]'); return $sel(s, 'lankun'); return 1;");
   await sleep(200);
   check("选 Lankun：不发请求，下拉框琥珀色写 Unsaved，工具条写 version General → Lankun",
     (await since(before, "/api/dispatch/manifest/version")).length === 0 && (await evaluate("const l = document.querySelector('[data-version-select]').closest('label'); return !!document.querySelector('[data-version-unsaved]') && getComputedStyle(l).borderTopColor === 'rgb(245, 158, 11)' && document.querySelector('[data-page-unsaved]').textContent.includes('version General → Lankun');")));
@@ -729,19 +725,19 @@ async function run() {
   await sleep(200);
   check("Lankun：G197 整列字号跟着列键走（Hotel 那一列 +3 = 19.5px）",
     await evaluate("return getComputedStyle(document.querySelector('tr[data-guest=CHD1]').children[2]).fontSize === '19.5px' && document.querySelector('tr[data-guest=CHD1]').children[2].textContent === 'Excalibur';"));
-  check("Lankun：不另出午餐表（定 19）；合计一排最后多一格 TOTAL SANDWICH（5 = 1 B 2 T 2 V）",
-    await evaluate("const t = document.querySelector('section[aria-label=\"Bus 2041=A\"] [data-total-sandwich]'); return !document.querySelector('section[data-lunch]') && !!t && t.textContent.replace(/\\s+/g, ' ').includes('TOTAL SANDWICH5= 1 B 2 T 2 V');"),
-    await evaluate("return document.querySelector('[data-total-sandwich]')?.textContent;"));
-  check("Lankun：合计下面的餐厅块只放店名（NPE Lunch Box - 店名 · Bus）、两行 Contact（亮黄）、这车合计",
-    await evaluate("const r = document.querySelector('section[aria-label=\"Bus 2041=A\"] [data-restaurant]'); const f = r.children[1]; return r.children[0].textContent === \"NPE Lunch Box - ZZ Test Bee'sBus 2041=A\" && f.children.length === 2 && getComputedStyle(f).backgroundColor === 'rgb(255, 255, 0)' && r.querySelector('[data-restaurant-totals]').textContent.replace(/\\s+/g, ' ').trim() === 'This bus: 5 = 1 B 2 T 2 V' && r.children.length === 3;"),
-    await evaluate("return document.querySelector('[data-restaurant]')?.textContent;"));
+  // Annie 2026-11-22「Lankun 餐单两个都选A，动手」：Lankun 也单独一张午餐单（同 General），合计下面不再放餐厅块；TOTAL SANDWICH 照旧（定 18）。
+  check("Lankun：A 车后面接午餐单（同 General，NPE Lunch Box - 店名）；合计一排最后照旧一格 TOTAL SANDWICH（5 = 1 B 2 T 2 V）",
+    await evaluate("const t = document.querySelector('section[aria-label=\"Bus 2041=A\"] [data-total-sandwich]'); const l = document.querySelector('section[aria-label=\"Bus 2041=A\"]').nextElementSibling; return !!l && l.matches('section[data-lunch]') && l.getAttribute('aria-label') === 'Lunch 2041=A' && l.textContent.includes(\"NPE Lunch Box - ZZ Test Bee's\") && !!t && t.textContent.replace(/\\s+/g, ' ').includes('TOTAL SANDWICH5= 1 B 2 T 2 V');"),
+    await evaluate("const l = document.querySelector('section[aria-label=\"Bus 2041=A\"]').nextElementSibling; return [l?.tagName, l?.getAttribute('aria-label'), document.querySelector('[data-total-sandwich]')?.textContent].join(' | ');"));
+  check("Lankun：合计下面没有餐厅块（店名 / Contact 已在午餐单上）",
+    await evaluate("return !document.querySelector('[data-restaurant]') && !document.querySelector('section[aria-label=\"Bus 2041=A\"]').textContent.includes('This bus:');"));
   // Marcello：字大的 General
   before = (await mockLog()).length;
-  await evaluate("const s = document.querySelector('[data-version-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'marcello'); s.dispatchEvent(new Event('change', { bubbles: true })); return 1;");
+  await evaluate("const s = document.querySelector('[data-version-select]'); return $sel(s, 'marcello'); return 1;");
   await sleep(150);
   await evaluate("document.querySelector('[data-page-save]').click(); return 1;");
   await waitReq(before, "/api/dispatch/manifest/version");
-  await waitFor("document.querySelector('[data-version-select]').value === 'marcello' && !document.querySelector('[data-restaurant]')");
+  await waitFor("document.querySelector('[data-version-select]').value === 'marcello' && !document.querySelector('[data-total-sandwich]')");
   check("Marcello：列同 General（有 ✓），午餐表照旧，没有餐厅块",
     await evaluate(`return JSON.stringify(${headsOf("2041=A")}) === JSON.stringify(["Order Number","Pick-up Time","Pick-up Location","Last Name","First Name","Customer Phone","#","Quantities","Lunch","Special Requirements","Bus","✓"]) && !!document.querySelector('section[data-lunch]') && !document.querySelector('[data-total-sandwich]');`));
   check("Marcello：默认字大（正文 21px、人数 24px、表头 12px、节标题 21px），G197 调的照样加上（Pick-up Location +3 = 24px）",
@@ -763,7 +759,7 @@ async function run() {
   await waitFor("!!document.querySelector('[data-page-saved]')");
   // 改版式失败：红字写后端原话，没存上的继续标（下拉留在 General、还写 Unsaved）
   await ctl({ versionFail: "That tour is not in the bus tour list." });
-  await evaluate("const s = document.querySelector('[data-version-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'general'); s.dispatchEvent(new Event('change', { bubbles: true })); return 1;");
+  await evaluate("const s = document.querySelector('[data-version-select]'); return $sel(s, 'general'); return 1;");
   await sleep(150);
   await evaluate("document.querySelector('[data-page-save]').click(); return 1;");
   check("改版式失败：红字「Could not save: Version: 后端原话」，下拉留在 General、还写 Unsaved",
@@ -772,7 +768,7 @@ async function run() {
   await ctl({ versionFail: "" });
   // West Rim（Annie 10-29 定西峡用，后端 20 加的第四种）：列序 Order # / Time / Hotel / Phone / Last / First / Pax / Quantities / (Lunch) / Special Requirements，没有 ✓
   before = (await mockLog()).length;
-  await evaluate("const s = document.querySelector('[data-version-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'west'); s.dispatchEvent(new Event('change', { bubbles: true })); return 1;");
+  await evaluate("const s = document.querySelector('[data-version-select]'); return $sel(s, 'west'); return 1;");
   await sleep(150);
   // 存完到重读回来之间（mock 让重读慢 1.2 秒）：每次页面变动都记一下 A 车的列头，看有没有闪回旧版式。
   await ctl({ manifestDelayMs: 1200 });
@@ -796,9 +792,8 @@ async function run() {
 
   // 有没存的改动离开页面：Save / Don't save / Cancel
   await evaluate(`
-    const sel = document.querySelector('tr[data-guest=CHD3] select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'B');
-    sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const sel = document.querySelector('tr[data-guest=CHD3] :is(select,[data-select-menu])');
+    return $sel(sel, 'B');`);
   await sleep(150);
   const dispatchLink = "[...document.querySelectorAll('nav[aria-label=Back] a')].find(a => a.textContent.startsWith('Dispatch'))";
   await evaluate(`${dispatchLink}.click(); return 1;`);
@@ -820,9 +815,8 @@ async function run() {
   await waitFor("document.querySelector('[data-version-select]')");
   await helpers();
   await evaluate(`
-    const sel = document.querySelector('tr[data-guest=CHD3] select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'A');
-    sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const sel = document.querySelector('tr[data-guest=CHD3] :is(select,[data-select-menu])');
+    return $sel(sel, 'A');`);
   await sleep(150);
   before = (await mockLog()).length;
   await evaluate(`${dispatchLink}.click(); return 1;`);
@@ -834,9 +828,8 @@ async function run() {
   await waitFor("document.querySelector('[data-version-select]')");
   await helpers();
   await evaluate(`
-    const sel = document.querySelector('tr[data-guest=CHD3] select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'A');
-    sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const sel = document.querySelector('tr[data-guest=CHD3] :is(select,[data-select-menu])');
+    return $sel(sel, 'A');`);
   await sleep(150);
   await evaluate("document.querySelector('[data-page-save]').click(); return 1;");
   await waitFor("!!document.querySelector('[data-page-saved]')");
@@ -936,7 +929,7 @@ async function run() {
   check("Affiliate 栏 Hotel 格隔组标色（同车上的表、同后端打印页；Annie 11-05「所有设置了的颜色都要打印」）：第一家 Paris 不标、第二家 Venetian 首行用节颜色 #bfe3b0",
     await evaluate("const a = document.querySelector('[data-affiliate]'); const td = (o) => a.querySelector('tr[data-affiliate-guest=' + o + ']').children[2]; return !td('CHD71').dataset.hotelMark && td('CHD72').dataset.hotelMark === 'true' && getComputedStyle(td('CHD72')).backgroundColor === 'rgb(191, 227, 176)' && getComputedStyle(td('CHD71')).backgroundColor === 'rgba(0, 0, 0, 0)';"),
     await evaluate("return [...document.querySelectorAll('[data-affiliate] tr[data-affiliate-guest] td:nth-child(3)')].map(t => t.outerHTML).join(' | ');"));
-  check("半宽、靠左（宽度约为内容区的一半）、字比主表小", await evaluate("const a = document.querySelector('[data-affiliate]'); const p = a.parentElement.getBoundingClientRect(); const w = a.getBoundingClientRect(); const ratio = w.width / p.width; const fs = parseFloat(getComputedStyle(a.querySelector('td')).fontSize); const main = parseFloat(getComputedStyle(document.querySelector('tr[data-guest=CHD1] td')).fontSize); return ratio > 0.4 && ratio < 0.6 && Math.abs(w.left - p.left) < 2 && fs < main;"));
+  check("半宽、靠左（宽度约为内容区的一半）、字比主表小", await evaluate("const a = document.querySelector('[data-affiliate]'); const p = a.parentElement.closest(':not([data-mf-page])').getBoundingClientRect(); const w = a.getBoundingClientRect(); const ratio = w.width / p.width; const fs = parseFloat(getComputedStyle(a.querySelector('td')).fontSize); const main = parseFloat(getComputedStyle(document.querySelector('tr[data-guest=CHD1] td')).fontSize); return ratio > 0.4 && ratio < 0.6 && Math.abs(w.left - p.left) < 2 && fs < main;"));
   check("页头只算我们车上的人（4 orders, 8 pax），不含 Affiliate 的 6 人、没有总和", await evaluate("const t = document.body.textContent; return t.includes('4 orders, 8 pax') && !t.includes('14 pax') && !t.includes('Total: 14');"));
   check("整页没有合作公司名（partner）", await evaluate("return !/partner/i.test(document.querySelector('main').textContent);"));
   await ctl({ affiliate: false });
@@ -1022,12 +1015,11 @@ async function run() {
   await evaluate("$setValue(document.querySelector('[data-notes-editor] textarea'), 'x'); document.querySelector('[data-notes-done]').click();");
   await sleep(200);
   // 和换车一起存：先换车、后备注（主窗口 eb 2026-10-30；换车先于字号，e6 65972c5）
-  const cur3 = await evaluate("return document.querySelector('tr[data-guest=CHD3] select').value;");
+  const cur3 = await evaluate("return document.querySelector('tr[data-guest=CHD3] :is(select,[data-select-menu])').value;");
   const to3 = cur3 === "B" ? "A" : "B";
   await evaluate(`
-    const sel = document.querySelector('tr[data-guest=CHD3] select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, '${to3}');
-    sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const sel = document.querySelector('tr[data-guest=CHD3] :is(select,[data-select-menu])');
+    return $sel(sel, '${to3}');`);
   await sleep(200);
   before = (await mockLog()).length;
   await evaluate(pageSave);
@@ -1057,7 +1049,7 @@ async function run() {
   check("开关开着：只有第二辆车（Bus B）色条上有 ⇄ Farm out，第一辆没有；不是蓝色", await evaluate(`const b = ${foBtn}; return document.querySelectorAll('[data-farm-out-button]').length === 1 && ${busB}.contains(b) && b.textContent.trim() === '⇄ Farm out' && getComputedStyle(b).backgroundColor !== 'rgb(59, 130, 246)';`));
   await evaluate(`${foBtn}.click();`);
   await waitFor("document.querySelector('[data-farm-out-dialog]')");
-  check("点了弹框 Farm out Bus 2042=B?：只有一家（启用的）合作公司时已选好、停用的不列；写几单几人、司机会被拿掉；黄框提醒去 Dispatch；Farm out 是蓝色", await evaluate("const d = document.querySelector('[data-farm-out-dialog]'); const s = d.querySelector('select'); const go = d.querySelector('[data-farm-out-go]'); return d.querySelector('h2').textContent === 'Farm out Bus 2042=B?' && s.options.length === 1 && s.value === '5' && d.textContent.includes('go to the partner') && d.textContent.includes('Driver FREDDY will be taken off this bus.') && d.textContent.includes('Next, on Dispatch: pick each order’s hotel and send the farm out notice.') && ['rgb(59, 130, 246)', 'rgb(24, 95, 165)'].includes(getComputedStyle(go).backgroundColor) && !go.disabled;"));
+  check("点了弹框 Farm out Bus 2042=B?：只有一家（启用的）合作公司时已选好、停用的不列；写几单几人、司机会被拿掉；黄框提醒去 Dispatch；Farm out 是蓝色", await evaluate("const d = document.querySelector('[data-farm-out-dialog]'); const s = d.querySelector('select, [data-select-menu]'); const go = d.querySelector('[data-farm-out-go]'); return d.querySelector('h2').textContent === 'Farm out Bus 2042=B?' && s.options.length === 1 && s.value === '5' && d.textContent.includes('go to the partner') && d.textContent.includes('Driver FREDDY will be taken off this bus.') && d.textContent.includes('Next, on Dispatch: pick each order’s hotel and send the farm out notice.') && ['rgb(59, 130, 246)', 'rgb(24, 95, 165)'].includes(getComputedStyle(go).backgroundColor) && !go.disabled;"));
   before = (await mockLog()).length;
   await evaluate("$btn('Cancel', document.querySelector('[data-farm-out-dialog]')).click();");
   await sleep(300);
@@ -1097,8 +1089,8 @@ async function run() {
   await sleep(150);
   check("点 × 黄条收起", await evaluate("return !document.querySelector('[data-farm-out-done]');"));
   // 页面上有没存的改动：键灰着（先存再转）
-  const was3 = await evaluate("return document.querySelector('tr[data-guest=CHD3] select').value;");
-  const pick3 = (v) => `const sel = document.querySelector('tr[data-guest=CHD3] select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, '${v}'); sel.dispatchEvent(new Event('change', { bubbles: true }));`;
+  const was3 = await evaluate("return document.querySelector('tr[data-guest=CHD3] :is(select,[data-select-menu])').value;");
+  const pick3 = (v) => `const sel = document.querySelector('tr[data-guest=CHD3] :is(select,[data-select-menu])'); return $sel(sel, '${v}');`;
   await evaluate(pick3(was3 === "B" ? "A" : "B"));
   await sleep(200);
   check("有没存的改动时 Farm out 键灰着、鼠标提示 Save your changes first.", await evaluate(`const b = ${foBtn}; return b.disabled && b.title === 'Save your changes first.';`));
@@ -1141,7 +1133,7 @@ async function run() {
   const attr = await evaluate("return [...document.querySelectorAll('[role=group][aria-label$=\"Confirmation Information\"] input')].map((i) => i.readOnly);");
   check("partner manifest 页：景点黄框的格子只读", attr.length === 0 || attr.every(Boolean), JSON.stringify(attr));
   check("partner manifest 页（G197）：看得到存好的字号，但没有 Text size 键、没有改动历史", await evaluate("const r = document.querySelector('tr[data-guest=CHD1]'); return !document.querySelector('[data-text-size-button]') && !document.querySelector('[data-text-size-history]') && getComputedStyle(r.children[2]).fontSize === '19.5px';"));
-  check("partner manifest 页（三版式）：只写「Version: Lankun」文字，没有下拉；照团存的 Lankun 画", await evaluate("const t = document.querySelector('[data-version-text]'); return !!t && t.textContent === 'Version: Lankun' && !document.querySelector('[data-version-select]') && !!document.querySelector('[data-restaurant]');"));
+  check("partner manifest 页（三版式）：只写「Version: Lankun」文字，没有下拉；照团存的 Lankun 画（TOTAL SANDWICH 照旧、没有餐厅块）", await evaluate("const t = document.querySelector('[data-version-text]'); return !!t && t.textContent === 'Version: Lankun' && !document.querySelector('[data-version-select]') && !document.querySelector('[data-restaurant]') && !!document.querySelector('[data-total-sandwich]');"));
   await sleep(500);
   reqs = (await mockLog()).slice(before);
   check("partner manifest 页：一次写请求都没有", reqs.every((r) => r.method === "GET"), JSON.stringify(reqs.filter((r) => r.method !== "GET").map((r) => `${r.method} ${r.path}`)));
@@ -1257,7 +1249,7 @@ async function run() {
     await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
     await waitFor("document.querySelector('section[aria-label^=\"Bus\"]')", 60000);
     await helpers();
-    const st = await evaluate("return { select: !!document.querySelector('section[aria-label^=\"Bus\"] select'), save: !!document.querySelector('[data-page-save]') };");
+    const st = await evaluate("return { select: !!document.querySelector('section[aria-label^=\"Bus\"] :is(select,[data-select-menu])'), save: !!document.querySelector('[data-page-save]') };");
     check(`${label}：Bus Manifest ${canEdit ? "能改（有换车下拉、整页 Save）" : "只看（没有换车下拉、没有整页 Save）"}`, st.select === canEdit && st.save === canEdit, JSON.stringify(st));
   }
   await ctl({ staffPerms: null, superAdmin: false });
@@ -1660,7 +1652,7 @@ async function runViewOnly() {
   await sleep(200);
   check("✕：关掉", !(await evaluate(`return !!${PV};`)));
 
-  await evaluate("const s = document.querySelector('[data-version-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'marcello'); s.dispatchEvent(new Event('change', { bubbles: true })); return 1;");
+  await evaluate("const s = document.querySelector('[data-version-select]'); return $sel(s, 'marcello'); return 1;");
   await sleep(200);
   await evaluate("document.querySelector('[data-view-only=all]').click(); return 1;");
   check("有没存的改动点 View only：先问 Save before viewing?（Save and view），不开全屏层",
@@ -1705,4 +1697,85 @@ async function runViewOnly() {
   await evaluate("document.querySelector('[data-bm-next]').click(); return 1;");
   await sleep(300);
   check("入口页 › 换到下一天、网址跟着变", await evaluate("return document.querySelector('[data-bm-date]').textContent === 'Tue, Oct 6, 2026' && new URL(location.href).searchParams.get('date') === '2026-10-06';"));
+}
+
+// ── 151 编辑页手机一屏（Annie 2026-11-22「动手」：① C 自动横竖屏 + Full screen；② A 竖屏 6 列；③ B Text size 卡一直打开）──
+async function runPhoneFit() {
+  const URL0 = `${APP}/dispatch/manifest?date=2026-10-05&tour=3`;
+  const SHOTS = process.env.SHOT_DIR || "";
+  const fs = require("fs");
+  const shot = async (name) => {
+    if (!SHOTS) return;
+    fs.mkdirSync(SHOTS, { recursive: true });
+    const r = await cdp("Page.captureScreenshot", { format: "png" });
+    fs.writeFileSync(path.join(SHOTS, name), Buffer.from(r.data, "base64"));
+  };
+  const SIX = '["Pick-up Time","Pick-up Location","Last Name","#","Special Requirements","✓"]';
+  const heads = "[...document.querySelector('section[aria-label^=\"Bus\"] table thead tr').children].map((t) => t.textContent.trim())";
+  const vis = "const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0;";
+  const tableFits = "[...document.querySelectorAll('section[aria-label^=\"Bus\"] table[data-mf-fit]')].every((t) => t.parentElement.scrollWidth <= t.parentElement.clientWidth + 1)";
+  const widest = "[...document.querySelectorAll('section[aria-label^=\"Bus\"] table[data-mf-fit]')].map((t) => { const R = t.parentElement.getBoundingClientRect(); const bad = [...t.querySelectorAll('td, th, td *')].filter((c) => c.getBoundingClientRect().right > R.right + 1).slice(0, 4).map((c) => c.tagName + '.' + String(c.className).slice(0, 40) + ':' + Math.round(c.getBoundingClientRect().width) + ':' + c.textContent.slice(0, 24)); return t.parentElement.scrollWidth + '/' + t.parentElement.clientWidth + ' ' + bad.join(' | '); })";
+  await ctl({ bmv: true, version: "general", busCols: false, partner: false, staffPerms: null, superAdmin: false, layout: false, canyon: false, canyonHoover: false, g198: false, textSize: true, assist: true });
+
+  // 电脑先量一遍（对照：电脑不变）
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await goto(URL0);
+  await waitFor("document.querySelector('section[aria-label^=\"Bus\"] table')", 60000);
+  await sleep(600);
+  const desk = await evaluate(`const t = document.querySelector('section[aria-label^="Bus"] table'); const td = t.querySelector('tbody tr[data-guest] td'); return { heads: ${heads}, minW: getComputedStyle(t).minWidth, fit: t.getAttribute('data-mf-fit'), html: document.documentElement.dataset.mfFit ?? null, fs: !!document.querySelector('[data-mf-fullscreen]'), td: getComputedStyle(td).fontSize };`);
+  check("151 电脑：照旧全部列（含 Order Number / Bus / ASSIST）、表最小宽 980px、字 16.5px、没有 Full screen 键、html 没有 data-mf-fit",
+    desk.heads.length >= 12 && desk.heads.includes("Order Number") && desk.heads.includes("Bus") && desk.heads.includes("ASSIST") && desk.minW === "980px" && desk.fit === null && desk.html === null && !desk.fs && desk.td === "16.5px", JSON.stringify(desk));
+  await shot("desktop-1600x1000.png");
+
+  // 竖屏 390×844
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  await goto(URL0);
+  await waitFor("document.querySelector('section[aria-label^=\"Bus\"] table[data-mf-fit=portrait]')", 60000);
+  await sleep(600);
+  const por = await evaluate(`${vis} return { heads: ${heads}, buses: [...document.querySelectorAll('section[aria-label^="Bus"] table thead tr')].map((r) => r.children.length), sw: document.documentElement.scrollWidth, vw: innerWidth, fits: ${tableFits}, wide: ${widest}, fs: vis(document.querySelector('[data-mf-fullscreen]')), ts: [...document.querySelectorAll('section[aria-label^="Bus"]')].map((s) => vis(s.querySelector('[data-text-size-toolbar]'))), td: getComputedStyle(document.querySelector('section[aria-label^="Bus"] tbody tr[data-guest] td')).fontSize, html: document.documentElement.dataset.mfFit };`);
+  check("151 竖屏 390：整页不左右晃（scrollWidth ≤ 屏宽）、客人表放得下不用滑", por.sw <= por.vw + 1 && por.fits, JSON.stringify(por));
+  check("151 竖屏：每台车只出 6 列 Pick-up Time / Pick-up Location / Last Name / # / Special Requirements / ✓", JSON.stringify(por.heads) === SIX && por.buses.length >= 2 && por.buses.every((n) => n === 6), JSON.stringify(por));
+  check("151 竖屏：有 ⛶ Full screen 键（白键，不是蓝色）", por.fs && (await evaluate("return getComputedStyle(document.querySelector('[data-mf-fullscreen]')).backgroundColor !== 'rgb(59, 130, 246)' && document.querySelector('[data-mf-fullscreen]').textContent.includes('Full screen');")), JSON.stringify(por));
+  check("151 竖屏（③ B）：每台车的 Text size 编辑卡一直打开", por.ts.length >= 2 && por.ts.every(Boolean), JSON.stringify(por.ts));
+  check("151 竖屏：字缩到约 10px（纸本 16.5 × 0.62，只改屏幕）", por.td === "10px", por.td);
+  check("151 竖屏：114 的页头键照旧（View only｜Print all｜Download 一排，没有 ⋯）", await evaluate(`${vis} const k = [...document.querySelector('[data-mf-output-keys]').querySelectorAll('a, button')].filter(vis).map((b) => b.innerText.trim()); return k[0] === 'View only' && k[1] === 'Print all' && k[2] === 'Download' && !document.querySelector('[data-mf-header-actions] [data-phone-more]');`));
+  await shot("portrait-390x844.png");
+
+  await evaluate("document.querySelector('[data-mf-fullscreen]').click(); return 1;");
+  await waitFor("document.querySelector('div[data-mf-full]')", 3000);
+  await sleep(300);
+  const fsv = await evaluate(`${vis} return { full: vis(document.querySelector('div[data-mf-full]')), page: vis(document.querySelector('[data-mf-page] header')), topbar: getComputedStyle(document.querySelector('[data-app-topbar]')).display, back: vis(document.querySelector('nav[aria-label=Back]')), buses: [...document.querySelectorAll('[data-mf-full-bus]')].map((b) => b.textContent + ':' + b.getAttribute('aria-pressed')), title: document.querySelector('[data-mf-full-title]').textContent, heads: [...document.querySelector('div[data-mf-full] table thead tr').children].map((t) => t.textContent.trim()), sw: document.documentElement.scrollWidth, vw: innerWidth, float: vis(document.querySelector('button[title=Top]')), ts: !!document.querySelector('div[data-mf-full] [data-text-size-toolbar]') };`);
+  check("151 Full screen：只剩细栏 + 客人表（顶栏、Back、页头都藏）、右下角 ↑↓ 还在、不左右晃",
+    fsv.full && !fsv.page && fsv.topbar === "none" && !fsv.back && fsv.float && fsv.sw <= fsv.vw + 1 && !fsv.ts, JSON.stringify(fsv));
+  check("151 Full screen：细栏有 A / B 换车，先看 A；竖屏同样 6 列", JSON.stringify(fsv.buses) === '["A:true","B:false"]' && fsv.title.includes("Antelope Canyon") && JSON.stringify(fsv.heads) === SIX, JSON.stringify(fsv));
+  await shot("portrait-fullscreen-390x844.png");
+  await evaluate("document.querySelector('[data-mf-full-bus=B]').click(); return 1;");
+  await sleep(200);
+  check("151 Full screen：点 B 换到 B 车", await evaluate("return document.querySelector('[data-mf-full-bus=B]').getAttribute('aria-pressed') === 'true' && document.querySelector('[data-mf-full-bus=A]').getAttribute('aria-pressed') === 'false';"));
+  await evaluate("document.querySelector('[data-mf-full-close]').click(); return 1;");
+  await sleep(300);
+  check("151 Full screen：✕ 回到页面（页头、顶栏都回来）", await evaluate(`${vis} return !document.querySelector('div[data-mf-full]') && vis(document.querySelector('[data-mf-page] header')) && getComputedStyle(document.querySelector('[data-app-topbar]')).display !== 'none' && !document.documentElement.dataset.mfFull;`));
+  await evaluate("document.querySelector('[data-mf-fullscreen]').click(); return 1;");
+  await waitFor("document.querySelector('div[data-mf-full]')", 3000);
+  await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); return 1;");
+  await sleep(300);
+  check("151 Full screen：Esc 也退出", await evaluate("return !document.querySelector('div[data-mf-full]');"));
+
+  // 横屏 844×390
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 844, height: 390, deviceScaleFactor: 2, mobile: true, screenOrientation: { type: "landscapePrimary", angle: 90 } });
+  await goto(URL0);
+  await waitFor("document.querySelector('section[aria-label^=\"Bus\"] table[data-mf-fit=landscape]')", 60000);
+  await sleep(600);
+  const lan = await evaluate(`${vis} return { heads: ${heads}, sw: document.documentElement.scrollWidth, vw: innerWidth, fits: ${tableFits}, wide: ${widest}, fs: vis(document.querySelector('[data-mf-fullscreen]')), sc: vis(document.querySelector('[data-phone-shortcuts]')), bar: Math.round(document.querySelector('[data-app-topbar] > header').getBoundingClientRect().height), ts: [...document.querySelectorAll('section[aria-label^="Bus"]')].map((s) => vis(s.querySelector('[data-text-size-toolbar]'))) };`);
+  check("151 横屏 844：全部列都出（同电脑）、整页不晃、客人表放得下不用滑", JSON.stringify(lan.heads) === JSON.stringify(desk.heads) && lan.sw <= lan.vw + 1 && lan.fits, JSON.stringify(lan));
+  check("151 横屏：shortcut 条藏、顶栏 48px、有 Full screen、Text size 卡照旧打开", !lan.sc && lan.bar === 48 && lan.fs && lan.ts.length >= 2 && lan.ts.every(Boolean), JSON.stringify(lan));
+  await shot("landscape-844x390.png");
+  await evaluate("document.querySelector('[data-mf-fullscreen]').click(); return 1;");
+  await waitFor("document.querySelector('div[data-mf-full]')", 3000);
+  await sleep(300);
+  check("151 横屏 Full screen：全部列、不晃", await evaluate(`return [...document.querySelector('div[data-mf-full] table thead tr').children].length === ${desk.heads.length} && document.documentElement.scrollWidth <= innerWidth + 1;`));
+  await shot("landscape-fullscreen-844x390.png");
+  await evaluate("document.querySelector('[data-mf-full-close]').click(); return 1;");
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await ctl({ textSize: false, assist: false });
 }

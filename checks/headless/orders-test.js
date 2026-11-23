@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -107,6 +108,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
 
   try {
@@ -128,7 +130,8 @@ const dialog = "document.querySelector('[role=dialog]')";
 async function since(before, filter) {
   return (await mockLog()).slice(before).filter(filter);
 }
-const SEL = `window.$sel = (el, v) => { Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('change', { bubbles: true })); };
+// 全站下拉（Annie 2026-11-21）：$sel 原生 select 和新 SelectMenu 都认（select-menu-helper.js）。
+const SEL = SELECT_HELPERS + `
 window.$card = (t) => [...document.querySelectorAll('section')].find(s => s.getAttribute('aria-label') === t);`;
 
 async function run() {
@@ -148,11 +151,15 @@ async function run() {
   await sleep(900);
   check("搜索防抖后查、回第 1 页", (await since(before, (e) => e.query.includes("q=CHDZZ7"))).length >= 1);
   before = (await mockLog()).length;
-  await evaluate("$sel(document.querySelector('[aria-label=\"Tour date\"]'), 'all');");
+  await evaluate("return $sel(document.querySelector('[aria-label=\"Tour date\"]'), 'all');");
   await sleep(500);
   check("All dates：不带日期", (await since(before, (e) => e.query === "?q=CHDZZ7&page=1&page_size=50")).length >= 1);
-  await evaluate("$sel(document.querySelector('[aria-label=\"Tour date\"]'), 'custom');");
-  await evaluate("$setValue(document.querySelector('[aria-label=From]'), '1999-01-01'); $setValue(document.querySelector('[aria-label=To]'), '2000-01-01'); $btn('Apply').click();");
+  await evaluate("return $sel(document.querySelector('[aria-label=\"Tour date\"]'), 'custom');");
+  check("全站下拉：Tour date 选 Custom ⇒ 菜单不关，下面出 From / To 两个日期和蓝色 Apply", await evaluate("const b = document.querySelector('[aria-label=\"Tour date\"]'); const f = document.querySelector('[data-select-footer]'); return b.getAttribute('aria-expanded') === 'true' && !!f && !!f.querySelector('[aria-label=From]') && !!f.querySelector('[aria-label=To]') && getComputedStyle($btn('Apply', f)).backgroundColor === 'rgb(59, 130, 246)';"));
+  await evaluate("$btn('Apply', document.querySelector('[data-select-footer]')).click();");
+  check("Custom 没填日期按 Apply ⇒ 菜单里红字 Please select both dates.、菜单不关", await waitFor("document.querySelector('[data-select-footer] [role=alert]')?.textContent === 'Please select both dates.' && document.querySelector('[aria-label=\"Tour date\"]').getAttribute('aria-expanded') === 'true'", 3000));
+  await evaluate("$setValue(document.querySelector('[aria-label=From]'), '1999-01-01'); $setValue(document.querySelector('[aria-label=To]'), '2000-01-01'); $btn('Apply', document.querySelector('[data-select-footer]')).click();");
+  check("Custom 填好按 Apply ⇒ 菜单关上，旁边写 Showing: 1999-01-01 – 2000-01-01", await waitFor("!document.querySelector('[data-select-menu-list]') && document.body.textContent.includes('Showing: 1999-01-01 – 2000-01-01')", 5000));
   await waitFor("document.body.textContent.includes('No orders with a tour date in')");
   check("范围内没有：提示并给 Search all dates", await evaluate("return !!$btn('Search all dates');"));
   await evaluate("$btn('Search all dates').click();");
@@ -465,6 +472,78 @@ async function refreshChecks() {
   check("G280 Source：TripGuru 单写 TripGuru、Rezdy 单写 Rezdy（不再是小写 rezdy）", (await evaluate(`return ${cellOf("NPE-ZZ1001", "Source")};`)) === "TripGuru" && (await evaluate(`return ${cellOf("CHDZZ1", "Source")};`)) === "Rezdy");
   check("G280 TripGuru 状态首字母大写、同 Rezdy 标签：confirmed ⇒ Confirmed、pending ⇒ Pending", (await evaluate(`return ${cellOf("NPE-ZZ1001", "Status")};`)) === "Confirmed" && (await evaluate(`return ${cellOf("NPE-ZZ1002", "Status")};`)) === "Pending");
   check("G280 How to use 加了 Source 那句（原文）", await evaluate("return document.body.textContent.includes('The Source column shows where an order came from: Rezdy or TripGuru. TripGuru orders open read-only. Pickup time, pickup location and agent are blank for TripGuru orders for now.');"));
+  // ── Order List Source 筛选（Annie 2026-11-21「全部同意推荐，动手」，preview Pg75scdcQoVKohB775PpXe 题 1 A / 题 2 A）──
+  const srcSel = "document.querySelector('[data-select-menu][aria-label=\"Source\"]')";
+  const tdSel = "document.querySelector('[data-select-menu][aria-label=\"Tour date\"]')";
+  await evaluate(SEL);
+  check("Source：在 Tour date 后面，「Source · All ▾」，选项 All / Rezdy / TripGuru，默认 All", await evaluate(`const s = ${srcSel}; const td = ${tdSel}; const o = await $selOptions(s); return !!s && $selValue(s) === '' && o.map((x) => x.label).join('|') === 'All|Rezdy|TripGuru' && s.textContent.replace(/\\s+/g, '') === 'Source·All▾' && td.nextElementSibling === s;`), await evaluate(`const s = ${srcSel}; return JSON.stringify({ t: s.textContent, v: $selValue(s), next: ${tdSel}.nextElementSibling === s });`));
+  check("Source All：两种单都有，请求不带 source", (await evaluate("return document.body.textContent.includes('NPE-ZZ1001') && document.body.textContent.includes('CHDZZ1');")) && (await mockLog()).filter((e) => e.path === "/api/operations/orders").every((e) => !e.query.includes("source=")));
+  await evaluate(SEL);
+  let sb = (await mockLog()).length;
+  await evaluate(`return $sel(${srcSel}, 'tripguru');`);
+  await waitFor("!document.body.textContent.includes('CHDZZ1') && document.body.textContent.includes('NPE-ZZ1001')", 15000);
+  let sreq = await since(sb, (e) => e.path === "/api/operations/orders");
+  check("Source TripGuru：选了马上查（不用 Save），请求带 source=tripguru、回第 1 页；只剩 TripGuru 单，条数和 Export 跟着变", sreq.length >= 1 && sreq.every((e) => e.query.includes("source=tripguru") && e.query.includes("page=1")) && (await evaluate("const t = document.body.textContent; return t.includes('2 records') && t.includes('⬇ Export (2)') && !t.includes('CHDZZ1');")), JSON.stringify(sreq.map((e) => e.query)));
+  sb = (await mockLog()).length;
+  await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('⬇ Export')).click();");
+  await waitFor("!document.body.textContent.includes('Preparing...')");
+  const sexp = await since(sb, (e) => e.path === "/api/operations/orders/export");
+  check("Source TripGuru：⬇ Export 也带 source=tripguru", sexp.length === 1 && sexp[0].query.includes("source=tripguru"), JSON.stringify(sexp.map((e) => e.query)));
+  await evaluate(`return $sel(${srcSel}, 'rezdy');`);
+  await waitFor("document.body.textContent.includes('CHDZZ1') && !document.body.textContent.includes('NPE-ZZ1001')", 15000);
+  check("Source Rezdy：只剩 Rezdy 单（含旧表的单）", await evaluate("return !document.body.textContent.includes('NPE-ZZ1002') && document.body.textContent.includes('70 records');"), await evaluate("return document.querySelector('main').textContent.slice(0, 300);"));
+  await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Clear').click();");
+  await waitFor(`$selValue(${srcSel}) === '' && document.body.textContent.includes('NPE-ZZ1001')`, 15000);
+  check("题 1 A：Clear 把 Source 放回 All", await evaluate(`return $selValue(${srcSel}) === '' && $selValue(${tdSel}) === 'upcoming';`));
+  await evaluate(`return $sel(${srcSel}, 'tripguru');`);
+  await waitFor("!document.body.textContent.includes('CHDZZ1')", 15000);
+  await goto(`${APP}/orders`);
+  await waitFor("document.body.textContent.includes('NPE-ZZ1001')", 30000);
+  await evaluate(SEL);
+  check("题 2 A：不记，重开页面回到 All", await evaluate(`return $selValue(${srcSel}) === '' && document.body.textContent.includes('CHDZZ1');`));
+  check("How to use 加了 Source 筛选那句（原文），在 Tour date 那句后面", await evaluate("const lis = [...[...document.querySelectorAll('details')].find((d) => d.textContent.includes('How to use — Orders')).querySelectorAll('li')].map((l) => l.textContent.trim()); const i = lis.indexOf('Use Source to show only Rezdy orders or only TripGuru orders; All shows both. The list, the record count and ⬇ Export all follow it. Clear sets it back to All.'); return i > 0 && lis[i - 1].startsWith('Click 📅 Tour date');"));
+  // ── 全站下拉 SelectMenu（Annie 2026-11-21「第二题，那就把整个框撑开适应文字，要漂亮一些。其他全部同意推荐，动手」，preview NBeBrZJELNg1Y8vJcb5pxa v2）──
+  await evaluate(`${tdSel}.click();`);
+  await waitFor("document.querySelector('[data-select-menu-list]')", 3000);
+  const geo = await evaluate(`const b = ${tdSel}.getBoundingClientRect(); const m = document.querySelector('[data-select-menu-list]').getBoundingClientRect(); return { dx: Math.round(m.left - b.left), dy: Math.round(m.top - b.bottom), mw: m.width, bw: b.width };`);
+  check("下拉：菜单从按钮正下方 4px 展开、左对齐、不比按钮窄", geo.dx === 0 && geo.dy === 4 && geo.mw >= geo.bw - 0.5, JSON.stringify(geo));
+  const look = await evaluate(`const m = document.querySelector('[data-select-menu-list]'); const on = m.querySelector('[role=option][aria-selected=true]'); const cs = getComputedStyle(on); const lefts = [...m.querySelectorAll('[role=option]')].map((o) => Math.round(o.querySelector('span').getBoundingClientRect().left)); return { ck: !m.textContent.includes('✓'), bg: cs.backgroundColor, fw: cs.fontWeight, fs: getComputedStyle(m).fontSize, menuBg: getComputedStyle(m).backgroundColor, others: new Set(lefts).size === 1 };`);
+  check("下拉：电脑每行 28px 高（Annie「行间距别做那么宽」）", (await evaluate("return Math.round(document.querySelector('[data-select-menu-list] [role=option]').getBoundingClientRect().height);")) === 28, await evaluate("return document.querySelector('[data-select-menu-list] [role=option]').getBoundingClientRect().height;"));
+  check("下拉：选中项只加粗，不打 ✓、没有蓝底；各项文字左边对齐；菜单白底 13px", look.ck && look.others && !/rgb\(\s*(30|0|59|37), (111|120|130|99|102)/.test(look.bg) && Number(look.fw) >= 600 && look.fs === "13px" && look.menuBg === "rgb(255, 255, 255)", JSON.stringify(look));
+  await evaluate("const o = [...document.querySelectorAll('[data-select-menu-list] [role=option]')].find((x) => x.dataset.value === 'today'); o.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); o.dispatchEvent(new MouseEvent('mouseenter'));");
+  check("下拉：鼠标停留的那项浅灰底 #f1f2f4", await waitFor("getComputedStyle([...document.querySelectorAll('[data-select-menu-list] [role=option]')].find((x) => x.dataset.value === 'today')).backgroundColor === 'rgb(241, 242, 244)'", 2000));
+  const key = (k) => `${tdSel}.dispatchEvent(new KeyboardEvent('keydown', { key: '${k}', bubbles: true }));`;
+  await evaluate(key("Escape"));
+  check("下拉：Esc 关菜单", await waitFor(`!document.querySelector('[data-select-menu-list]') && ${tdSel}.getAttribute('aria-expanded') === 'false'`, 2000));
+  sb = (await mockLog()).length;
+  await evaluate(`${tdSel}.focus(); ${key("ArrowDown")}`);
+  await waitFor("document.querySelector('[data-select-menu-list]')", 2000);
+  await evaluate(key("ArrowDown"));
+  await sleep(100);
+  await evaluate(key("Enter"));
+  check("下拉：键盘 ↓ 打开、↓ 移一项、Enter 选中（Upcoming → Today）并关上", await waitFor(`$selValue(${tdSel}) === 'today' && !document.querySelector('[data-select-menu-list]')`, 3000), await evaluate(`return $selValue(${tdSel});`));
+  await evaluate(`return $sel(${tdSel}, 'upcoming');`);
+  await evaluate(`${srcSel}.click();`);
+  await waitFor("document.querySelector('[data-select-menu-list]')", 3000);
+  await evaluate("document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));");
+  check("下拉：点菜单外面关上", await waitFor("!document.querySelector('[data-select-menu-list]')", 2000));
+  check("下拉：合起来的按钮字体统一 13px、跟页面同一字体", await evaluate(`const b = getComputedStyle(${srcSel}); return b.fontSize === '13px' && b.fontFamily === getComputedStyle(document.body).fontFamily;`), await evaluate(`const b = getComputedStyle(${srcSel}); return b.fontSize + ' ' + b.fontFamily;`));
+  // night 主题：深底白字
+  await evaluate("document.documentElement.setAttribute('data-theme', 'night');");
+  await evaluate(`${srcSel}.click();`);
+  await waitFor("document.querySelector('[data-select-menu-list]')", 3000);
+  check("下拉 night 主题：菜单深底 #0f1c2d", await evaluate("return getComputedStyle(document.querySelector('[data-select-menu-list]')).backgroundColor === 'rgb(15, 28, 45)';"), await evaluate("return getComputedStyle(document.querySelector('[data-select-menu-list]')).backgroundColor;"));
+  await evaluate(`${srcSel}.click();`);
+  await evaluate("document.documentElement.removeAttribute('data-theme');");
+  // 手机：菜单不出屏幕（离边 16px）
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 375, height: 760, deviceScaleFactor: 2, mobile: true });
+  await sleep(400);
+  await evaluate(`${srcSel}.scrollIntoView(); ${srcSel}.click();`);
+  await waitFor("document.querySelector('[data-select-menu-list]')", 3000);
+  const ph = await evaluate("const m = document.querySelector('[data-select-menu-list]').getBoundingClientRect(); const o = document.querySelector('[data-select-menu-list] [role=option]').getBoundingClientRect(); return { l: m.left, r: m.right, vw: document.documentElement.clientWidth, h: o.height };");
+  check("下拉 手机：菜单在屏幕里（左右离边 ≥ 16px），每行 32px 高", ph.l >= 15.5 && ph.r <= ph.vw - 15.5 && Math.round(ph.h) === 32, JSON.stringify(ph));
+  await evaluate(`${srcSel}.click();`);
+  await cdp("Emulation.clearDeviceMetricsOverride");
   // 详情
   await goto(`${APP}/orders/NPE-ZZ1001`);
   await waitFor("document.querySelector('[data-tripguru-items]')", 30000);

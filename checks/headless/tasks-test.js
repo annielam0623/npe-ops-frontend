@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -59,7 +60,7 @@ async function goto(url) {
   await sleep(300);
 }
 
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$q = (s, root=document) => root.querySelector(s);
 window.$btn = (text, root=document) => [...root.querySelectorAll('button')].find(b => b.textContent.trim() === text);
 window.$tasksSection = () => document.querySelector('section[aria-label="My tasks"]') || document.querySelector('section[aria-label="Today\\'s tasks"]');
@@ -509,10 +510,10 @@ async function run() {
   check("新任务（没设时间）在 Anytime 里，写 All shift", await evaluate("const li = $row('ZZ Test one-off task'); return !!li && $part('any').contains(li) && li.querySelector('[data-task-who]').textContent === 'All shift';"));
 
   // ── 主管加任务：可指定今天在班的某个人（后端 G160；Annie 2026-10-23「主管加任务：动手」）──
-  const forSel = "$q('select[aria-label=\"For\"]')";
+  const forSel = "$q(':is(select,[data-select-menu])[aria-label=\"For\"]')";
   check("加任务下拉：第一项 Everyone on shift today（默认选中），后面是今天在班的每个人带班次时间", await evaluate(`const s = ${forSel}; const o = [...s.options].map((x) => x.textContent); return s.value === '' && o[0] === 'Everyone on shift today' && o.length === 6 && o.includes('Lizzie · 9:30 AM–5:30 PM') && o.includes('Veronica · 2:00 AM–10:00 AM');`), await evaluate(`return [...${forSel}.options].map((x) => x.textContent).join('|');`));
   check("下拉没有蓝色底（蓝色只给 Add 键）", await evaluate(`const bg = getComputedStyle(${forSel}).backgroundColor; return !bg.includes('24, 95, 165');`));
-  const setFor = (v) => evaluate(`const s = ${forSel}; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, '${v}'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+  const setFor = (v) => evaluate(`const s = ${forSel}; return $sel(s, '${v}');`);
   await setFor("lizzie");
   from = (await mockLog()).length;
   await evaluate("const inp = $q('input[placeholder=\"What needs to be done\"]'); $setValue(inp, 'ZZ Test for Lizzie');");
@@ -666,7 +667,7 @@ async function runDailyTaskList() {
   await evaluate(`${row(2)}.querySelector('button').click();`);
   await waitFor("document.querySelector('[data-template-form]')");
   const f = (k) => `document.querySelector('[data-template-form] [data-field="${k}"]')`;
-  const setSel = (k, v) => evaluate(`const s = ${f(k)}; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, '${v}'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+  const setSel = (k, v) => evaluate(`const s = ${f(k)}; return $sel(s, '${v}');`);
   check("139 · Edit：表单在这一行下面展开，带原值（标题、Every hour、08:00–21:30、Tour Tracking、Note、Active 勾着）", await evaluate(`return ${row(2)}.nextElementSibling.contains(document.querySelector('[data-template-form]')) && ${f("title")}.value === 'Reply to guest messages in Tracking' && ${f("frequency")}.value === 'hourly' && ${f("from")}.value === '08:00' && ${f("to")}.value === '21:30' && ${f("link")}.value === '/tour-confirmation/tracking' && ${f("note")}.value.startsWith('Reply within') && ${f("active")}.checked;`));
   const saveBtn = "[...document.querySelectorAll('[data-template-form] button')].find(b => b.textContent === 'Save')";
   check("139 · Save 是蓝色 #3b82f6（提交键）", await evaluate(`return getComputedStyle(${saveBtn}).backgroundColor === 'rgb(59, 130, 246)';`));
@@ -755,7 +756,7 @@ async function runTodayEdit() {
   const f = (id, k) => `document.querySelector('[data-task-edit-form="${id}"] [data-field="${k}"]')`;
   const btnIn = (id, text) => `[...document.querySelector('[data-task-edit-form="${id}"]').querySelectorAll('button')].find(b => b.textContent === '${text}')`;
   const idOf = (title) => evaluate(`return Number($row(${JSON.stringify(title)}).dataset.taskId);`);
-  const setSel = (sel, v) => evaluate(`const s = ${sel}; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, ${JSON.stringify(v)}); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+  const setSel = (sel, v) => evaluate(`const s = ${sel}; return $sel(s, ${JSON.stringify(v)});`);
 
   // ── 主管：三项都能改 ──
   await ctl({ reset: true, me: "annie", supervisor: true, admin: false, superadmin: false, notices: false, gates: "open" });
@@ -895,6 +896,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
 
   try {

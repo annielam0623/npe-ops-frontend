@@ -64,6 +64,7 @@ import { MissingCard } from "./missing-card";
 import { ProductLog } from "./product-log";
 import { ProductsTable, type RowDraft } from "./products-table";
 import { savedAt, type SaveState, UnsavedProvider } from "./unsaved";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 type ViewState =
   | { kind: "loading" }
@@ -90,6 +91,8 @@ function ProductsPage() {
   const [missing, setMissing] = useState<MissingProduct[] | null>(null);
   const [search, setSearch] = useState("");
   const [needsOnly, setNeedsOnly] = useState(false);
+  /** 展开着的组（默认只有 No group 展开，Annie 2026-11-21 Q1=A）。 */
+  const [opened, setOpened] = useState<Set<string>>(() => new Set(["none"]));
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const [bulkGroup, setBulkGroup] = useState(KEEP);
   const [bulkType, setBulkType] = useState(KEEP);
@@ -420,6 +423,12 @@ function ProductsPage() {
     setSearch("");
     setNeedsOnly(false);
     setHighlightProductId(id);
+    // 跳过去的那一组展开。
+    const p = products.find((x) => x.id === id);
+    if (p) {
+      const key = p.manifest_id === null ? "none" : String(p.manifest_id);
+      setOpened((o) => new Set(o).add(key));
+    }
   }
 
   if (view.kind !== "ready") {
@@ -456,6 +465,18 @@ function ProductsPage() {
   );
   const visibleIds = new Set(visibleList.map((p) => p.id));
   const sections = groupSections(products, visibleIds);
+  // 大项折叠（Annie 2026-11-21）：默认都收起，No group 展开；搜索 / 只看没分类的时，有结果的组自动展开。不记住。
+  const searching = !!search.trim() || showNeedsOnly;
+  const folded = new Set(
+    searching ? [] : sections.map((s) => s.key).filter((k) => !opened.has(k)),
+  );
+  const toggleFold = (key: string) =>
+    setOpened((o) => {
+      const next = new Set(o);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   const allVisiblePicked =
     visibleList.length > 0 && visibleList.every((p) => picked.has(p.id));
   const groupName = (id: string) =>
@@ -620,7 +641,33 @@ function ProductsPage() {
           </div>
         ) : null}
 
+        <div
+          data-fold-tools
+          className="flex flex-wrap items-center gap-3 border-b-[0.5px] border-black/[.08] px-4 py-2 text-[12px] text-[#1a1a1a] night:border-white/10 night:text-white/70"
+        >
+          <span>
+            {sections.length} {sections.length === 1 ? "group" : "groups"}
+          </span>
+          <button
+            type="button"
+            disabled={searching || folded.size === 0}
+            onClick={() => setOpened(new Set(sections.map((s) => s.key)))}
+            className="cursor-pointer underline underline-offset-2 disabled:cursor-default disabled:no-underline disabled:opacity-50"
+          >
+            Expand all
+          </button>
+          <button
+            type="button"
+            disabled={searching || folded.size === sections.length}
+            onClick={() => setOpened(new Set())}
+            className="cursor-pointer underline underline-offset-2 disabled:cursor-default disabled:no-underline disabled:opacity-50"
+          >
+            Collapse all
+          </button>
+        </div>
         <ProductsTable
+          folded={folded}
+          onFold={toggleFold}
           renderBulkBar={({ spanned }) => (
             <BulkBar
               count={picked.size}
@@ -653,55 +700,58 @@ function ProductsPage() {
                 ) : null
               }
             >
-              <select
+              <SelectMenu
                 aria-label="Group for selected"
-                value={bulkGroup}
-                onChange={(event) => setBulkGroup(event.target.value)}
+                value={String(bulkGroup)}
+                options={[
+                  { value: String(KEEP), label: "— group: leave as is —" },
+                  { value: "", label: "— no group —" },
+                  ...selectableGroups(groups, null).map((g) => ({
+                    value: String(String(g.id)),
+                    label: String(groupLabel(g)),
+                  })),
+                ]}
+                onChange={(next) => setBulkGroup(next)}
                 className={BULK_SELECT_CLASS}
-              >
-                <option value={KEEP}>— group: leave as is —</option>
-                <option value="">— no group —</option>
-                {selectableGroups(groups, null).map((g) => (
-                  <option key={g.id} value={String(g.id)}>
-                    {groupLabel(g)}
-                  </option>
-                ))}
-              </select>
-              <select
+              />
+              <SelectMenu
                 aria-label="Category for selected"
-                value={bulkType}
-                onChange={(event) => setBulkType(event.target.value)}
+                value={String(bulkType)}
+                options={[
+                  { value: String(KEEP), label: "— category: leave as is —" },
+                  { value: "", label: "— blank (falls back) —" },
+                  ...bookingTypes.map((t) => ({
+                    value: String(t),
+                    label: String(typeLabel(t)),
+                  })),
+                ]}
+                onChange={(next) => setBulkType(next)}
                 className={BULK_SELECT_CLASS}
-              >
-                <option value={KEEP}>— category: leave as is —</option>
-                <option value="">— blank (falls back) —</option>
-                {bookingTypes.map((t) => (
-                  <option key={t} value={t}>
-                    {typeLabel(t)}
-                  </option>
-                ))}
-              </select>
+              />
               {tourTypes || busTourTypes ? (
-                <select
+                <SelectMenu
                   aria-label="Tour type for selected"
-                  value={bulkTour}
+                  value={String(bulkTour)}
+                  options={[
+                    {
+                      value: String(KEEP),
+                      label: "— tour type: leave as is —",
+                    },
+                    { value: "", label: "— no tour type —" },
+                    ...(bulkTourTypes ?? []).map((t) => ({
+                      value: String(t.key),
+                      label: String(t.label),
+                    })),
+                  ]}
                   disabled={kind === "bus"}
                   title={
                     kind === "bus"
                       ? "Tour type of bus products is set per section in Bus Manifest setup."
                       : undefined
                   }
-                  onChange={(event) => setBulkTour(event.target.value)}
+                  onChange={(next) => setBulkTour(next)}
                   className={BULK_SELECT_CLASS}
-                >
-                  <option value={KEEP}>— tour type: leave as is —</option>
-                  <option value="">— no tour type —</option>
-                  {(bulkTourTypes ?? []).map((t) => (
-                    <option key={t.key} value={t.key}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
+                />
               ) : null}
             </BulkBar>
           )}

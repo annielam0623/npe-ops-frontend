@@ -2,6 +2,7 @@
 // 前提：mock（dr-mock.js）在 8799，next dev 在 3198（API_PROXY_TARGET 指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -58,7 +59,7 @@ async function goto(url) {
 }
 
 // 页面里用的小工具（每次导航后重新注入）。
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$t = (sel) => [...document.querySelectorAll(sel)].map(e => e.textContent.trim());
 window.$rows = () => [...document.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent.trim()));
 window.$heads = () => [...document.querySelectorAll('thead th')].map(th => th.textContent.replace('⠿','').trim());
@@ -107,6 +108,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
 
   try {
@@ -141,11 +143,7 @@ window.$drag = (src, dst) => {
   dst.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }));
   src.dispatchEvent(new DragEvent('dragend', { bubbles: true, cancelable: true, dataTransfer: dt }));
 };
-window.$select = (sel, value) => {
-  const s = document.querySelector(sel);
-  Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, value);
-  s.dispatchEvent(new Event('change', { bubbles: true }));
-};`;
+window.$select = (sel, value) => $sel(document.querySelector(sel), value);`;
 
 async function openDashboard() {
   await goto(`${APP}/dashboard`);
@@ -577,7 +575,7 @@ async function run() {
   await evaluate("$setValue(document.querySelector('[data-nav-item=orders] input'), 'Order list'); document.querySelector('[data-nav-item=task_board] input[type=checkbox]').click(); return 1;");
   await sleep(100);
   await evaluate("$btn('', document.querySelector('[data-nav-item=forms]')); [...document.querySelectorAll('button')].find(b => b.getAttribute('aria-label') === 'Move Forms up').click(); return 1;");
-  await evaluate("$select('select[aria-label=\"Add a default shortcut\"]', 'orders'); return 1;");
+  await evaluate("$select(':is(select,[data-select-menu])[aria-label=\"Add a default shortcut\"]', 'orders'); return 1;");
   await sleep(150);
   check(
     "默认快捷方式：内置默认七个（去掉小部件是六个页面），再加 Orders",

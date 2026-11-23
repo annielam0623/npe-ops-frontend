@@ -17,6 +17,7 @@ import type { FarmOutLocation } from "@/types/farm-out";
 
 import { plural, readDrag, SEAT_DRAG, type SeatMove } from "./seating";
 import { usePartnerLocations } from "./use-farm-out";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /**
  * Farm out 车下面的名单（G40）：每单选一个酒店（这家公司自己的上车点）、集合 / 发车时间（按时刻表自动算、可改）、
@@ -166,25 +167,25 @@ function ProductCell({
     );
   }
   return (
-    <select
+    <SelectMenu
       aria-label={`Product for ${order.name || order.order_number}`}
       disabled={disabled}
-      value={picked?.id ?? ""}
-      onChange={(e) => onPick(e.target.value ? Number(e.target.value) : null)}
+      value={String(picked?.id ?? "")}
+      options={[
+        { value: "", label: "Pick a product" },
+        ...opts.map((p) => ({
+          value: String(p.id),
+          label: String(p.display_name),
+        })),
+      ]}
+      onChange={(next) => onPick(next ? Number(next) : null)}
       className={cn(
         "h-7 max-w-[240px] rounded-md px-1",
         picked
           ? "border-[0.5px] border-black/25 bg-paper"
           : "border border-dashed border-[#e7b75a] bg-[#fdf6e7] text-[#8a5a00]",
       )}
-    >
-      <option value="">Pick a product</option>
-      {opts.map((p) => (
-        <option key={p.id} value={p.id}>
-          {p.display_name}
-        </option>
-      ))}
-    </select>
+    />
   );
 }
 
@@ -397,15 +398,26 @@ export function FarmOutGuests({
                       ) : null}
                       <td className="px-2 py-2">
                         {editable ? (
-                          <select
+                          <SelectMenu
                             aria-label={`Pick-up hotel for ${o.name || o.order_number}`}
                             disabled={off}
-                            value={f.partner_location_id ?? ""}
-                            onChange={(e) =>
+                            value={String(f.partner_location_id ?? "")}
+                            options={[
+                              { value: "", label: "Choose hotel…" },
+                              ...locList.flatMap((l) =>
+                                !(l.id == null)
+                                  ? [
+                                      {
+                                        value: String(l.id),
+                                        label: `${l.hotel_name}${l.spot ? ` · ${l.spot}` : ""}`,
+                                      },
+                                    ]
+                                  : [],
+                              ),
+                            ]}
+                            onChange={(next) =>
                               void patch(o, {
-                                partner_location_id: e.target.value
-                                  ? Number(e.target.value)
-                                  : null,
+                                partner_location_id: next ? Number(next) : null,
                               })
                             }
                             className={cn(
@@ -414,17 +426,7 @@ export function FarmOutGuests({
                                 ? "border border-dashed border-[#e7b75a] bg-[#fdf6e7] text-[#8a5a00]"
                                 : "border-[0.5px] border-black/25 bg-paper",
                             )}
-                          >
-                            <option value="">Choose hotel…</option>
-                            {locList.map((l) =>
-                              l.id == null ? null : (
-                                <option key={l.id} value={l.id}>
-                                  {l.hotel_name}
-                                  {l.spot ? ` · ${l.spot}` : ""}
-                                </option>
-                              ),
-                            )}
-                          </select>
+                          />
                         ) : (
                           "—"
                         )}
@@ -490,22 +492,23 @@ export function FarmOutGuests({
                         </td>
                       ) : null}
                       <td className="px-2 py-2">
-                        <select
+                        <SelectMenu
                           aria-label={`Bus for ${o.name || o.order_number || "this order"}`}
                           disabled={disabled}
-                          value={o.bus_label ?? ""}
-                          onChange={(e) => {
-                            if (e.target.value)
-                              onMove({ order: o, to: e.target.value });
+                          value={String(o.bus_label ?? "")}
+                          options={[
+                            ...others.map((b) => ({
+                              value: String(b.label),
+                              label: String(
+                                b.farm_out ? "Farm out" : `Bus ${b.label}`,
+                              ),
+                            })),
+                          ]}
+                          onChange={(next) => {
+                            if (next) onMove({ order: o, to: next });
                           }}
                           className="h-6 rounded-md border-[0.5px] border-black/25 bg-paper px-1 text-[11.5px] disabled:opacity-60"
-                        >
-                          {others.map((b) => (
-                            <option key={b.label} value={b.label}>
-                              {b.farm_out ? "Farm out" : `Bus ${b.label}`}
-                            </option>
-                          ))}
-                        </select>
+                        />
                       </td>
                     </tr>
                   );

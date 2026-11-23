@@ -22,6 +22,7 @@ import {
   ruleConflicts,
   type DescribeContext,
 } from "./rules";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 type Params = Record<string, unknown>;
 
@@ -279,11 +280,20 @@ export function RuleDialog({
             </p>
           ) : (
             <Field label="Type">
-              <select
+              <SelectMenu
                 aria-label="Rule type"
-                value={type}
-                onChange={(e) => {
-                  const next = e.target.value as RuleType;
+                value={String(type)}
+                options={[
+                  // 班次时间现在在页面上方「Default shift times」里设（后端正式来源，superadmin 改），这里不再新增，避免两处各填一遍。
+                  ...RULE_TYPES.filter((t) => t.type !== "shift_times").map(
+                    (t) => ({
+                      value: String(t.type),
+                      label: `${t.label} — ${t.hint}`,
+                    }),
+                  ),
+                ]}
+                onChange={(picked) => {
+                  const next = picked as RuleType;
                   setType(next);
                   setParams(defaultParams(next, ctx));
                   // 置顶 118：换成 Maximum days 时 Who 跟着默认 Only（同 defaultParams 的 employee_ids），不然存出去变成每个人。
@@ -291,14 +301,7 @@ export function RuleDialog({
                   setError(null);
                 }}
                 className={SELECT}
-              >
-                {/* 班次时间现在在页面上方「Default shift times」里设（后端正式来源，superadmin 改），这里不再新增，避免两处各填一遍。 */}
-                {RULE_TYPES.filter((t) => t.type !== "shift_times").map((t) => (
-                  <option key={t.type} value={t.type}>
-                    {t.label} — {t.hint}
-                  </option>
-                ))}
-              </select>
+              />
             </Field>
           )}
 
@@ -390,30 +393,24 @@ function Fields({
   const active = ctx.employees.filter((e) => e.is_active);
   const shifts = ctx.shiftTypes.filter((t) => t.is_active);
   const EmployeeSelect = ({ anyLabel }: { anyLabel?: string }) => (
-    <select
+    <SelectMenu
       aria-label="Employee"
-      value={params.employee_id == null ? "" : String(params.employee_id)}
-      onChange={(e) =>
+      value={String(
+        params.employee_id == null ? "" : String(params.employee_id),
+      )}
+      options={[
+        ...(anyLabel
+          ? [{ value: "", label: String(anyLabel) }]
+          : [{ value: "", label: "Pick someone", disabled: true }]),
+        ...active.map((e) => ({ value: String(e.id), label: String(e.name) })),
+      ]}
+      onChange={(next) =>
         set({
-          employee_id:
-            e.target.value === "" ? undefined : Number(e.target.value),
+          employee_id: next === "" ? undefined : Number(next),
         })
       }
       className={SELECT}
-    >
-      {anyLabel ? (
-        <option value="">{anyLabel}</option>
-      ) : (
-        <option value="" disabled>
-          Pick someone
-        </option>
-      )}
-      {active.map((e) => (
-        <option key={e.id} value={e.id}>
-          {e.name}
-        </option>
-      ))}
-    </select>
+    />
   );
   const ShiftSelect = ({
     field,
@@ -422,21 +419,19 @@ function Fields({
     field: string;
     anyLabel?: string;
   }) => (
-    <select
+    <SelectMenu
       aria-label="Shift"
-      value={(params[field] as string | undefined) ?? ""}
-      onChange={(e) =>
-        set({ [field]: e.target.value === "" ? undefined : e.target.value })
-      }
+      value={String((params[field] as string | undefined) ?? "")}
+      options={[
+        ...(anyLabel ? [{ value: "", label: String(anyLabel) }] : []),
+        ...shifts.map((t) => ({
+          value: String(t.key),
+          label: String(t.label),
+        })),
+      ]}
+      onChange={(next) => set({ [field]: next === "" ? undefined : next })}
       className={SELECT}
-    >
-      {anyLabel ? <option value="">{anyLabel}</option> : null}
-      {shifts.map((t) => (
-        <option key={t.key} value={t.key}>
-          {t.label}
-        </option>
-      ))}
-    </select>
+    />
   );
   const Days = ({ field }: { field: string }) => {
     const days = (params[field] as DayIndex[] | undefined) ?? [];
@@ -569,42 +564,42 @@ function Fields({
                   className="flex items-center gap-2"
                   data-rotation-slot
                 >
-                  <select
+                  <SelectMenu
                     aria-label="Day"
-                    value={s.day}
-                    onChange={(e) =>
+                    value={String(s.day)}
+                    options={[
+                      ...DAY_LABELS.map((d, di) => ({
+                        value: String(di),
+                        label: String(d),
+                      })),
+                    ]}
+                    onChange={(next) =>
                       set({
                         slots: slots.map((x, j) =>
-                          j === i ? { ...x, day: Number(e.target.value) } : x,
+                          j === i ? { ...x, day: Number(next) } : x,
                         ),
                       })
                     }
                     className={cn(INPUT, "w-[90px]")}
-                  >
-                    {DAY_LABELS.map((d, di) => (
-                      <option key={d} value={di}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
-                  <select
+                  />
+                  <SelectMenu
                     aria-label="Shift"
-                    value={s.shift_type}
-                    onChange={(e) =>
+                    value={String(s.shift_type)}
+                    options={[
+                      ...shifts.map((t) => ({
+                        value: String(t.key),
+                        label: String(t.label),
+                      })),
+                    ]}
+                    onChange={(next) =>
                       set({
                         slots: slots.map((x, j) =>
-                          j === i ? { ...x, shift_type: e.target.value } : x,
+                          j === i ? { ...x, shift_type: next } : x,
                         ),
                       })
                     }
                     className={cn(INPUT, "w-[120px]")}
-                  >
-                    {shifts.map((t) => (
-                      <option key={t.key} value={t.key}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
+                  />
                   <button
                     type="button"
                     aria-label="Remove shift"
@@ -667,15 +662,16 @@ function Fields({
       return (
         <>
           <Field label="Rule">
-            <select
+            <SelectMenu
               aria-label="Mode"
-              value={(params.mode as string) ?? "exactly"}
-              onChange={(e) => set({ mode: e.target.value })}
+              value={String((params.mode as string) ?? "exactly")}
+              options={[
+                { value: "exactly", label: "Exactly" },
+                { value: "max", label: "At most" },
+              ]}
+              onChange={(next) => set({ mode: next })}
               className={SELECT}
-            >
-              <option value="exactly">Exactly</option>
-              <option value="max">At most</option>
-            </select>
+            />
           </Field>
           <Field label="Days a week">{num("n", 1, 7)}</Field>
           <Field label="Who (none picked = everyone)">
@@ -687,18 +683,19 @@ function Fields({
       return (
         <>
           <Field label="Who">
-            <select
+            <SelectMenu
               aria-label="Who"
-              value={whoMode}
-              onChange={(e) =>
-                setWhoMode(e.target.value as "everyone" | "only" | "except")
+              value={String(whoMode)}
+              options={[
+                { value: "everyone", label: "Everyone" },
+                { value: "only", label: "Only these people" },
+                { value: "except", label: "Everyone except" },
+              ]}
+              onChange={(next) =>
+                setWhoMode(next as "everyone" | "only" | "except")
               }
               className={SELECT}
-            >
-              <option value="everyone">Everyone</option>
-              <option value="only">Only these people</option>
-              <option value="except">Everyone except</option>
-            </select>
+            />
           </Field>
           {whoMode === "only" ? (
             <Field label="These people">
@@ -714,15 +711,16 @@ function Fields({
           </Field>
           <Field label="At least (days)">{num("n", 1, 28)}</Field>
           <Field label="Per">
-            <select
+            <SelectMenu
               aria-label="Per"
-              value={(params.per as string) ?? "week"}
-              onChange={(e) => set({ per: e.target.value })}
+              value={String((params.per as string) ?? "week")}
+              options={[
+                { value: "week", label: "Week" },
+                { value: "4weeks", label: "4 weeks" },
+              ]}
+              onChange={(next) => set({ per: next })}
               className={SELECT}
-            >
-              <option value="week">Week</option>
-              <option value="4weeks">4 weeks</option>
-            </select>
+            />
           </Field>
         </>
       );
@@ -730,18 +728,19 @@ function Fields({
       return (
         <>
           <Field label="Who">
-            <select
+            <SelectMenu
               aria-label="Who"
-              value={whoMode}
-              onChange={(e) =>
-                setWhoMode(e.target.value as "everyone" | "only" | "except")
+              value={String(whoMode)}
+              options={[
+                { value: "everyone", label: "Everyone" },
+                { value: "only", label: "Only these people" },
+                { value: "except", label: "Everyone except" },
+              ]}
+              onChange={(next) =>
+                setWhoMode(next as "everyone" | "only" | "except")
               }
               className={SELECT}
-            >
-              <option value="everyone">Everyone</option>
-              <option value="only">Only these people</option>
-              <option value="except">Everyone except</option>
-            </select>
+            />
           </Field>
           {whoMode === "only" ? (
             <Field label="These people">
@@ -851,23 +850,18 @@ function Exceptions({
             data-exception-row={i}
             className="flex flex-wrap items-center gap-1.5"
           >
-            <select
+            <SelectMenu
               aria-label="Exception shift"
               value={x.shift_type ?? ""}
-              onChange={(e) =>
-                put(i, { shift_type: e.target.value || undefined })
-              }
+              options={[
+                { value: "", label: String(same) },
+                ...(params.shift_type
+                  ? []
+                  : shifts.map((t) => ({ value: t.key, label: t.label }))),
+              ]}
+              onChange={(next) => put(i, { shift_type: next || undefined })}
               className={cn(INPUT, "w-[120px]")}
-            >
-              <option value="">{same}</option>
-              {params.shift_type
-                ? null
-                : shifts.map((t) => (
-                    <option key={t.key} value={t.key}>
-                      {t.label}
-                    </option>
-                  ))}
-            </select>
+            />
             <input
               type="date"
               aria-label="Exception from"

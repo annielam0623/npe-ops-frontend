@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -58,7 +59,7 @@ async function goto(url) {
 }
 
 // 页面里用的小工具（每次导航后重新注入）。
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$t = (sel) => [...document.querySelectorAll(sel)].map(e => e.textContent.trim());
 window.$rows = () => [...document.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent.trim()));
 window.$heads = () => [...document.querySelectorAll('thead th')].map(th => th.textContent.replace('⠿','').trim());
@@ -107,6 +108,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
   // 自动保存（Annie 2026-10-15）：检查里默认等很久、不自己存；要存的地方用 saveNow() / trySave()。
   await cdp("Page.addScriptToEvaluateOnNewDocument", { source: AUTOSAVE_OFF });
@@ -138,8 +140,7 @@ let dialogCount = 0;
 async function pick(selExpr, value) {
   await evaluate(`
     const el = ${selExpr};
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, ${JSON.stringify(String(value))});
-    el.dispatchEvent(new Event('change', { bubbles: true }));`);
+    return $sel(el, ${JSON.stringify(String(value))});`);
   await sleep(Number(process.env.PICK_WAIT) || 150);
 }
 const opts = (selExpr) => `[...${selExpr}.options].map(o => o.text + (o.disabled ? '[x]' : '')).join('|')`;
@@ -332,7 +333,7 @@ async function run() {
   before = (await mockLog()).length;
   await trySave();
   check("预填只是看一眼：不自动存、不占这一天、Step 2 不写 Saving…", (await since(before, (e) => isSave(e) || e.path === "/api/dispatch/edit-lock")).length === 0 && (await evaluate(`return ${saveState} === '';`)), await evaluate(`return ${saveState};`));
-  check("CCL 名字分不清：Who CCL meant 组、红字写候选", await evaluate(`return [...${vrow(1)}.querySelectorAll('optgroup')].some(g => g.label === 'Who CCL meant' && g.textContent.includes('Bruce O')) && ${vrow(1)}.querySelector('[data-ccl=driver]').textContent.includes('CCL wrote BRUCE - pick Bruce O or Bruce W');`));
+  check("CCL 名字分不清：Who CCL meant 组、红字写候选", await evaluate(`const dsel = ${vrow(1)}.querySelector('[data-f=driver]'); const list = await $selOpen(dsel); const kids = [...list.children]; const gi = kids.findIndex((k) => k.matches('[data-select-group]') && k.textContent === 'Who CCL meant'); const inGroup = gi >= 0 && kids.slice(gi + 1).findIndex((k) => !k.matches('[role=option]')) !== 0 && kids.slice(gi + 1, (kids.slice(gi + 1).findIndex((k) => !k.matches('[role=option]')) + gi + 1) || undefined).some((k) => k.textContent.includes('Bruce O')); await $selClose(dsel); return inGroup && ${vrow(1)}.querySelector('[data-ccl=driver]').textContent.includes('CCL wrote BRUCE - pick Bruce O or Bruce W');`));
   check("CCL 对上了的显示灰字；线路名显示", await evaluate(`return ${vrow(0)}.querySelector('[data-ccl=driver]').textContent === 'CCL: FREDDY' && ${vrow(1)}.textContent.includes('CCL: WESTRIM');`));
   check("CCL 关闭的团：块头写原话、不能加车", await evaluate(`return ${sec("Hoover Dam")}.textContent.includes('Closed due to weather') && ${sec("Hoover Dam")}.textContent.includes('CCL closed this tour') && !$btn('+ Add vehicle', ${sec("Hoover Dam")});`));
   // 有读不懂的行：原文默认展开、那一行标红（Discord 的 ** 剥掉再比），原文一个字不改（后端 2026-10-10 `66bce1e`）。
@@ -430,7 +431,7 @@ async function run() {
   await waitFor("document.querySelector('.vrow')");
   await helpers();
   check("meta：顶部覆盖数只按 coverage_shifts、标签用 round_names", await evaluate("const t = document.querySelector('section[aria-label=Summary]').textContent; return t.includes('relay hotels · Early Round') && t.split('relay hotels').length === 2;"), await evaluate("return document.querySelector('section[aria-label=Summary]').textContent;"));
-  check("meta：Bus 字母下拉用 bus_labels（多了 F）", await evaluate(`return [...${vrow(1)}.querySelectorAll('select')].some(s => [...s.options].some(o => o.value === 'F'));`));
+  check("meta：Bus 字母下拉用 bus_labels（多了 F）", await evaluate(`return [...${vrow(1)}.querySelectorAll('select, [data-select-menu]')].some(s => [...s.options].some(o => o.value === 'F'));`));
   await ctl({ altMeta: false, noMeta: true });
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor("document.querySelector('.vrow')");
@@ -1236,7 +1237,7 @@ async function run() {
     check("G308 Not on a bus 那条的 Fix ›：滚到橙色 Not on a bus 那一栏", await evaluate("const r = document.querySelector('[data-unplaced=\"3\"]').getBoundingClientRect(); return window.scrollY > 100 && r.top >= 0 && r.bottom <= innerHeight;"));
   }
   await sleep(100);
-  check("点开：列订单（名字、单号、几位、接客时间地点、换车下拉）", await evaluate(`const t = ${bg("3:A")}.textContent; return ${bg("3:A")}.querySelectorAll('[data-seat-order]').length === 2 && t.includes('ZZ Test Alpha') && t.includes('SG1') && t.includes('6:30 AM · TI') && !!${bg("3:A")}.querySelector('select');`));
+  check("点开：列订单（名字、单号、几位、接客时间地点、换车下拉）", await evaluate(`const t = ${bg("3:A")}.textContent; return ${bg("3:A")}.querySelectorAll('[data-seat-order]').length === 2 && t.includes('ZZ Test Alpha') && t.includes('SG1') && t.includes('6:30 AM · TI') && !!${bg("3:A")}.querySelector('select, [data-select-menu]');`));
   // U / L / X 团类型筛选键（Annie 2026-10-18「C窗口可以动手」，后端 a307762）
   const tk = (col, k) => `document.querySelector('[data-type-keys="3:${col}"] [data-type-key=${k}]')`;
   check("有两种以上团类型：每台车顶上一排键 All / Upper / Lower（后端键 upper_antelope / lower_antelope，Annie 10-29 写全称），旁边写这台车该类型的人数；X 没有就不放", await evaluate(`const t = document.querySelector('[data-type-keys="3:A"]'); return !!t && [...t.querySelectorAll('button')].map(b => b.textContent.trim()).join('|') === 'All 4|Upper 2|Lower 2' && [...document.querySelector('[data-type-keys="3:B"]').querySelectorAll('button')].map(b => b.textContent.trim()).join('|') === 'All 3|Upper 3|Lower 0';`), await evaluate(`return [...document.querySelectorAll('[data-type-keys] button')].map(b => b.textContent.trim()).join('|');`));
@@ -1248,14 +1249,14 @@ async function run() {
   check("72：Seat guests 每单勾选框放大成 Main manifest 的大小（20px）", await evaluate(`const b = document.querySelector('[data-seat-select]').getBoundingClientRect(); return Math.round(b.width) === 20 && Math.round(b.height) === 20;`));
   check("点 All：两张订单都回来，勾选取消", await evaluate(`const a = ${bg("3:A")}; return a.querySelectorAll('[data-seat-order]').length === 2 && [...a.querySelectorAll('[data-seat-select]')].every(b => !b.checked);`));
   let sb = (await mockLog()).length;
-  await evaluate(`const s = ${bg("3:A")}.querySelector('[data-seat-order=SG2] select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'B'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+  await evaluate(`const s = ${bg("3:A")}.querySelector('[data-seat-order=SG2] :is(select,[data-select-menu])'); return $sel(s, 'B');`);
   await waitFor(`${bg("3:B")}.textContent.includes('5 / 4 seats')`);
   let mv = await seatMoves(sb);
   check("下拉换车：POST seating/move 带这一单的客人和字母，重读后挪到 B（超座位标红）", mv.length === 1 && JSON.stringify(mv[0].body) === JSON.stringify({ guest_ids: [3, 4], bus_label: "B" }) && (await evaluate(`return ${bg("3:B")}.textContent.includes('5 / 4 seats');`)), JSON.stringify(mv));
   await sleep(100);
-  check("staff 挪过的单：写明，下拉显示那台车", await evaluate(`const o = ${bg("3:B")}.querySelector('[data-seat-order=SG2]'); return o.textContent.includes('Placed by staff') && o.querySelector('select').value === 'B';`));
+  check("staff 挪过的单：写明，下拉显示那台车", await evaluate(`const o = ${bg("3:B")}.querySelector('[data-seat-order=SG2]'); return o.textContent.includes('Placed by staff') && o.querySelector('select, [data-select-menu]').value === 'B';`));
   sb = (await mockLog()).length;
-  await evaluate(`const s = ${bg("3:B")}.querySelector('[data-seat-order=SG2] select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, ''); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+  await evaluate(`const s = ${bg("3:B")}.querySelector('[data-seat-order=SG2] :is(select,[data-select-menu])'); return $sel(s, '');`);
   await waitFor(`${bg("3:A")}.textContent.includes('4 / 4 seats')`);
   mv = await seatMoves(sb);
   check("选 Auto：bus_label 空，交回自动分车", mv.length === 1 && mv[0].body.bus_label === "", JSON.stringify(mv));
@@ -1284,11 +1285,11 @@ async function run() {
   mv = await seatMoves(sb);
   check("拖其中一张已勾选的订单：已勾选的两张（SG1、SG3）的客人一起走，一次 POST", mv.length === 1 && JSON.stringify([...mv[0].body.guest_ids].sort((x, y) => x - y)) === JSON.stringify([1, 2, 5, 6, 7]) && mv[0].body.bus_label === "A", JSON.stringify(mv));
   await ctl({ seatErr: "Bus B is not on the saved schedule for this tour. Save schedule in Step 2, then try again." });
-  await evaluate(`const s = ${bg("3:A")}.querySelector('[data-seat-order=SG1] select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'B'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+  await evaluate(`const s = ${bg("3:A")}.querySelector('[data-seat-order=SG1] :is(select,[data-select-menu])'); return $sel(s, 'B');`);
   await waitFor("document.querySelector('[data-seat-notes=\"3\"] [role=alert]')");
   check("挪车出错：在这个团的车下面写原因", (await evaluate("return document.querySelector('[data-seat-notes=\"3\"] [role=alert]').textContent;")).includes("Not moved: Bus B is not on the saved schedule"));
   await ctl({ seatErr: "", autoSkip: true });
-  await evaluate(`const s = ${bg("3:A")}.querySelector('[data-seat-order=SG1] select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, ''); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+  await evaluate(`const s = ${bg("3:A")}.querySelector('[data-seat-order=SG1] :is(select,[data-select-menu])'); return $sel(s, '');`);
   await waitFor("document.querySelector('[data-seat-notes=\"3\"] [role=alert]')?.textContent.includes('Completed')");
   check("选 Auto、后端回 auto_skipped（G56：Completed 那天不自动分车）：车下面写 This day is Completed — pick a bus.", (await evaluate("return document.querySelector('[data-seat-notes=\"3\"] [role=alert]').textContent;")).includes("This day is Completed — pick a bus."));
   await ctl({ autoSkip: false });
@@ -1393,11 +1394,11 @@ async function run() {
   check("Completed 之后：那个团的卡片上橙字「2 changes after Completed」", (await evaluate(`return ${cardEl(3)}.querySelector('[data-card-pending]')?.textContent || '';`)) === "2 changes after Completed");
   await sleep(150);
   check("Completed 之后的 Not on a bus：写「Completed: pick a bus for each order」、新单标 New after Completed", await evaluate("const u = document.querySelector('[data-unplaced=\"3\"]'); return u.textContent.includes('Completed: pick a bus for each order') && u.querySelector('[data-seat-order=SG4]').textContent.includes('New after Completed');"));
-  check("Completed 之后的换车下拉：没有 Auto，先是 Choose a bus…，每台车写已坐 / 座位、不预选", await evaluate("const o = [...document.querySelectorAll('[data-unplaced=\"3\"] [data-seat-order=SG4] select option')].map(x => x.textContent + (x.disabled ? '(off)' : '')); const s = document.querySelector('[data-unplaced=\"3\"] [data-seat-order=SG4] select'); return o.join('|') === 'Choose a bus…(off)|Bus A (4 / 4)|Bus B (3 / 4)' && s.value === '';"), await evaluate("return [...document.querySelectorAll('[data-unplaced=\"3\"] [data-seat-order=SG4] select option')].map(x => x.textContent).join('|');"));
+  check("Completed 之后的换车下拉：没有 Auto，先是 Choose a bus…，每台车写已坐 / 座位、不预选", await evaluate("const o = [...document.querySelector('[data-unplaced=\"3\"] [data-seat-order=SG4] :is(select,[data-select-menu])').options].map(x => x.textContent + (x.disabled ? '(off)' : '')); const s = document.querySelector('[data-unplaced=\"3\"] [data-seat-order=SG4] :is(select,[data-select-menu])'); return o.join('|') === 'Choose a bus…(off)|Bus A (4 / 4)|Bus B (3 / 4)' && s.value === '';"), await evaluate("return [...document.querySelector('[data-unplaced=\"3\"] [data-seat-order=SG4] :is(select,[data-select-menu])').options].map(x => x.textContent).join('|');"));
   await sleep(100);
-  check("Completed 之后：已坐好的单下拉里也没有 Auto", await evaluate(`return ![...${bg("3:A")}.querySelectorAll('option')].some(x => x.textContent === 'Auto');`));
+  check("Completed 之后：已坐好的单下拉里也没有 Auto", await evaluate(`return ![...${bg("3:A")}.querySelectorAll('select, [data-select-menu]')].flatMap((s) => [...s.options]).some(x => x.textContent === 'Auto');`));
   sb = (await mockLog()).length;
-  await evaluate(`const s = document.querySelector('[data-unplaced="3"] [data-seat-order=SG4] select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'B'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+  await evaluate(`const s = document.querySelector('[data-unplaced="3"] [data-seat-order=SG4] :is(select,[data-select-menu])'); return $sel(s, 'B');`);
   await waitFor("!document.querySelector('[data-unplaced=\"3\"]')");
   mv = await seatMoves(sb);
   check("Completed 之后给新单选车：POST seating/move 带这一单和字母", mv.length === 1 && JSON.stringify(mv[0].body) === JSON.stringify({ guest_ids: [8, 9], bus_label: "B" }), JSON.stringify(mv));
@@ -1407,7 +1408,7 @@ async function run() {
   await waitFor(`document.querySelector('[data-unplaced="3"]')`);
   await sleep(300);
   await sleep(150);
-  check("待处理接口还没上线（404）：点过 Completed 也照旧给 Auto、不写「Completed: pick a bus」、没有变化那一块", await evaluate("const u = document.querySelector('[data-unplaced=\"3\"]'); return [...u.querySelectorAll('option')].some(x => x.textContent === 'Auto') && !u.textContent.includes('Completed: pick a bus') && !document.querySelector('[data-pending]');"));
+  check("待处理接口还没上线（404）：点过 Completed 也照旧给 Auto、不写「Completed: pick a bus」、没有变化那一块", await evaluate("const u = document.querySelector('[data-unplaced=\"3\"]'); return [...u.querySelectorAll('select, [data-select-menu]')].flatMap((s) => [...s.options]).some(x => x.textContent === 'Auto') && !u.textContent.includes('Completed: pick a bus') && !document.querySelector('[data-pending]');"));
   await ctl({ completed: false, pendingOff: false, resetSeats: true });
   promptAnswer = null;
 
@@ -2304,7 +2305,7 @@ async function run() {
       check("名单编辑：存好 ⇒ 绿底 ✓ Saved、写着 The old name GIA was added to Other spellings.", await evaluate(`const r = ${side("driver")}.querySelector('[data-roster-person="2"]'); return r.textContent.includes('GIA M') && r.textContent.includes('✓ Saved') && r.querySelector('[data-roster-old-name]')?.textContent === 'The old name GIA was added to Other spellings.';`));
       check("名单编辑：Guides 那边同一个人也换成新名字", await evaluate(`return ${side("guide")}.querySelector('[data-roster-person="2"]').textContent.includes('GIA M');`));
       await closeRoster();
-      check("名单编辑：排车页司机下拉马上是新名字（没重读这一天）", await evaluate("return [...document.querySelectorAll('select[aria-label=Driver] option')].some((o) => o.textContent.trim().startsWith('GIA M'));"));
+      check("名单编辑：排车页司机下拉马上是新名字（没重读这一天）", await evaluate("return [...document.querySelectorAll(':is(select,[data-select-menu])[aria-label=Driver]')].flatMap((s) => [...s.options]).some((o) => o.textContent.trim().startsWith('GIA M'));"));
       check("名单编辑：没有重读这一天", (await since(b, (e) => e.path.startsWith("/api/dispatch/day"))).length === 0);
       await ctl({ rosterEdit: false, roster: "off", rosterVis: null });
     }
@@ -2398,7 +2399,7 @@ async function run() {
       `) === true,
       await evaluate(`return JSON.stringify([...document.querySelectorAll('main button')].filter((b) => b.offsetParent !== null).map((b) => b.textContent.trim()).slice(0, 30));`),
     );
-    check(`partner ${url}：车行的下拉都是关着的`, await evaluate("return [...document.querySelectorAll('.vrow select')].every((s) => s.matches(':disabled'));"));
+    check(`partner ${url}：车行的下拉都是关着的`, await evaluate("return [...document.querySelectorAll('.vrow :is(select,[data-select-menu])')].every((s) => s.matches(':disabled'));"));
   }
 
   // ── partner 勾了 dispatch.edit + dispatch.send：也只看（Annie 2026-10-27「合作方只能看…不能改或者选任何功能」）；
@@ -2415,7 +2416,7 @@ async function run() {
     const reqs = (await mockLog()).slice(before);
     const farm = reqs.filter((r) => r.path.startsWith("/api/farm-out/")).map((r) => r.path);
     const writes = reqs.filter((r) => r.method !== "GET").map((r) => `${r.method} ${r.path}`);
-    check(`partner 勾 edit ${url}：照样只看（没有 + Add vehicle、Pull from Discord，车行下拉都关着）`, await evaluate("const texts = [...document.querySelectorAll('main button')].filter((b) => b.offsetParent !== null).map((b) => b.textContent.trim()); return !texts.some((x) => x.startsWith('+ Add vehicle') || x.startsWith('Pull from Discord')) && [...document.querySelectorAll('.vrow select')].every((s) => s.matches(':disabled'));"), await evaluate(`return JSON.stringify([...document.querySelectorAll('main button')].filter((b) => b.offsetParent !== null).map((b) => b.textContent.trim()).slice(0, 30));`));
+    check(`partner 勾 edit ${url}：照样只看（没有 + Add vehicle、Pull from Discord，车行下拉都关着）`, await evaluate("const texts = [...document.querySelectorAll('main button')].filter((b) => b.offsetParent !== null).map((b) => b.textContent.trim()); return !texts.some((x) => x.startsWith('+ Add vehicle') || x.startsWith('Pull from Discord')) && [...document.querySelectorAll('.vrow :is(select,[data-select-menu])')].every((s) => s.matches(':disabled'));"), await evaluate(`return JSON.stringify([...document.querySelectorAll('main button')].filter((b) => b.offsetParent !== null).map((b) => b.textContent.trim()).slice(0, 30));`));
     check(`partner 勾 edit ${url}：一次写请求都没有（不占编辑锁、不同步、不存）`, writes.length === 0, JSON.stringify(writes));
     check(`partner 勾 send ${url}：② Send 标签和面板都不出`, await evaluate("const vis = (q) => [...document.querySelectorAll(q)].some((e) => e.offsetParent !== null); return !vis('#tab-send') && !vis('#panel-send');"));
     check(`partner 勾 edit ${url}：Farm out 不画、不请求 /api/farm-out/*`, farm.length === 0 && (await evaluate("return !['[data-farm-out-bus]', '[data-farm-out-guests]', '[data-farm-out-on]'].some((q) => [...document.querySelectorAll(q)].some((e) => e.offsetParent !== null));")), JSON.stringify(farm));
@@ -2438,7 +2439,7 @@ async function run() {
     await waitFor("document.querySelector('.vrow')", 60000);
     await sleep(2500);
     await helpers();
-    const editable = await evaluate("const texts = [...document.querySelectorAll('main button')].filter((b) => b.offsetParent !== null).map((b) => b.textContent.trim()); return texts.some((x) => x.startsWith('Pull from Discord')) && [...document.querySelectorAll('.vrow select')].some((s) => !s.matches(':disabled'));");
+    const editable = await evaluate("const texts = [...document.querySelectorAll('main button')].filter((b) => b.offsetParent !== null).map((b) => b.textContent.trim()); return texts.some((x) => x.startsWith('Pull from Discord')) && [...document.querySelectorAll('.vrow :is(select,[data-select-menu])')].some((s) => !s.matches(':disabled'));");
     const sendTab = await evaluate("return [...document.querySelectorAll('#tab-send')].some((e) => e.offsetParent !== null);");
     check(`${label}：${canEdit ? "能改排车（Pull from Discord、车行下拉能选）" : "只看（没有 Pull from Discord，车行下拉都关着）"}`, editable === canEdit, String(editable));
     check(`${label}：${canSend ? "有" : "没有"} ② Send 标签`, sendTab === canSend, String(sendTab));
@@ -2460,7 +2461,8 @@ async function run() {
     await ctl({ hotelGroups: true });
     await goto(`${APP}/dispatch?date=2026-10-18`);
     await waitFor(sel, 60000);
-    const got = await evaluate(`return [...${sel}.options].map(o => ({ t: o.text.replace(/ - .*$| \\(also .*\\)$/, ''), x: o.disabled, v: o.value, i: getComputedStyle(o).fontStyle, c: getComputedStyle(o).color, w: getComputedStyle(o).fontWeight }));`);
+    // 全站下拉：点开菜单读每一行的样子（菜单挂在 body 上）。
+    const got = await evaluate(`const b = ${sel}; const list = await $selOpen(b); const out = [...list.querySelectorAll('[role=option]')].map(o => ({ t: o.textContent.replace(/ - .*$| \\(also .*\\)$/, ''), x: o.getAttribute('aria-disabled') === 'true', v: o.dataset.value, i: getComputedStyle(o).fontStyle, c: getComputedStyle(o).color, w: getComputedStyle(o).fontWeight })); await $selClose(b); return out;`);
     const div = got.findIndex((o) => o.t === "~~~~~ Shuttle Pick up ~~~~~");
     const top = got.slice(1, div).map((o) => o.t);
     const bottom = got.slice(div + 1).map((o) => o.t);
@@ -2800,7 +2802,7 @@ async function run() {
     await sleep(150);
     check("72 追加：下面写 Move selected (2) to…", await evaluate("return document.querySelector('[data-move-target]').options[0].textContent === 'Move selected (2) to…';"));
     const before = (await mockLog()).length;
-    await evaluate("const s = document.querySelector('[data-move-target]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'B'); s.dispatchEvent(new Event('change', { bubbles: true }));");
+    await evaluate("const s = document.querySelector('[data-move-target]'); return $sel(s, 'B');");
     await sleep(100);
     await evaluate("document.querySelector('[data-move-selected]').click();");
     await waitFor(bgp("3:B") + ".textContent.includes('ZZ Test Adams') && " + bgp("3:B") + ".textContent.includes('ZZ Test Kim')");

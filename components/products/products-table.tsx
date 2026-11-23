@@ -37,6 +37,35 @@ import {
   PROD_TH_CLASS,
   REZDY_NAME_CLASS,
 } from "./legacy-ui";
+import { SelectMenu } from "@/components/ui/select-menu";
+
+/** 名字旁的来源小标签（样子同以前写死的 REZDY）：rezdy / tripguru 各一个，both 两个都出；没有 source 不出。 */
+function SourceTags({ source }: { source: Product["source"] }) {
+  const tags =
+    source === "rezdy"
+      ? ["REZDY"]
+      : source === "tripguru"
+        ? ["TRIPGURU"]
+        : source === "both"
+          ? ["REZDY", "TRIPGURU"]
+          : [];
+  return tags.map((t) => (
+    <span
+      key={t}
+      data-product-source={t.toLowerCase()}
+      className={cn(
+        "ml-1.5 inline-block rounded-[4px] px-[5px] align-[1px] text-[9px] font-semibold whitespace-nowrap",
+        // TRIPGURU 蓝（Annie 2026-11-21「把product里tripguru的标记改成蓝色」）：同 Order List Source 列的 TripGuru
+        // （components/orders/orders-list-view.tsx SOURCE_TAG.tripguru），全站一个 TripGuru 蓝。REZDY 照旧灰。
+        t === "TRIPGURU"
+          ? "bg-[#E6F1FB] text-[#185FA5] night:bg-sky-400/[.08] night:text-sky-300"
+          : "bg-[#f0f0ee] text-[#1a1a1a] night:bg-white/[.03] night:text-white/35",
+      )}
+    >
+      {t}
+    </span>
+  ));
+}
 
 /** 一格的样子：改了没存（琥珀）/ 已保存（绿）/ 存不上（红）。 */
 export type CellState = "saving" | "saved" | "failed";
@@ -67,6 +96,8 @@ export function ProductsTable({
   picked,
   busyId,
   placeholder,
+  folded,
+  onFold,
   allVisiblePicked,
   onPick,
   onPickAll,
@@ -87,6 +118,9 @@ export function ProductsTable({
   picked: Set<number>;
   busyId: number | null;
   placeholder: string | null;
+  /** 收起的组（section.key）。收起只是藏起来，行还在（没存的改动不丢）。 */
+  folded: ReadonlySet<string>;
+  onFold: (key: string) => void;
   allVisiblePicked: boolean;
   onPick: (id: number, on: boolean) => void;
   onPickAll: (on: boolean) => void;
@@ -154,8 +188,8 @@ export function ProductsTable({
             <th className={cn(PROD_TH_CLASS, "w-[12%]")}>Status</th>
           </tr>
         </thead>
+        {placeholder ? (
         <tbody className={TBODY_CLASS}>
-          {placeholder ? (
             <tr>
               <td
                 colSpan={colSpan}
@@ -164,19 +198,36 @@ export function ProductsTable({
                 {placeholder}
               </td>
             </tr>
+        </tbody>
           ) : (
-            sections.map((section) => (
+            sections.map((section) => {
+              const isFolded = folded.has(section.key);
+              return (
               <Fragment key={section.key}>
+              <tbody className={TBODY_CLASS}>
                 <tr className={TR_CLASS}>
-                  <td colSpan={colSpan} className={GROUP_ROW_TD_CLASS}>
-                    {section.title}{" "}
-                    <span className={GROUP_COUNT_CLASS}>
-                      {section.rows.length === section.total
-                        ? section.total
-                        : `${section.rows.length} of ${section.total}`}
-                    </span>
+                  <td colSpan={colSpan} className={cn(GROUP_ROW_TD_CLASS, "p-0")}>
+                    <button
+                      type="button"
+                      data-section-toggle={section.key}
+                      aria-expanded={!isFolded}
+                      onClick={() => onFold(section.key)}
+                      className="flex w-full cursor-pointer items-center gap-1.5 px-3 py-[7px] text-left font-semibold hover:bg-black/[.03] night:hover:bg-white/[.04]"
+                    >
+                      <span aria-hidden className="inline-block w-3 text-[11px]">
+                        {isFolded ? "▸" : "▾"}
+                      </span>
+                      {section.title}{" "}
+                      <span className={GROUP_COUNT_CLASS}>
+                        {section.rows.length === section.total
+                          ? section.total
+                          : `${section.rows.length} of ${section.total}`}
+                      </span>
+                    </button>
                   </td>
                 </tr>
+              </tbody>
+              <tbody className={TBODY_CLASS} hidden={isFolded}>
                 {section.rows.map((p) => (
                   <Fragment key={p.id}>
                     <ProductRow
@@ -201,10 +252,11 @@ export function ProductsTable({
                     ) : null}
                   </Fragment>
                 ))}
+              </tbody>
               </Fragment>
-            ))
+              );
+            })
           )}
-        </tbody>
       </table>
     </div>
   );
@@ -322,9 +374,7 @@ function ProductRow({
         {p.product_name || (
           <i className="text-[#1a1a1a] night:text-white/35">(no name yet)</i>
         )}
-        <span className="ml-1.5 inline-block rounded-[4px] bg-[#f0f0ee] px-[5px] align-[1px] text-[9px] font-semibold whitespace-nowrap text-[#1a1a1a] night:bg-white/[.03] night:text-white/35">
-          REZDY
-        </span>
+        <SourceTags source={p.source} />
       </td>
       <td className={PROD_TD_CLASS}>
         <input
@@ -342,72 +392,75 @@ function ProductRow({
         />
       </td>
       <td className={PROD_TD_CLASS}>
-        <select
+        <SelectMenu
           aria-label={`Group for ${p.product_code}`}
-          value={draft.manifest_id === null ? "" : String(draft.manifest_id)}
+          value={String(
+            draft.manifest_id === null ? "" : String(draft.manifest_id),
+          )}
+          options={[
+            { value: "", label: "— no group —" },
+            ...selectableGroups(groups, p.manifest_id).map((g) => ({
+              value: String(String(g.id)),
+              label: String(groupLabel(g)),
+            })),
+          ]}
           disabled={saving}
-          onChange={(event) =>
+          onChange={(next) =>
             edit({
-              manifest_id: event.target.value
-                ? Number(event.target.value)
-                : null,
+              manifest_id: next ? Number(next) : null,
             })
           }
           className={cellInClass(cell(changed("manifest_id")))}
-        >
-          <option value="">— no group —</option>
-          {selectableGroups(groups, p.manifest_id).map((g) => (
-            <option key={g.id} value={String(g.id)}>
-              {groupLabel(g)}
-            </option>
-          ))}
-        </select>
+        />
       </td>
       <td className={PROD_TD_CLASS}>
-        <select
+        <SelectMenu
           aria-label={`Category for ${p.product_code}`}
-          value={draft.booking_type}
+          value={String(draft.booking_type)}
+          options={[
+            { value: "", label: "— blank (falls back) —" },
+            ...bookingTypes.map((t) => ({
+              value: String(t),
+              label: String(typeLabel(t)),
+            })),
+            // 库里有、但后端清单里没有的旧值照实显示，不让下拉落到别的选项上。
+            ...(p.booking_type && !bookingTypes.includes(p.booking_type)
+              ? [
+                  {
+                    value: String(p.booking_type),
+                    label: String(typeLabel(p.booking_type)),
+                  },
+                ]
+              : []),
+          ]}
           disabled={saving}
-          onChange={(event) => edit({ booking_type: event.target.value })}
+          onChange={(next) => edit({ booking_type: next })}
           className={cellInClass(cell(changed("booking_type")), need)}
-        >
-          <option value="">— blank (falls back) —</option>
-          {bookingTypes.map((t) => (
-            <option key={t} value={t}>
-              {typeLabel(t)}
-            </option>
-          ))}
-          {/* 库里有、但后端清单里没有的旧值照实显示，不让下拉落到别的选项上。 */}
-          {p.booking_type && !bookingTypes.includes(p.booking_type) ? (
-            <option value={p.booking_type}>{typeLabel(p.booking_type)}</option>
-          ) : null}
-        </select>
+        />
       </td>
       {showTour ? (
         <td className={PROD_TD_CLASS}>
           {isTicket ? (
             tourTypes ? (
-              <select
+              <SelectMenu
                 aria-label={`Tour type for ${p.product_code}`}
                 data-tour-field="ticket_tour_type"
-                value={tourType}
+                value={String(tourType)}
+                options={[
+                  { value: "", label: "— no tour type —" },
+                  ...tourTypes.map((t) => ({
+                    value: String(t.key),
+                    label: String(t.label),
+                  })),
+                  // 后端清单里已经没有的旧键照实显示，不让下拉落到别的选项上。
+                  ...(tourType && !tourTypes.some((t) => t.key === tourType)
+                    ? [{ value: String(tourType), label: String(tourType) }]
+                    : []),
+                ]}
                 disabled={saving}
-                onChange={(event) =>
-                  edit({ ticket_tour_type: event.target.value || null })
-                }
+                onChange={(next) => edit({ ticket_tour_type: next || null })}
                 className={cellInClass(cell(tourChanged), false)}
-              >
-                <option value="">— no tour type —</option>
-                {tourTypes.map((t) => (
-                  <option key={t.key} value={t.key}>
-                    {t.label}
-                  </option>
-                ))}
-                {/* 后端清单里已经没有的旧键照实显示，不让下拉落到别的选项上。 */}
-                {tourType && !tourTypes.some((t) => t.key === tourType) ? (
-                  <option value={tourType}>{tourType}</option>
-                ) : null}
-              </select>
+              />
             ) : null
           ) : (
             // 巴士团等：tour type 改成按节设（后端 G130，Annie「按节」），这里只读显示所在节的默认值；去 Bus Manifest setup 改。

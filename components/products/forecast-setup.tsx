@@ -35,6 +35,7 @@ import type {
   ForecastSettingsBlock,
   ForecastUnmatchedSetting,
 } from "@/types";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /** 0 = 星期一（后端按洛杉矶日期、Python weekday()）。 */
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -735,18 +736,18 @@ function DatedCaps({
             ))}
             <tr>
               <td className={TD}>
-                <select
+                <SelectMenu
                   aria-label="Dated cap row"
-                  value={row}
-                  onChange={(event) => setRow(event.target.value)}
+                  value={String(row)}
+                  options={[
+                    ...rows.map((r) => ({
+                      value: String(r),
+                      label: String(r),
+                    })),
+                  ]}
+                  onChange={(next) => setRow(next)}
                   className={SELECT}
-                >
-                  {rows.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
+                />
               </td>
               <td className={TD}>
                 <input

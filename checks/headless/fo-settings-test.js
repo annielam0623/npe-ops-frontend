@@ -6,6 +6,7 @@ const { spawn } = require("child_process");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -52,10 +53,11 @@ async function goto(url) {
   await cdp("Page.navigate", { url });
   await sleep(300);
 }
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$txt = () => document.querySelector('main').textContent;
 window.$btn = (text, root = document) => [...root.querySelectorAll('button')].find(b => b.textContent.trim() === text);
 window.$set = (el, value) => {
+  if ($isSelectMenu(el)) return $sel(el, value);
   const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : el.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
   Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, value);
   el.dispatchEvent(new Event(el.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true }));
@@ -95,13 +97,13 @@ async function partnersChecks() {
   check("Add 直接存进系统 ⇒ 蓝色提交键（Annie 2026-10-30：直接存的 Add 保留蓝色；先加在页面上的才是灰绿）", await evaluate("const b = $btn('Add'); return $bg(b) === 'rgb(59, 130, 246)';"));
 
   // 添加
-  await evaluate("$set($byLabel('New partner name'), 'ZZ Test Partner'); $btn('Add').click(); return 1;");
+  await evaluate("await $set($byLabel('New partner name'), 'ZZ Test Partner'); $btn('Add').click(); return 1;");
   check("添加：出现新的一行、计数 3、✓ Added", await waitFor("$row('ZZ Test Partner') && $txt().includes('3 partners') && $txt().includes('✓ Added')"));
   check("POST 只带名字", (await lastCall("POST", /\/partners$/))?.body?.name === "ZZ Test Partner");
   check("新公司自动展开，没有上车点", await waitFor("document.querySelector('[aria-label=\"Pick-up locations\"]') && $txt().includes('No locations yet.')"));
-  await evaluate("$set($byLabel('New partner name'), 'partner a'); $btn('Add').click(); return 1;");
+  await evaluate("await $set($byLabel('New partner name'), 'partner a'); $btn('Add').click(); return 1;");
   check("重名：显示后端原话", await waitFor("$txt().includes('\"partner a\" already exists')"));
-  await evaluate("$set($byLabel('New partner name'), ''); $btn('Add').click(); return 1;");
+  await evaluate("await $set($byLabel('New partner name'), ''); $btn('Add').click(); return 1;");
   check("名字空着：提示必填、没发请求", (await waitFor("$txt().includes('Partner name is required.')")) && (await calls("POST", /\/partners$/)).length === 2);
 
   // ── G263 v3（Annie「把每个tour单独列出，然后再下面加产品和价格」「同意推荐，动手」）：合作公司 → 团（标题）→ 一个产品一行 ──
@@ -123,17 +125,17 @@ async function partnersChecks() {
     await evaluate(`$btn('Edit', ${rrow("Partner A", "West Rim")}).click(); return 1;`);
     check("点 Edit：每个产品一个名字框、旁边灰字全名、价格行（下拉 + 价钱）；没改时 Save 灰", (await waitFor("$byLabel('West Rim product 2 name')")) && (await evaluate(`return $byLabel('West Rim product 1 name').value === 'Premium Pass' && $byLabel('West Rim product 2 name').value === 'Admission Only' && document.querySelector('[data-display-name]').textContent === 'West Rim Premium Pass - Partner A' && $byLabel('Premium Pass adult price').value === '98.00' && $byLabel('Premium Pass child price').value === '98.00' && $btn('Save', ${rrow("Partner A", "West Rim")}).disabled;`)));
     check("+ Add price / + Add product 灰绿 #6b8e74（先加在页面上，按 Save 才存），Save 蓝", await evaluate(`return $bg(document.querySelector('[data-add-product]')) === 'rgb(107, 142, 116)' && $bg(document.querySelector('[data-add-price]')) === 'rgb(107, 142, 116)' && $bg($btn('Save', ${rrow("Partner A", "West Rim")})) === 'rgb(59, 130, 246)';`));
-    check("同一个产品里已有的票种在下拉里灰掉", await evaluate("const s = document.querySelectorAll('[aria-label=\"Premium Pass ticket type\"]')[0]; return s.value === 'adult' && s.querySelector('option[value=child]').disabled && !s.querySelector('option[value=infant]').disabled;"));
+    check("同一个产品里已有的票种在下拉里灰掉", await evaluate("const s = document.querySelectorAll('[aria-label=\"Premium Pass ticket type\"]')[0]; const o = (v) => [...s.options].find((x) => x.value === v); return s.value === 'adult' && o('child').disabled && !o('infant').disabled;"));
     await evaluate("document.querySelector('tr[data-product-edit=\"2\"] [data-add-price]').click(); return 1;");
     check("Admission Only + Add price：加一行 Child（Adult 已有），价钱空着", (await waitFor("$byLabel('Admission Only child price')")) && (await evaluate("return $byLabel('Admission Only child price').value === '';")));
     await evaluate("document.querySelector('[data-add-product]').click(); return 1;");
     await waitFor("$byLabel('West Rim product 3 name')");
-    await evaluate(`$set($byLabel('Admission Only child price'), '80.50'); $btn('Save', ${rrow("Partner A", "West Rim")}).click(); return 1;`);
+    await evaluate(`await $set($byLabel('Admission Only child price'), '80.50'); $btn('Save', ${rrow("Partner A", "West Rim")}).click(); return 1;`);
     check("新产品空着按 Save：红字 Enter a product name. / Enter a price, e.g. 98 or 98.50.，没发请求", (await waitFor("[...document.querySelectorAll('[data-product-error]')].map(e => e.textContent).join('|') === 'Enter a product name.|Enter a price, e.g. 98 or 98.50.'")) && (await calls("PUT", /\/partners\/1\/rates$/)).length === putsBefore, await evaluate("return [...document.querySelectorAll('[data-product-error]')].map(e => e.textContent).join('|');"));
-    await evaluate("$set($byLabel('West Rim product 3 name'), 'premium pass'); return 1;");
-    await evaluate("$set($byLabel('premium pass adult price'), '93'); return 1;");
+    await evaluate("await $set($byLabel('West Rim product 3 name'), 'premium pass'); return 1;");
+    await evaluate("await $set($byLabel('premium pass adult price'), '93'); return 1;");
     check("同团重名（不分大小写）：红字 premium pass is already on this tour.", await waitFor("[...document.querySelectorAll('[data-product-error]')].map(e => e.textContent).join('|') === 'premium pass is already on this tour.'"), await evaluate("return [...document.querySelectorAll('[data-product-error]')].map(e => e.textContent).join('|');"));
-    await evaluate("$set($byLabel('West Rim product 3 name'), 'ZZ Test Grab & Go'); return 1;");
+    await evaluate("await $set($byLabel('West Rim product 3 name'), 'ZZ Test Grab & Go'); return 1;");
     await evaluate("$byLabel('Move ZZ Test Grab & Go up').click(); return 1;");
     check("改好红字消失；↑ 把新产品调到第 2", await waitFor("!document.querySelector('[data-product-error]') && $byLabel('West Rim product 2 name').value === 'ZZ Test Grab & Go' && $byLabel('West Rim product 3 name').value === 'Admission Only'"));
     await evaluate(`$btn('Save', ${rrow("Partner A", "West Rim")}).click(); return 1;`);
@@ -189,7 +191,7 @@ async function partnersChecks() {
       const wr = cur.find((r) => r.manifest_id === 10).products;
       await putRates(1, slim(cur, 10, wr.map((x) => (x.name === "Admission Only" ? { name: x.name, prices: x.prices } : { id: x.id, name: x.name, prices: x.prices }))));
     }
-    await evaluate("$set($byLabel('Premium Pass adult price'), '99'); return 1;");
+    await evaluate("await $set($byLabel('Premium Pass adult price'), '99'); return 1;");
     await evaluate(`$btn('Save', ${rrow("Partner A", "West Rim")}).click(); return 1;`);
     check("过期 id：红字照后端原话，还在编辑、改的价钱留着", (await waitFor(`${rrow("Partner A", "West Rim")}.querySelector('[role=alert]')?.textContent.includes('A product in the price list no longer exists. Reload the page and try again.')`)) && (await evaluate("return $byLabel('Premium Pass adult price').value === '99';")));
     await evaluate(`$btn('Cancel', ${rrow("Partner A", "West Rim")}).click(); return 1;`);
@@ -207,11 +209,11 @@ async function partnersChecks() {
   // 上车点
   check("上车点按顺序列出", await evaluate("return $byLabel('Hotel name 1').value === 'Bellagio' && $byLabel('Hotel name 2').value === 'Venetian' && $byLabel('Spot 1').value === 'Underground South Tour Lobby' && $byLabel('Map link 2').value === 'https://goo.gl/maps/bbb';"));
   check("+ Add location 先加在页面上（按 Save locations 才存）⇒ 灰绿添加键 #6b8e74（Annie 2026-10-30）", await evaluate("return $bg($btn('+ Add location')) === 'rgb(107, 142, 116)';"));
-  await evaluate("$set($byLabel('Hotel name 1'), 'Bellagio Hotel'); $btn('+ Add location').click(); return 1;");
+  await evaluate("await $set($byLabel('Hotel name 1'), 'Bellagio Hotel'); $btn('+ Add location').click(); return 1;");
   await waitFor("$byLabel('Hotel name 3')");
   await evaluate("$btn('Save locations').click(); return 1;");
   check("新行没写酒店名：提示第 3 行必填", await waitFor("$txt().includes('Row 3: hotel name is required.')"));
-  await evaluate("$set($byLabel('Hotel name 3'), 'ZZ Test Hotel'); $set($byLabel('Spot 3'), 'Door 1'); $set($byLabel('Address 3'), '1 Test St'); $set($byLabel('Map link 3'), 'https://goo.gl/maps/zzz'); $byLabel('Move ZZ Test Hotel up').click(); return 1;");
+  await evaluate("await $set($byLabel('Hotel name 3'), 'ZZ Test Hotel'); await $set($byLabel('Spot 3'), 'Door 1'); await $set($byLabel('Address 3'), '1 Test St'); await $set($byLabel('Map link 3'), 'https://goo.gl/maps/zzz'); $byLabel('Move ZZ Test Hotel up').click(); return 1;");
   check("↑ 把新行移到第 2 位", await waitFor("$byLabel('Hotel name 2').value === 'ZZ Test Hotel' && $byLabel('Hotel name 3').value === 'Venetian'"));
   check("第一行的 ↑ 是灰的", await evaluate("return $byLabel('Move Bellagio Hotel up').disabled === true;"));
   await evaluate("$byLabel('Delete Venetian').click(); return 1;");
@@ -229,9 +231,9 @@ async function partnersChecks() {
   {
     const sec = "document.querySelector('[aria-label=\"Pick-up locations\"]')";
     check("Import：Save locations 旁有 ⬆ Import（灰白，不是蓝的）", await evaluate(`const b = $btn('⬆ Import', ${sec}); return !!b && !b.disabled && $bg(b) !== 'rgb(59, 130, 246)';`));
-    await evaluate("$set($byLabel('Spot 1'), 'Changed'); return 1;");
+    await evaluate("await $set($byLabel('Spot 1'), 'Changed'); return 1;");
     check("表里有没存的改动：⬆ Import 灰掉（导入会重读、没存的会丢）", await waitFor(`$btn('⬆ Import', ${sec}).disabled`));
-    await evaluate("$set($byLabel('Spot 1'), 'Underground South Tour Lobby'); return 1;");
+    await evaluate("await $set($byLabel('Spot 1'), 'Underground South Tour Lobby'); return 1;");
     check("改回去：⬆ Import 又能点", await waitFor(`!$btn('⬆ Import', ${sec}).disabled`));
     await evaluate(`
       window.__blob = null; window.__download = null;
@@ -370,7 +372,7 @@ async function partnersChecks() {
   await evaluate("$btn('Rename', $row('Partner B')).click(); return 1;");
   await waitFor("$byLabel('Partner name')");
   check("改名的 Save name 是蓝色提交键", await evaluate("return $bg($btn('Save name')) === 'rgb(59, 130, 246)';"));
-  await evaluate("$set($byLabel('Partner name'), 'Partner B2'); $btn('Save name').click(); return 1;");
+  await evaluate("await $set($byLabel('Partner name'), 'Partner B2'); $btn('Save name').click(); return 1;");
   check("改名：行上换成新名字", await waitFor("$row('Partner B2') && !$row('Partner B')"));
   check("PATCH 只带 name", JSON.stringify((await lastCall("PATCH", /\/partners\/2$/))?.body) === JSON.stringify({ name: "Partner B2" }));
   await evaluate("$btn('Deactivate', $row('Partner B2')).click(); return 1;");
@@ -477,11 +479,11 @@ async function timetableChecks() {
   check("Download as CSV 指向这家的导出地址", await evaluate("const a = [...document.querySelectorAll('a')].find(x => x.textContent.includes('Download as CSV')); return a.getAttribute('href') === '/api/farm-out/partners/1/timetable/export.csv' && $bg(a) !== 'rgb(59, 130, 246)';"));
 
   // 改格子
-  await evaluate("$set($byLabel('Venetian Zion departure'), 'abc'); $btn('Save').click(); return 1;");
+  await evaluate("await $set($byLabel('Venetian Zion departure'), 'abc'); $btn('Save').click(); return 1;");
   check("写错时间：提示原因、没发 PUT", (await waitFor("$txt().includes('Venetian / Zion')")) && (await calls("PUT", /\/partners\/1\/timetable$/)).length === 0);
   const cellsToSet = [["Venetian Zion departure", "7:05"], ["Bellagio West Rim departure", "6:55 am"], ["Venetian West Rim departure", "18:05"]];
   for (const [label, value] of cellsToSet) {
-    await evaluate(`$set($byLabel(${JSON.stringify(label)}), ${JSON.stringify(value)}); return 1;`);
+    await evaluate(`await $set($byLabel(${JSON.stringify(label)}), ${JSON.stringify(value)}); return 1;`);
     await sleep(150);
     await evaluate(`$byLabel(${JSON.stringify(label)}).dispatchEvent(new FocusEvent('focusout', { bubbles: true })); return 1;`);
   }
@@ -523,7 +525,7 @@ async function timetableChecks() {
   // 返回时间 / 注意事项
   check("按团的块：West Rim 有原值", await evaluate("const b = document.querySelector('[data-tour-meta=\"West Rim\"]'); return b.querySelector('input').value === '5:00- 6:30 PM' && b.querySelector('textarea').value === 'No large bags.' && $txt().includes('PLEASE NOTE (leave empty to hide)');"));
   check("Zion 的两栏空着、有提示字", await evaluate("const b = document.querySelector('[data-tour-meta=\"Zion\"]'); return b.querySelector('input').value === '' && b.querySelector('input').placeholder.includes('Not set') && b.querySelector('textarea').placeholder.includes('no PLEASE NOTE');"));
-  await evaluate("const z = document.querySelector('[data-tour-meta=\"Zion\"]'); $set(z.querySelector('input'), ' 6:00- 7:30 PM '); $set(z.querySelector('textarea'), 'Bring ID'); $set(document.querySelector('[data-tour-meta=\"West Rim\"] textarea'), ''); [...document.querySelectorAll('button')].filter(b => b.textContent.trim() === 'Save').pop().click(); return 1;");
+  await evaluate("const z = document.querySelector('[data-tour-meta=\"Zion\"]'); await $set(z.querySelector('input'), ' 6:00- 7:30 PM '); await $set(z.querySelector('textarea'), 'Bring ID'); await $set(document.querySelector('[data-tour-meta=\"West Rim\"] textarea'), ''); [...document.querySelectorAll('button')].filter(b => b.textContent.trim() === 'Save').pop().click(); return 1;");
   check("保存返回时间 / 注意事项：✓ Saved", await waitFor("$txt().includes('✓ Saved')"));
   const metaBody = (await lastCall("PUT", /\/tour-meta$/))?.body;
   check("PUT /tour-meta 整表：Zion 填了、West Rim 注意事项清空（空串 = 隐藏）", JSON.stringify(metaBody) === JSON.stringify([
@@ -591,6 +593,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
   await cdp("DOM.enable");
   try {

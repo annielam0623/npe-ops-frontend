@@ -92,10 +92,13 @@ export function PhoneMore({
   children,
   label = "More actions",
   className,
+  badge,
 }: {
   children: ReactNode;
   label?: string;
   className?: string;
+  /** ⋯ 右上角的小标（例如 Tracking 页当天已发群发条数）；只在手机上出现。 */
+  badge?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -122,6 +125,14 @@ export function PhoneMore({
         >
           ⋯
         </button>
+        {badge ? (
+          <span
+            data-phone-more-badge
+            className="pointer-events-none absolute -top-2 -right-2"
+          >
+            {badge}
+          </span>
+        ) : null}
         {open ? (
           <div
             data-phone-more-menu

@@ -60,7 +60,14 @@ export interface OrderListQuery {
   dateFrom: string;
   dateTo: string;
   page: number;
+  /**
+   * Source 筛选（Annie 2026-11-21「全部同意推荐，动手」，preview Pg75scdcQoVKohB775PpXe）：rezdy（含旧表的单）/ tripguru；
+   * 不带 = 全部（后端 source 参数，列表和 Export 都认）。
+   */
+  source?: OrderSource;
 }
+
+export type OrderSource = "rezdy" | "tripguru";
 
 export interface OrderDetail {
   order_number: string;

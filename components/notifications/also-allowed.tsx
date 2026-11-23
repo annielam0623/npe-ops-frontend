@@ -6,6 +6,7 @@ import { describeError, isStatus } from "@/lib/api-errors";
 import { usePageVisibility, type VisibilityKey } from "@/lib/page-visibility";
 import { fetchTeamMembers } from "@/lib/team-permissions-api";
 import type { AllowedUser, TeamMemberUser } from "@/types";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /** 名单只收在用的后台账号（后端 33）：partner / 司机 / 导游 / 停用的不列。 */
 const OK_ROLES = new Set(["staff", "supervisor", "admin"]);
@@ -126,27 +127,26 @@ export function AlsoAllowed({
           </button>
         </span>
       ))}
-      <select
+      <SelectMenu
         data-also-allowed-add
         aria-label="Add person"
-        value=""
+        value={""}
+        options={[
+          { value: "", label: "+ Add person" },
+          ...options.map((p) => ({
+            value: String(p.id),
+            label: `${p.name}${p.role ? ` (${p.role})` : ""}`,
+          })),
+        ]}
         disabled={people === null || options.length === 0}
-        onChange={(e) => {
-          const p = options.find((x) => x.id === Number(e.target.value));
+        onChange={(next) => {
+          const p = options.find((x) => x.id === Number(next));
           if (!p) return;
           setState({ kind: "idle" });
           setDraft([...list, p]);
         }}
         className="rounded-md border border-white/15 bg-[#0b1727] px-2 py-1 text-[12.5px] text-white [color-scheme:dark]"
-      >
-        <option value="">+ Add person</option>
-        {options.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-            {p.role ? ` (${p.role})` : ""}
-          </option>
-        ))}
-      </select>
+      />
       <span className="ml-auto flex items-center gap-2">
         {state.kind === "saved" && !dirty ? (
           <span

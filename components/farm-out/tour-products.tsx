@@ -18,6 +18,7 @@ import type {
 
 import { parsePriceInput, priceText } from "./config";
 import { BTN_BLUE_SMALL, CELL_INPUT } from "./ui";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /**
  * G263 v3（Annie 原话「把每个tour单独列出，然后再下面加产品和价格不就好了，就没有母项子项这么麻烦了」；
@@ -391,35 +392,31 @@ export function TourProducts({
                     key={x.key}
                     className="inline-flex items-center gap-1.5"
                   >
-                    <select
+                    <SelectMenu
                       aria-label={`${p.name || `Product ${i + 1}`} ticket type`}
-                      value={x.ticket_type}
-                      onChange={(ev) =>
+                      value={String(x.ticket_type)}
+                      options={[
+                        ...TICKET_TYPES.map((t) => ({
+                          value: String(t.key),
+                          label: String(t.label),
+                          disabled: t.key !== x.ticket_type && used.has(t.key),
+                        })),
+                      ]}
+                      onChange={(next) =>
                         patch(p.key, (pp) => ({
                           ...pp,
                           prices: pp.prices.map((y) =>
                             y.key === x.key
                               ? {
                                   ...y,
-                                  ticket_type: ev.target
-                                    .value as FarmOutTicketType,
+                                  ticket_type: next as FarmOutTicketType,
                                 }
                               : y,
                           ),
                         }))
                       }
                       className={cn(CELL_INPUT, "w-[90px]")}
-                    >
-                      {TICKET_TYPES.map((t) => (
-                        <option
-                          key={t.key}
-                          value={t.key}
-                          disabled={t.key !== x.ticket_type && used.has(t.key)}
-                        >
-                          {t.label}
-                        </option>
-                      ))}
-                    </select>
+                    />
                     <input
                       type="text"
                       inputMode="decimal"

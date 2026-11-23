@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -58,7 +59,7 @@ async function goto(url) {
 }
 
 // 页面里用的小工具（每次导航后重新注入）。
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$t = (sel) => [...document.querySelectorAll(sel)].map(e => e.textContent.trim());
 window.$rows = () => [...document.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent.trim()));
 window.$heads = () => [...document.querySelectorAll('thead th')].map(th => th.textContent.replace('⠿','').trim());
@@ -107,6 +108,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
 
   try {
@@ -138,9 +140,8 @@ const rowOf = (order, nth = 0) => `[...document.querySelectorAll('tbody tr')].fi
 async function fill(l, type, date) {
   await evaluate(`
     const root = ${lane(l)};
-    const sel = root.querySelector('select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, '${type}');
-    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    const sel = root.querySelector('select, [data-select-menu]');
+    await $sel(sel, '${type}');
     const d = root.querySelector('input[type=date]');
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(d, '${date}');
     d.dispatchEvent(new Event('input', { bubbles: true }));
@@ -148,7 +149,7 @@ async function fill(l, type, date) {
 }
 async function open() {
   await goto(`${APP}/tour-confirmation/send`);
-  await waitFor(`${lane("tour_confirmation")} && ${lane("tour_confirmation")}.querySelector('select').options.length > 1`);
+  await waitFor(`${lane("tour_confirmation")} && ${lane("tour_confirmation")}.querySelector('select, [data-select-menu]').options.length > 1`);
   await helpers();
 }
 async function upload(scenario, extra = {}, l = "tour_confirmation", file = `west-${DATE}.csv`) {
@@ -191,7 +192,7 @@ async function run() {
     check("G297 How to use（Last Minute）：同一句", await evaluate(pre.replace('Tour Confirmation', 'Last Minute Order') + "return t.includes('If a row has no Pickup Location, it turns red. That order is not sent; the others are sent as usual. Staff on shift get a Notice for it. Open the Notice, add the pickup location to the order in Rezdy, click Refresh from Rezdy, then click Send tour confirmation.');"));
     check("How to use（Last Minute）：Click Send Last Minute and keep the page open…；Error Handling 用 click Cancel", await evaluate(pre.replace('Tour Confirmation', 'Last Minute Order') + "return t.includes('Click Send Last Minute and keep the page open until the results appear. Click View this send to open this send in the Send Log.') && t.includes('then click Cancel and upload the file again: orders already sent are skipped and never sent twice.') && t.includes('do not click Send again');"));
   }
-  check("团型下拉来自接口（按顺序、下拉文字）", await evaluate(`return [...${lane("tour_confirmation")}.querySelector('select').options].map(o => o.value + ':' + o.text).join('|') === ':— Select tour type —|upper_antelope:Upper Antelope Canyon Bus Tour|grand_canyon_west:Grand Canyon West Rim Bus Tour|hoover_dam:Hoover Dam Tour';`));
+  check("团型下拉来自接口（按顺序、下拉文字）", await evaluate(`return [...${lane("tour_confirmation")}.querySelector('select, [data-select-menu]').options].map(o => o.value + ':' + o.text).join('|') === ':— Select tour type —|upper_antelope:Upper Antelope Canyon Bus Tour|grand_canyon_west:Grand Canyon West Rim Bus Tour|hoover_dam:Hoover Dam Tour';`));
   check("两块：General Order Confirmation、⚡ Last Minute Order（红字说明）、各自 How to use、文件框收 .csv / .xlsx", await evaluate(`return ${lane("tour_confirmation")}.textContent.includes('General Order Confirmation') && ${lane("last_minute")}.textContent.includes('⚡ Last Minute Order') && ${lane("last_minute")}.textContent.includes('skip reconfirmation') && document.body.textContent.includes('How to use — Tour Confirmation') && document.body.textContent.includes('How to use — Last Minute Order') && document.querySelector('[data-lane=tour_confirmation] input[type=file]').accept === '.csv,.xlsx';`));
   // dashboard 改版：侧栏默认收起，先展开。
   await evaluate("document.querySelector('nav[aria-label=Main] button[aria-label=\"Open menu\"]')?.click();");

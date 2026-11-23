@@ -39,7 +39,7 @@ const foPartners = [
 ];
 for (const slug of ["default", "partner_a", "partner_b", "old_co"]) {
   settings.push(s(`tmpl__farmout__${slug}__email_subject`, slug === "partner_a" ? "A: your {tour_name} pick-up" : "Your {tour_name} pick-up on {tour_date}"));
-  settings.push(s(`tmpl__farmout__${slug}__email_body`, FO_BODY));
+  settings.push(s(`tmpl__farmout__${slug}__email_body`, slug === "partner_a" ? `A: ${FO_BODY}` : FO_BODY));
   settings.push(s(`tmpl__farmout__${slug}__sms_body`, FO_SMS));
 }
 // Shuttle（G128）：1 个 shuttle group、2 个方向；outbound 的 4 个字段里有两个已经填过内容

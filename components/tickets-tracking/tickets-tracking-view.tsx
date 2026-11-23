@@ -13,6 +13,11 @@ import {
   TrackingBanner,
   TrackingNotice,
 } from "@/components/tracking-ui/banners";
+import {
+  BROADCAST_COUNT_HOW_TO,
+  BroadcastButton,
+  BroadcastCountDot,
+} from "@/components/tracking-ui/broadcast-button";
 import { trackingFont } from "@/components/tracking-ui/font";
 import { BroadcastDialog } from "@/components/ui/broadcast-dialog";
 import { useTrackingSyncSwitch } from "@/components/tour-tracking/sync-switch";
@@ -73,11 +78,7 @@ import {
 } from "./config";
 import { TicketsTable } from "./tickets-table";
 import { PageShortcutBar } from "@/components/nav/page-shortcut-bar";
-import {
-  PhoneMore,
-  PhoneOneLine,
-  PhoneShortcutStar,
-} from "@/components/ui/phone";
+import { PhoneMore, PhoneShortcutStar } from "@/components/ui/phone";
 import { UploadDialog } from "./upload-dialog";
 import { setVisibleInterval } from "@/lib/visible-poll";
 
@@ -91,6 +92,8 @@ type LoadState =
 const CLOCK_TICK_MS = 30_000;
 /** 新消息提示条最多直接列几单。 */
 const BANNER_MAX = 3;
+/** ⬆ Upload 键（同 Tour Tracking 题 7「所有人都隐藏」，Annie 2026-11-20 4⑥ B 门票页一起改）：false = 不出；弹窗和代码留着。 */
+const SHOW_UPLOAD = false;
 
 function readPrefs(): ColumnPrefs {
   try {
@@ -489,13 +492,16 @@ export function TicketsTrackingView() {
         </div>
       ) : (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#dde3ea] bg-paper px-5 py-2.5 shadow-[0_1px_6px_rgba(26,42,60,0.06)] max-sm:px-3 max-sm:py-2">
-            <div className="flex items-center gap-2 max-sm:gap-1.5">
+          {/* 顶部压缩，同 Tour Tracking（Annie 2026-11-20 Excel 4⑥ B「门票页一起改」+「动手」）：
+              第一行 = 日期 + 一行数字（原来 6 张卡；这页的卡本来不能点，照旧只看）+ 最右 Main manifest sync；
+              第二行 = 团按钮（小长方形）+ 工具同一行，窗口窄了才折成两行。 */}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 border-b border-[#dde3ea] bg-paper px-5 py-2 shadow-[0_1px_6px_rgba(26,42,60,0.06)] max-sm:px-3 max-sm:py-2">
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 aria-pressed={!!date && date === today}
                 onClick={() => changeDate(laToday())}
-                className="cursor-pointer rounded-[7px] border-none bg-[#1a3a5c] px-3.5 py-1.5 text-[13px] font-bold tracking-[.5px] text-white hover:bg-[#0f2440]"
+                className="cursor-pointer rounded-[7px] border-none bg-[#1a3a5c] px-[11px] py-[4px] text-[12px] font-bold tracking-[.5px] text-white hover:bg-[#0f2440]"
               >
                 Today
               </button>
@@ -503,7 +509,7 @@ export function TicketsTrackingView() {
                 type="button"
                 aria-pressed={!!date && date === tomorrow}
                 onClick={() => changeDate(shiftYmd(laToday(), 1))}
-                className="cursor-pointer rounded-[7px] border border-[#dde3ea] bg-[#f0f4f8] px-3.5 py-1.5 text-[13px] font-semibold text-[#4a6080] hover:border-[#c0cdd9] hover:bg-[#e2e8f0]"
+                className="cursor-pointer rounded-[7px] border border-[#dde3ea] bg-[#f0f4f8] px-[11px] py-[3px] text-[12px] font-semibold text-[#4a6080] hover:border-[#c0cdd9] hover:bg-[#e2e8f0]"
               >
                 Tomorrow
               </button>
@@ -521,7 +527,7 @@ export function TicketsTrackingView() {
                 aria-label="Service date"
                 value={date}
                 onChange={(event) => changeDate(event.target.value)}
-                className="h-[30px] min-w-[150px] cursor-pointer rounded-[7px] border border-[#dde3ea] bg-paper px-2.5 font-[inherit] text-[13px] font-bold text-[#1a3a5c] max-sm:w-[116px] max-sm:min-w-0 max-sm:px-1.5 [&::-webkit-calendar-picker-indicator]:hidden"
+                className="h-[26px] min-w-[130px] cursor-pointer rounded-[7px] border border-[#dde3ea] bg-paper px-2 font-[inherit] text-[12.5px] font-bold text-[#1a3a5c] max-sm:w-[116px] max-sm:min-w-0 max-sm:px-1.5 [&::-webkit-calendar-picker-indicator]:hidden"
               />
               <button
                 type="button"
@@ -533,17 +539,63 @@ export function TicketsTrackingView() {
                 ›
               </button>
             </div>
-            {/* G281 题 1 A：同 Tour Tracking 的「Main manifest sync」，只给 Super Admin，跟 Tour 的是两个开关。 */}
-            {syncSwitch.control}
-            {sync ? (
+
+            <section
+              aria-label="Summary"
+              data-phone-stats
+              className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[12.5px] text-[#1a1a1a] sm:ml-2.5 max-sm:order-last max-sm:basis-full max-sm:text-[12px]"
+            >
+              {(
+                [
+                  ["Total Orders", stats?.orders, "text-[#1a3a5c]"],
+                  ["YES", stats?.yes, "text-[#166534]"],
+                  ["Reschedule", stats?.reschedule, "text-[#c97a00]"],
+                  ["Pending", stats?.pending, "text-[#1a1a1a]"],
+                  ["Cancelled", stats?.cancelled, ""],
+                ] as const
+              ).map(([label, value, color], i) => (
+                <Fragment key={label}>
+                  {i ? (
+                    <span aria-hidden className="text-[#9aa6b2]">
+                      ·
+                    </span>
+                  ) : null}
+                  <span data-stat={label} className="whitespace-nowrap">
+                    <b className={cn("font-extrabold tabular-nums", color)}>
+                      {value ?? "—"}
+                    </b>{" "}
+                    {label}
+                  </span>
+                </Fragment>
+              ))}
+              {sync ? (
+                <span
+                  data-to-notify
+                  className="whitespace-nowrap text-[#5b6470]"
+                  title="Grey rows: ticket orders in the Main manifest whose reminder hasn't been sent yet"
+                >
+                  · <b className="tabular-nums">{unsentCount}</b> to notify
+                </span>
+              ) : null}
               <span
-                data-to-notify
-                className="text-[12.5px] whitespace-nowrap text-[#5b6470]"
-                title="Grey rows: ticket orders in the Main manifest whose reminder hasn't been sent yet"
+                data-stat="Response Rate"
+                className="whitespace-nowrap"
+                title="Replied / reached by email or SMS"
               >
-                · <b className="tabular-nums">{unsentCount}</b> to notify
+                ·{" "}
+                <b className="tabular-nums">
+                  {stats
+                    ? stats.responseRate === null
+                      ? "—"
+                      : `${stats.responseRate}%`
+                    : "—"}
+                </b>{" "}
+                replied
               </span>
-            ) : null}
+            </section>
+
+            {/* G281 题 1 A：同 Tour Tracking 的「Main manifest sync」，只给 Super Admin，跟 Tour 的是两个开关；4④ A 放日期行最右。 */}
+            {syncSwitch.control}
           </div>
           {syncSwitch.below}
 
@@ -585,162 +637,139 @@ export function TicketsTrackingView() {
             </div>
           ) : null}
 
-          {data ? (
-            <div
-              role="group"
-              aria-label="Filter by tour"
-              // 手机上排成一行、左右滑（手机版规则：统计一行）。
-              className="flex flex-wrap gap-1.5 border-b border-[#dde3ea] bg-paper px-5 py-2 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:px-3"
-            >
-              <ProductPill
-                active={!product}
-                label="Total Guests"
-                yesPax={sumPax(
-                  sentRows.filter((r) => r.confirmation_status === "yes"),
-                )}
-                totalPax={sumPax(sentRows)}
-                onClick={() => setProduct("")}
-              />
-              {pills.map((p) => (
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 px-5 pt-2.5 pb-2.5 max-sm:block max-sm:px-3 max-sm:pt-2 max-sm:pb-2">
+            {data ? (
+              <div
+                role="group"
+                aria-label="Filter by tour"
+                // 手机上排成一行、左右滑（手机版规则：统计一行）。
+                className="flex flex-wrap gap-[5px] max-sm:mb-2 max-sm:flex-nowrap max-sm:overflow-x-auto"
+              >
                 <ProductPill
-                  key={p.slug}
-                  active={product === p.slug}
-                  label={p.short}
-                  yesPax={p.yesPax}
-                  totalPax={p.totalPax}
-                  onClick={() => setProduct(p.slug)}
+                  active={!product}
+                  label="Total Guests"
+                  yesPax={sumPax(
+                    sentRows.filter((r) => r.confirmation_status === "yes"),
+                  )}
+                  totalPax={sumPax(sentRows)}
+                  onClick={() => setProduct("")}
                 />
-              ))}
-            </div>
-          ) : null}
+                {pills.map((p) => (
+                  <ProductPill
+                    key={p.slug}
+                    active={product === p.slug}
+                    label={p.short}
+                    yesPax={p.yesPax}
+                    totalPax={p.totalPax}
+                    onClick={() => setProduct(p.slug)}
+                  />
+                ))}
+              </div>
+            ) : null}
 
-          <section
-            aria-label="Summary"
-            className="flex flex-wrap gap-2.5 px-5 py-3 max-sm:flex-nowrap max-sm:gap-1 max-sm:px-3 max-sm:py-2"
-          >
-            <StatCard
-              label="Total Orders"
-              value={stats?.orders}
-              valueClass="text-[#1a3a5c]"
-            />
-            <StatCard
-              label="YES"
-              value={stats?.yes}
-              valueClass="text-[#166534]"
-            />
-            <StatCard
-              label="Reschedule"
-              value={stats?.reschedule}
-              valueClass="text-[#c97a00]"
-            />
-            <StatCard
-              label="Pending"
-              value={stats?.pending}
-              valueClass="text-[#1a1a1a]"
-            />
-            <StatCard label="Cancelled" value={stats?.cancelled} />
-            <StatCard
-              label="Response Rate"
-              title="Replied / reached by email or SMS"
-              value={
-                stats
-                  ? stats.responseRate === null
-                    ? "—"
-                    : `${stats.responseRate}%`
-                  : undefined
-              }
-            />
-          </section>
-
-          <div className="flex items-center justify-start gap-2 px-5 pt-2 pb-3 max-sm:flex-wrap max-sm:px-3 max-sm:pt-1 max-sm:pb-2">
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="🔍  Search order #, name, phone…"
-              aria-label="Search"
-              className="box-border h-8 w-[240px] rounded-lg border border-[#cbd5e1] bg-paper px-3 font-[inherit] text-[12px] text-[#1a1a1a] outline-none max-sm:w-[calc(100%-52px)] max-sm:min-w-0 [&::-webkit-search-cancel-button]:appearance-none"
-            />
-            {/* 手机上 Columns / Download CSV / Upload 收进「⋯」（手机版规则：次要按钮）。 */}
-            <PhoneMore
-              label="More actions"
-              // 浅色页：⋯ 用深色字和边（共用件默认是深色页的样子）。
-              className="[&_[data-phone-more]]:border-[#cbd5e1] [&_[data-phone-more]]:bg-paper [&_[data-phone-more]]:text-[#1a3a5c]"
+            <div
+              data-tools-row
+              className="flex grow flex-wrap items-center gap-1.5"
             >
-              <ColumnPicker
-                columns={pickerColumns}
-                prefs={prefs}
-                headers={headers}
-                onChange={updatePrefs}
-                // 同旧页面 resetCols()：只复原显示哪些列（系统列全显示、上传列全不显示），不动列的顺序。
-                onReset={() => updatePrefs({ ...prefs, hide: [], file: [] })}
-                note="Saved to your account."
-                buttonClassName={cn(REFRESH_BTN, "h-8 px-3.5")}
-                menuTop={36}
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="🔍  Search order #, name, phone…"
+                aria-label="Search"
+                className="box-border h-[26px] w-[200px] rounded-[7px] border border-[#cbd5e1] bg-paper px-2.5 font-[inherit] text-[12px] text-[#1a1a1a] outline-none max-sm:w-auto max-sm:min-w-0 max-sm:flex-1 [&::-webkit-search-cancel-button]:appearance-none"
               />
-              <a
-                href={date ? buildTicketsExportUrl(date) : undefined}
-                title="Everything for this date: every column of the uploaded manifest, then the status columns"
-                className="inline-flex h-8 cursor-pointer items-center rounded-[7px] border border-[#378ADD] bg-transparent px-3.5 text-[13px] font-semibold text-[#85B7EB] no-underline hover:bg-[rgba(55,138,221,0.14)]"
+              {/* 手机上 Columns / CSV / Broadcast 收进「⋯」（手机版规则：次要按钮）；当天发过群发 ⇒ ⋯ 上也标条数。 */}
+              <PhoneMore
+                label="More actions"
+                // 浅色页：⋯ 用深色字和边（共用件默认是深色页的样子）。
+                className="[&_[data-phone-more]]:border-[#cbd5e1] [&_[data-phone-more]]:bg-paper [&_[data-phone-more]]:text-[#1a3a5c]"
+                badge={
+                  !noBroadcast && broadcasts.length ? (
+                    <BroadcastCountDot count={broadcasts.length} />
+                  ) : undefined
+                }
               >
-                ⬇ Download CSV
-              </a>
+                <ColumnPicker
+                  columns={pickerColumns}
+                  prefs={prefs}
+                  headers={headers}
+                  onChange={updatePrefs}
+                  // 同旧页面 resetCols()：只复原显示哪些列（系统列全显示、上传列全不显示），不动列的顺序。
+                  onReset={() => updatePrefs({ ...prefs, hide: [], file: [] })}
+                  note="Saved to your account."
+                  buttonClassName={cn(REFRESH_BTN, SMALL_BTN)}
+                  menuTop={30}
+                />
+                {/* 4⑤ A：Download CSV ⇒「⬇ CSV」。 */}
+                <a
+                  href={date ? buildTicketsExportUrl(date) : undefined}
+                  title="Download CSV: everything for this date — every column of the uploaded manifest, then the status columns"
+                  className="inline-flex h-[26px] cursor-pointer items-center rounded-[7px] border border-[#378ADD] bg-transparent px-[9px] text-[11.5px] font-semibold text-[#185fa5] no-underline hover:bg-[rgba(55,138,221,0.14)]"
+                >
+                  ⬇ CSV
+                </a>
+                {/* ⬆ Upload 藏了（同 Tour Tracking 题 7「所有人都隐藏」，4⑥ B 一起改）：弹窗和代码留着，改 SHOW_UPLOAD 就能放回。 */}
+                {SHOW_UPLOAD ? (
+                  <button
+                    type="button"
+                    onClick={() => setUploadOpen(true)}
+                    disabled={!date}
+                    title="Add orders that were not sent from this system"
+                    className="h-[26px] cursor-pointer rounded-[7px] border-none bg-[#378ADD] px-[9px] text-[11.5px] font-semibold text-white hover:bg-[#2b74c0] disabled:opacity-60"
+                  >
+                    ⬆ Upload
+                  </button>
+                ) : null}
+                {noBroadcast ? null : (
+                  <BroadcastButton
+                    phone
+                    items={broadcasts}
+                    onOpen={() => setBroadcastOpen(true)}
+                    disabled={!data}
+                    className="self-start sm:hidden"
+                  />
+                )}
+              </PhoneMore>
               <button
                 type="button"
-                onClick={() => setUploadOpen(true)}
-                disabled={!date}
-                title="Add orders that were not sent from this system"
-                className="h-8 cursor-pointer rounded-[7px] border-none bg-[#378ADD] px-3.5 text-[13px] font-semibold text-white hover:bg-[#2b74c0] disabled:opacity-60"
+                onClick={() => date && void load(date, false)}
+                disabled={!date || state.kind === "loading"}
+                className={cn(REFRESH_BTN, SMALL_BTN)}
               >
-                ⬆ Upload
+                ↻ Refresh
               </button>
-            </PhoneMore>
-            <button
-              type="button"
-              onClick={() => date && void load(date, false)}
-              disabled={!date || state.kind === "loading"}
-              className={cn(REFRESH_BTN, "h-8 px-3.5")}
-            >
-              ↻ Refresh
-            </button>
-            <span className="ml-1 text-[12px] whitespace-nowrap text-[#1a1a1a]">
-              {data
-                ? `${filtered.length} ${filtered.length === 1 ? "record" : "records"}`
-                : "0 records"}
-            </span>
-            {noBroadcast ? null : (
-              <button
-                type="button"
-                onClick={() => setBroadcastOpen(true)}
-                disabled={!data}
-                className="ml-auto flex h-8 cursor-pointer items-center gap-[5px] rounded-[7px] border-none bg-[linear-gradient(135deg,#ffce21,#ee8e00)] px-4 text-[12px] font-bold text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                📣 Broadcast
-              </button>
-            )}
+              <span className="ml-1 text-[12px] whitespace-nowrap text-[#1a1a1a] max-sm:hidden">
+                {data
+                  ? `${filtered.length} ${filtered.length === 1 ? "record" : "records"}`
+                  : "0 records"}
+              </span>
+              {/* 4⑤ A：灰色图例进工具行，全句停上去看。 */}
+              {sync ? (
+                <span
+                  data-unsent-note
+                  title={UNSENT_NOTE}
+                  className="inline-flex items-center gap-1.5 text-[12px] whitespace-nowrap text-[#1a1a1a] max-sm:order-last max-sm:basis-full"
+                >
+                  <span
+                    aria-hidden
+                    className="inline-block h-3 w-3 shrink-0 rounded-[3px] border border-[#c7cad1]"
+                    style={{ background: UNSENT_ROW_BG }}
+                  />
+                  Grey = not sent yet
+                </span>
+              ) : null}
+              {/* 4③ A：键上标当天已发条数（0 不标），点小数字在键下展开当天列表；点键本身照旧开发送窗。 */}
+              {noBroadcast ? null : (
+                <BroadcastButton
+                  items={broadcasts}
+                  onOpen={() => setBroadcastOpen(true)}
+                  disabled={!data}
+                  className="ml-auto max-sm:hidden"
+                />
+              )}
+            </div>
           </div>
-
-          {broadcasts.length ? (
-            <div className="px-5 pb-2">
-              <BroadcastPanel items={broadcasts} />
-            </div>
-          ) : null}
-
-          {sync ? (
-            <p
-              data-unsent-note
-              className="mx-5 mb-2 flex items-center gap-1.5 text-[12.5px] text-[#1a1a1a] max-sm:mx-3"
-            >
-              <span
-                aria-hidden
-                className="inline-block h-3.5 w-3.5 shrink-0 rounded-[3px] border border-[#c7cad1]"
-                style={{ background: UNSENT_ROW_BG }}
-              />
-              <PhoneOneLine className="min-w-0 flex-1">
-                {UNSENT_NOTE}
-              </PhoneOneLine>
-            </p>
-          ) : null}
 
           <div className="px-5 pb-1.5">
             <div className="flex items-center gap-2 rounded-t-lg border-[0.5px] border-[#b3d9f7] bg-[#dce8f5] px-3.5 py-2">
@@ -818,8 +847,10 @@ export function TicketsTrackingView() {
                 "Click a Notes or WhatsApp cell to read the guest’s messages and reply. When your reply goes out to the guest (SMS or email sent), it counts as handled and the cell shows ✓ with your name. If no reply is needed, click Take action. SMS can be at most 306 characters (134 if it has a character such as Δ), plain characters only (no emoji, accents such as á, or symbols such as € and { }; curly quotes and long dashes are changed to plain ones automatically); if your reply is longer, SMS to guest is greyed out and it goes by email only. Shorten it to use SMS again, then tick SMS to guest again.",
                 "☰ Columns chooses what shows on the page. Untick a page column to hide it. Under From the uploaded file, tick any column of the manifest you uploaded to show it. Reset to default brings back the normal page. Your choice is saved to your account, so it follows you to another computer.",
                 "Drag a column header to move it. Drag its right edge to make it wider.",
-                "⬇ Download CSV saves everything for this date, whatever columns are showing: every column of the uploaded manifest, then the status columns. Older orders have no manifest columns, so those cells are blank.",
-                "⬆ Upload adds orders that were not sent from this system. Choose the product, then the CSV or .xlsx file. Orders already in the list are skipped unless you tick Insert anyway.",
+                // 4⑤ A 改名「⬇ CSV」；⬆ Upload 藏了，那句删掉（4⑥ B，同 Tour Tracking）。
+                "⬇ CSV saves everything for this date, whatever columns are showing: every column of the uploaded manifest, then the status columns. Older orders have no manifest columns, so those cells are blank.",
+                // 4③ A：Broadcast 键上的小数字。
+                ...(noBroadcast ? [] : [BROADCAST_COUNT_HOW_TO]),
                 // 这页 How to use 没有 Broadcast 那一条 ⇒ 放最后。
                 ...(sync && !noBroadcast ? [SYNC_BROADCAST_HOW_TO] : []),
               ]}
@@ -884,9 +915,12 @@ export function TicketsTrackingView() {
 const REFRESH_BTN =
   "cursor-pointer rounded-[7px] border border-[#bae6fd] bg-[#e8f4f8] text-[13px] font-semibold text-[#0e7490] hover:bg-[#cceeff] disabled:opacity-60";
 
-/** 旧页面 .btn-nav：30px 白色方块的 ‹ ›。 */
+/** 4⑤ A：工具行按钮稍小。 */
+const SMALL_BTN = "h-[26px] px-[9px] text-[11.5px]";
+
+/** 旧页面 .btn-nav 的 ‹ ›（4⑤ A 改成 26px）。 */
 const NAV_BTN =
-  "flex size-[30px] cursor-pointer items-center justify-center rounded-[7px] border border-[#dde3ea] bg-paper text-[16px] leading-none text-[#4a6080] hover:bg-[#f0f4f8] disabled:opacity-60";
+  "flex size-[26px] cursor-pointer items-center justify-center rounded-[7px] border border-[#dde3ea] bg-paper text-[15px] leading-none text-[#4a6080] hover:bg-[#f0f4f8] disabled:opacity-60";
 
 /**
  * 旧页面的星空顶栏（.top-bar：渐变底、星星、右边山的剪影、底边白色弧线）。
@@ -1022,7 +1056,7 @@ function ProductPill({
       onClick={onClick}
       title="Guests who replied YES / all guests"
       className={cn(
-        "inline-flex h-14 min-w-[80px] cursor-pointer flex-col items-center justify-center rounded-lg border px-3.5 text-[13px] whitespace-nowrap transition-all duration-150 max-sm:h-11 max-sm:min-w-0 max-sm:shrink-0 max-sm:px-2.5 max-sm:text-[12px]",
+        "inline-flex cursor-pointer items-baseline gap-1 rounded-[5px] border px-[9px] py-[2px] text-[11.5px] font-semibold whitespace-nowrap transition-all duration-150 max-sm:shrink-0",
         active
           ? "border-[#185FA5] bg-[rgba(24,95,165,0.25)] text-white"
           : "border-[#14395f] bg-[#f5f8fc] text-[#1a1a1a] hover:border-[#1a3a5c] hover:bg-[#f0f4ff] hover:text-[#1a3a5c]",
@@ -1031,70 +1065,12 @@ function ProductPill({
       {label}
       <span
         className={cn(
-          "mb-0.5 text-[15px] font-bold text-[#14395f] tabular-nums",
+          "text-[11px] font-bold text-[#14395f] tabular-nums",
           active && "bg-white/25",
         )}
       >
         {yesPax}/{totalPax}
       </span>
     </button>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  valueClass,
-  title,
-}: {
-  label: string;
-  value: number | string | undefined;
-  valueClass?: string;
-  title?: string;
-}) {
-  return (
-    <div
-      title={title}
-      className="flex min-w-[76px] flex-col items-center rounded-[10px] border-[1.5px] border-[#dde3ea] bg-paper px-3.5 py-2 shadow-[0_1px_4px_rgba(26,42,60,0.06)] max-sm:min-w-0 max-sm:flex-1 max-sm:px-0.5 max-sm:py-1"
-    >
-      <div
-        className={cn(
-          "text-[26px] leading-[1.1] font-bold max-sm:text-[17px]",
-          valueClass,
-        )}
-      >
-        {value ?? "—"}
-      </div>
-      <div className="mt-0.5 text-[12px] font-semibold tracking-[.5px] text-[#1a1a1a] uppercase max-sm:text-center max-sm:text-[8.5px] max-sm:leading-tight max-sm:tracking-normal">
-        {label}
-      </div>
-    </div>
-  );
-}
-
-/** 当天发过的群发（同旧页面 #broadcast-panel：奶油色框，点一条展开正文）。 */
-function BroadcastPanel({ items }: { items: BroadcastLogEntry[] }) {
-  return (
-    <section className="overflow-hidden rounded-lg border border-[#f0d080] bg-[#fffbea]">
-      <h2 className="bg-[#fff3cd] px-3 py-1.5 text-[11px] font-bold text-[#7a4f00]">
-        📣 Broadcasts sent for this date ({items.length})
-      </h2>
-      {items.map((b) => (
-        <details key={b.id} className="group border-t border-[#f0dfae]">
-          <summary className="flex cursor-pointer list-none flex-wrap items-baseline gap-2 px-3 py-[7px] text-[10px] text-[#8a6d1f] [&::-webkit-details-marker]:hidden">
-            <span className="text-[9px] group-open:hidden">▶</span>
-            <span className="hidden text-[9px] group-open:inline">▼</span>
-            <span className="text-[11px] font-bold text-[#7a4f00]">
-              {b.template_name || "Custom message"}
-            </span>
-            <span>{b.created_at}</span>
-            <span>· {b.sent_by}</span>
-          </summary>
-          <p className="px-3 pb-2 text-[11px] leading-[1.5] whitespace-pre-wrap text-[#4a3a1a]">
-            {b.message_body}
-          </p>
-        </details>
-      ))}
-    </section>
   );
 }

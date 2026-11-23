@@ -250,7 +250,7 @@ export function InsertBar({
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => onInsert(v)}
-          className="cursor-pointer rounded-[5px] border border-[#cfe1f6] bg-paper px-[7px] py-0.5 font-mono text-[10px] text-[#1a3a5c] hover:border-[#1a3a5c] hover:bg-[#eef6ff] night:bg-white/[.04]"
+          className="cursor-pointer rounded-[5px] border border-[#cfe1f6] bg-paper px-[7px] py-0.5 font-mono text-[10px] text-[#1a3a5c] hover:border-[#1a3a5c] hover:bg-[#eef6ff] night:border-white/15 night:bg-white/[.04] night:text-sky-300 night:hover:border-sky-300/60 night:hover:bg-white/[.08]"
         >
           + {v.slice(1, -1)}
         </button>

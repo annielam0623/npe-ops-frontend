@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -58,7 +59,7 @@ async function goto(url) {
 }
 
 // 页面里用的小工具（每次导航后重新注入）。
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$t = (sel) => [...document.querySelectorAll(sel)].map(e => e.textContent.trim());
 window.$rows = () => [...document.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent.trim()));
 window.$heads = () => [...document.querySelectorAll('thead th')].map(th => th.textContent.replace('⠿','').trim());
@@ -107,6 +108,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
 
   try {
@@ -450,7 +452,7 @@ async function run() {
   await sleep(100);
   const newRow = `[...${ed}.querySelectorAll('[data-time-row]')][2]`;
   check("+ Add time：多一行标 new，写「Not saved yet: 1 time added」（先暂存）", await evaluate(`return ${newRow}.textContent.includes('new') && ${ed}.querySelector('[data-times-unsaved]').textContent.startsWith('Not saved yet: 1 time added');`));
-  await evaluate(`const s = ${newRow}.querySelector('select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, '14'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+  await evaluate(`const s = ${newRow}.querySelector('select, [data-select-menu]'); return $sel(s, '14');`);
   await evaluate(`$setValue(${newRow}.querySelectorAll('input[data-time-input]')[0], '10:00');`);
   await evaluate(`${newRow}.querySelectorAll('[data-time-cell]')[1].querySelector('input[type=checkbox]').click();`);
   await sleep(150);
@@ -474,7 +476,7 @@ async function run() {
   await evaluate(`$btn('+ Add time', ${ed}).click();`);
   await sleep(100);
   const dupRow = `[...${ed}.querySelectorAll('[data-time-row]')].pop()`;
-  await evaluate(`const s = ${dupRow}.querySelector('select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, '11'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+  await evaluate(`const s = ${dupRow}.querySelector('select, [data-select-menu]'); return $sel(s, '11');`);
   await evaluate(`$setValue(${dupRow}.querySelectorAll('input[data-time-input]')[0], '09:45');`);
   await sleep(150);
   check("同一条线路同一季同一个时间写两次：时刻表里马上红字", await evaluate(`return ${ed}.querySelector('[data-times-error]')?.textContent === 'Las Vegas → St George 9:45 AM is listed twice in ${SUMMER}.';`));
@@ -554,7 +556,7 @@ async function run() {
   await openPage(APP + "/settings/pickup-locations");
   await waitFor("document.querySelector('[data-block=tour] [data-direction]')");
   await helpers();
-  await evaluate("window.$pickDir = (v) => { const s = document.querySelector('[data-block=tour] [data-direction-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, v); s.dispatchEvent(new Event('change', { bubbles: true })); };");
+  await evaluate("window.$pickDir = (v) => { const s = document.querySelector('[data-block=tour] [data-direction-select]'); return $sel(s, v); };");
   const dirRow = (name) => "[...document.querySelectorAll('[data-block=tour] tbody tr')].find(tr => tr.children[0].textContent.startsWith(" + JSON.stringify(name) + "))";
   const dirText = (name) => evaluate("return " + dirRow(name) + "?.children[1].textContent.trim();");
   check("72：Tour bus 块第 2 列是 Direction；Shuttle 块不出", await evaluate("const h = [...document.querySelectorAll('[data-block=tour] thead th')].map(th => th.textContent.trim()); return h[1] === 'Direction' && ![...document.querySelectorAll('[data-block=shuttle] thead th')].some(th => th.textContent.trim() === 'Direction');"));
@@ -564,7 +566,7 @@ async function run() {
   await waitFor("document.querySelector('[data-block=tour] [data-direction-select]')");
   check("72：✏ Edit 出下拉 Not set / North / South / Flexible，照现在的值", await evaluate("const s = document.querySelector('[data-block=tour] [data-direction-select]'); return s.value === '' && [...s.options].map(o => o.textContent).join('|') === 'Not set|North|South|Flexible';"));
   let before72 = (await mockLog()).length;
-  await evaluate("$pickDir('north');");
+  await evaluate("await $pickDir('north');");
   await sleep(300);
   check("72：改了下拉先不存（没发请求）", (await since(before72, (e) => e.method !== "GET")).length === 0);
   await evaluate("$btn('Save', document.querySelector('[data-block=tour] [data-edit-row]')).click();");
@@ -582,7 +584,7 @@ async function run() {
   await ctl({ dirFail: true });
   await evaluate(dirRow("Aria") + ".querySelector('button').click();");
   await waitFor("document.querySelector('[data-block=tour] [data-direction-select]')");
-  await evaluate("$pickDir('flexible');");
+  await evaluate("await $pickDir('flexible');");
   await evaluate("$btn('Save', document.querySelector('[data-block=tour] [data-edit-row]')).click();");
   check("72：PATCH 被拒 ⇒ 行留着、红字写原因 + 其他已存", await waitFor("document.querySelector('[data-block=tour] [data-edit-row]')?.textContent.includes('Could not save Direction: Direction must be North, South, Flexible, or Not set. The other boxes were saved.')"));
   await ctl({ dirFail: false });

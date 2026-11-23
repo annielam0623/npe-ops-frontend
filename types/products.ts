@@ -28,6 +28,11 @@ export interface Product {
    * 后端没上线这一列时字段不存在（undefined），当没 dismiss 过一样处理。
    */
   attention_dismissed?: boolean;
+  /**
+   * 这个产品码的订单从哪来（后端 95，按产品码算）：rezdy / tripguru / both。名字旁的小标签照它画；
+   * 没有这个字段（旧后端）⇒ 不出标签（以前写死 REZDY，TripGuru 的 PHSU5Q6F / PPU4WY9C 也标成 REZDY，Annie 2026-11-21 发现）。
+   */
+  source?: "rezdy" | "tripguru" | "both" | null;
 }
 
 export interface ProductGroup {

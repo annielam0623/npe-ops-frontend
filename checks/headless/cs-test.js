@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -58,7 +59,7 @@ async function goto(url) {
 }
 
 // 页面里用的小工具（每次导航后重新注入）。
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$t = (sel) => [...document.querySelectorAll(sel)].map(e => e.textContent.trim());
 window.$rows = () => [...document.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent.trim()));
 window.$heads = () => [...document.querySelectorAll('thead th')].map(th => th.textContent.replace('⠿','').trim());
@@ -107,6 +108,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
   // 记下页面里的 console.error（检查「不再静默」）。
   await cdp("Page.addScriptToEvaluateOnNewDocument", { source: "window.__csErrors = []; const e = console.error.bind(console); console.error = (...a) => { window.__csErrors.push(a.map(String).join(' ')); e(...a); };" });
@@ -135,8 +137,7 @@ window.$tab = (t) => [...document.querySelectorAll('[role=tab]')].find(b => b.te
 // 受控 <select>：直接改 DOM 的 .value 不会触发 React 的 onChange（和原生 input 不一样），要走原型 setter + 派发 change。
 window.$setSelect = (el, optionText) => {
   const opt = [...el.options].find(o => o.textContent === optionText);
-  Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, opt.value);
-  el.dispatchEvent(new Event('change', { bubbles: true }));
+  return $sel(el, opt.value);
 };
 `;
 async function h() {
@@ -524,12 +525,20 @@ async function run() {
   const foPills = () => evaluate("return [...document.querySelectorAll('[aria-label=Version] button')].map(b => b.textContent.trim());");
   check("两个标签 Email | SMS", JSON.stringify(await evaluate("return [...document.querySelectorAll('[role=tab]')].map(t => t.textContent);")) === JSON.stringify(["Email", "SMS"]));
   check("药丸：Default + 启用的合作公司（Partner B 标 same as Default、停用的不出现）", JSON.stringify(await foPills()) === JSON.stringify(["Default", "Partner A · own wording", "Partner B · same as Default"]), JSON.stringify(await foPills()));
-  check("Email 标签：标题 + 正文两张卡片，键名对", await evaluate("return !!$card('Email subject') && !!$card('Email body') && $card('Email subject').textContent.includes('tmpl__farmout__default__email_subject');"));
+  // G302：标题由后端代码生成，Email subject 框藏掉、原位置一行说明（Annie 2026-11-22「A 动手」）
+  check("Email 标签：没有 Email subject 框，原位置一行说明；只剩正文一张卡片", await evaluate("const n = document.querySelector('[data-fo-subject-note]'); return !$card('Email subject') && !!$card('Email body') && !!n && n.textContent === 'Subject is set automatically: tour name, date, order number.' && !!(n.compareDocumentPosition($card('Email body')) & Node.DOCUMENT_POSITION_FOLLOWING) && !document.body.textContent.includes('tmpl__farmout__default__email_subject');"));
   check("11 个变量按钮齐全", await evaluate("return [...$card('Email body').querySelectorAll('button')].filter(b => b.textContent.startsWith('+ ')).length === 11;"));
   await evaluate("$card('Email body').querySelector('textarea').dispatchEvent(new FocusEvent('focusin', { bubbles: true }));");
   await sleep(200);
-  check("预览：带 Subject 一行，变量换成样例（West Rim / Bellagio）", await evaluate("const t = document.querySelector('aside').textContent; return t.includes('Subject:') && t.includes('Grand Canyon West Rim on Thursday, October 16') && t.includes('https://goo.gl/maps/SpW2EnpwM55Hvr637') && !t.includes('{tour_name}');"));
+  check("预览：Subject 一行写自动生成的说明（不显示旧标题），变量换成样例（West Rim / Bellagio）", await evaluate("const t = document.querySelector('aside').textContent; return t.includes('Subject: set automatically: tour name, date, order number') && !t.includes('pick-up on') && t.includes('Grand Canyon West Rim on Thursday, October 16') && t.includes('https://goo.gl/maps/SpW2EnpwM55Hvr637') && !t.includes('{tour_name}');"));
   check("Variables 说明表：11 行、含含义和样例", await evaluate("const t = document.querySelector('[data-fo-variables]'); return !!t && t.querySelectorAll('tbody tr').length === 11 && t.textContent.includes('Per-tour notice') && t.textContent.includes('Bellagio South Tour Lobby');"));
+  // Annie 2026-11-22「修一下 Farm out 那两处看不清的字」：白天 Variables 表是白卡片（原来透明，深字压在深色外框上）；夜间 Insert 键浅色字（原来深蓝 #1a3a5c 压在深底上）。
+  {
+    const day = await evaluate("const t = document.querySelector('[data-fo-variables]'); return { bg: getComputedStyle(t).backgroundColor, td: getComputedStyle(t.querySelector('tbody td:nth-child(2)')).color };");
+    check("白天：Variables 表是白卡片底（paper #f4f3ee），正文深字 #1a1a1a", day.bg === "rgb(244, 243, 238)" && day.td === "rgb(26, 26, 26)", JSON.stringify(day));
+    const night = await evaluate("const h = document.documentElement; const old = h.getAttribute('data-theme'); h.setAttribute('data-theme', 'night'); const b = [...$card('Email body').querySelectorAll('button')].find(x => x.textContent.startsWith('+ ')); const s = getComputedStyle(b); const r = { color: s.color, border: s.borderTopColor, bg: s.backgroundColor, varBg: getComputedStyle(document.querySelector('[data-fo-variables]')).backgroundColor }; if (old == null) h.removeAttribute('data-theme'); else h.setAttribute('data-theme', old); return r;");
+    check("夜间：Insert 键浅色字（sky-300，不是深蓝 #1a3a5c）、边不是浅蓝 #cfe1f6、不是蓝色实心；Variables 表淡白底", night.color !== "rgb(26, 58, 92)" && night.color.startsWith("lab(80") && night.border !== "rgb(207, 225, 246)" && !night.bg.includes("59, 130, 246") && night.varBg !== "rgba(0, 0, 0, 0)", JSON.stringify(night));
+  }
   check("预览：该团有 PLEASE NOTE 时写出注意事项", await evaluate("return document.querySelector('aside').textContent.includes('PLEASE NOTE:') && document.querySelector('aside').textContent.includes('backpacks');"));
   await evaluate("document.querySelector('aside input[type=checkbox]').click();");
   await sleep(150);
@@ -539,15 +548,15 @@ async function run() {
   const pill = (name) => evaluate(`[...document.querySelectorAll('[aria-label=Version] button')].find(b => b.textContent.startsWith(${JSON.stringify(name)})).click();`);
   await pill("Partner A");
   await sleep(200);
-  check("Partner A：标题是它自己的，键名 partner_a", await evaluate("return $card('Email subject').querySelector('textarea').value === 'A: your {tour_name} pick-up' && $card('Email subject').textContent.includes('tmpl__farmout__partner_a__email_subject');"));
+  check("Partner A：正文是它自己的，键名 partner_a；没有标题框", await evaluate("return $card('Email body').querySelector('textarea').value.startsWith('A: Thank you for choosing') && $card('Email body').textContent.includes('tmpl__farmout__partner_a__email_body') && !$card('Email subject');"));
   before = (await mockLog()).length;
-  await evaluate(`$setValue($card('Email subject').querySelector('textarea'), 'A2 {tour_name}'); $btn('Save', $card('Email subject')).click();`);
+  await evaluate(`$setValue($card('Email body').querySelector('textarea'), 'A2 {tour_name}'); $btn('Save', $card('Email body')).click();`);
   let fsaves = await waitSaves(before, 1);
-  check("保存 Partner A 标题：只写 partner_a 的键", fsaves.length === 1 && fsaves[0].body.key === "tmpl__farmout__partner_a__email_subject" && fsaves[0].body.value === 'A2 {tour_name}', JSON.stringify(fsaves.map((e) => e.body)));
+  check("保存 Partner A 正文：只写 partner_a 的正文键，不碰标题（旧标题原样留着）", fsaves.length === 1 && fsaves[0].body.key === "tmpl__farmout__partner_a__email_body" && fsaves[0].body.value === 'A2 {tour_name}' && !fsaves.some((e) => /email_subject/.test(e.body.key)), JSON.stringify(fsaves.map((e) => e.body)));
   // Copy from Default
   await evaluate(`$btn('Copy from Default').click();`);
   // 存完那一下 Copy from Default 偶尔还没就绪（第一次跑 150ms 后读到旧字）：等到换好为止
-  check("Copy from Default：标题换回 Default 的文字（还没存）", await waitFor("$card('Email subject').querySelector('textarea').value === 'Your {tour_name} pick-up on {tour_date}'") || (await evaluate("$btn('Copy from Default').click(); return 1;"), await waitFor("$card('Email subject').querySelector('textarea').value === 'Your {tour_name} pick-up on {tour_date}'")));
+  check("Copy from Default：正文换回 Default 的文字（还没存）", await waitFor("$card('Email body').querySelector('textarea').value.startsWith('Thank you for choosing')") || (await evaluate("$btn('Copy from Default').click(); return 1;"), await waitFor("$card('Email body').querySelector('textarea').value.startsWith('Thank you for choosing')")));
   // 打错的变量：标红、不让存
   await evaluate(`$setValue($card('Email body').querySelector('textarea'), 'Hi {pickup_spt} at {tour_name}');`);
   await sleep(120);
@@ -563,11 +572,11 @@ async function run() {
   await sleep(200);
   check("确认后：正文换回 Default 的文字", await evaluate("return $card('Email body').querySelector('textarea').value.startsWith('Thank you for choosing') && !$card('Email body').querySelector('[data-unknown-vars]');"));
   // Reset to Default（单张卡片）
-  await evaluate(`$setValue($card('Email subject').querySelector('textarea'), 'zzz');`);
+  await evaluate(`$setValue($card('Email body').querySelector('textarea'), 'zzz');`);
   await sleep(100);
-  await evaluate(`$btn('Reset to Default', $card('Email subject')).click();`);
+  await evaluate(`$btn('Reset to Default', $card('Email body')).click();`);
   await sleep(120);
-  check("Reset to Default：这张卡片换回 Default 的文字", await evaluate("return $card('Email subject').querySelector('textarea').value === 'Your {tour_name} pick-up on {tour_date}' && $btn('Reset to Default', $card('Email subject')).disabled === true;"));
+  check("Reset to Default：这张卡片换回 Default 的文字", await evaluate("return $card('Email body').querySelector('textarea').value.startsWith('Thank you for choosing') && $btn('Reset to Default', $card('Email body')).disabled === true;"));
   await evaluate("$tab('SMS');");
   await sleep(200);
   check("SMS 标签：一张 SMS text 卡片，药丸还在", await evaluate("return !!$card('SMS text') && document.querySelectorAll('[aria-label=Version] button').length === 3;"));
@@ -615,7 +624,7 @@ async function run() {
       "const t = document.body.textContent; return t.includes('Boulder City Shuttle — Outbound') && t.includes('Boulder City Shuttle — Inbound') && t.includes('Boulder City Shuttle · outbound') && t.includes('Boulder City Shuttle · inbound');",
     ),
   );
-  check("Add route 表单：group 下拉里有 2 个 shuttle group", await evaluate("return [...document.querySelectorAll('select[aria-label=\"Shuttle group\"] option')].map(o => o.textContent);").then((v) => JSON.stringify(v) === JSON.stringify(["Boulder City Shuttle", "Page Shuttle"])));
+  check("Add route 表单：group 下拉里有 2 个 shuttle group", await evaluate("return [...document.querySelectorAll(':is(select,[data-select-menu])[aria-label=\"Shuttle group\"]')].flatMap((s) => [...s.options]).map(o => o.textContent);").then((v) => JSON.stringify(v) === JSON.stringify(["Boulder City Shuttle", "Page Shuttle"])));
   check(
     "Templates 区块：路线药丸 2 个，outbound 默认选中",
     await evaluate(
@@ -698,7 +707,7 @@ async function run() {
   before = (await mockLog()).length;
   check("Add route 是蓝色提交键", await evaluate("return $btn('Add').className.includes('bg-[#3b82f6]');"));
   await evaluate(
-    "window.$setSelect(document.querySelector('select[aria-label=\"Shuttle group\"]'), 'Page Shuttle'); window.$setValue(document.querySelector('input[aria-label=\"Route label\"]'), 'Page Shuttle — Outbound'); $btn('Add').click();",
+    "await window.$setSelect(document.querySelector(':is(select,[data-select-menu])[aria-label=\"Shuttle group\"]'), 'Page Shuttle'); window.$setValue(document.querySelector('input[aria-label=\"Route label\"]'), 'Page Shuttle — Outbound'); $btn('Add').click();",
   );
   let posts = [];
   for (let i = 0; i < 30 && !posts.length; i++) {
@@ -715,7 +724,7 @@ async function run() {
   // 重复的 group+方向：后端拒绝，错误原话显示在 Add 表单下面
   before = (await mockLog()).length;
   await evaluate(
-    "window.$setSelect(document.querySelector('select[aria-label=\"Shuttle group\"]'), 'Boulder City Shuttle'); window.$setSelect(document.querySelector('select[aria-label=\"Direction\"]'), 'Outbound'); window.$setValue(document.querySelector('input[aria-label=\"Route label\"]'), 'dup'); $btn('Add').click();",
+    "await window.$setSelect(document.querySelector(':is(select,[data-select-menu])[aria-label=\"Shuttle group\"]'), 'Boulder City Shuttle'); await window.$setSelect(document.querySelector(':is(select,[data-select-menu])[aria-label=\"Direction\"]'), 'Outbound'); window.$setValue(document.querySelector('input[aria-label=\"Route label\"]'), 'dup'); $btn('Add').click();",
   );
   await sleep(300);
   check("重复 group+方向：Add 表单下面显示后端原话，没有多出一条路线", await evaluate("return document.body.textContent.includes('A route for this group and direction already exists.') && [...document.querySelectorAll('[aria-label=Route] button')].length === 3;"));

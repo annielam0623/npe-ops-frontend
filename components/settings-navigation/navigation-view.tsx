@@ -24,6 +24,7 @@ import {
 } from "@/lib/nav-config-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { cn } from "@/lib/utils";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 interface EditItem {
   id: NavModuleId;
@@ -338,20 +339,18 @@ export function NavigationSettingsView() {
                           />
                           Show
                         </label>
-                        <select
+                        <SelectMenu
                           aria-label={`Group for ${NAV_MODULES[it.id].label}`}
-                          value={gi}
-                          onChange={(e) =>
-                            moveToGroup(gi, ii, Number(e.target.value))
-                          }
+                          value={String(gi)}
+                          options={[
+                            ...draft.groups.map((x, xi) => ({
+                              value: String(xi),
+                              label: String(x.label || "(no name)"),
+                            })),
+                          ]}
+                          onChange={(next) => moveToGroup(gi, ii, Number(next))}
                           className={cn(INPUT, "h-8 w-36 px-1.5 text-xs")}
-                        >
-                          {draft.groups.map((x, xi) => (
-                            <option key={x.key} value={xi}>
-                              {x.label || "(no name)"}
-                            </option>
-                          ))}
-                        </select>
+                        />
                         <button
                           type="button"
                           aria-label={`Move ${NAV_MODULES[it.id].label} up`}
@@ -453,25 +452,25 @@ export function NavigationSettingsView() {
                 </li>
               ) : null}
             </ul>
-            <select
+            <SelectMenu
               aria-label="Add a default shortcut"
-              value=""
-              onChange={(e) => {
-                const id = e.target.value;
+              value={""}
+              options={[
+                { value: "", label: "Add a page…" },
+                ...NAV_SIDEBAR_IDS.filter(
+                  (id) => isPinnable(id) && !draft.defaults.includes(id),
+                ).map((id) => ({
+                  value: String(id),
+                  label: String(NAV_MODULES[id].label),
+                })),
+              ]}
+              onChange={(next) => {
+                const id = next;
                 if (isNavModuleId(id))
                   edit((d) => ({ ...d, defaults: [...d.defaults, id] }));
               }}
               className={cn(INPUT, "w-64")}
-            >
-              <option value="">Add a page…</option>
-              {NAV_SIDEBAR_IDS.filter(
-                (id) => isPinnable(id) && !draft.defaults.includes(id),
-              ).map((id) => (
-                <option key={id} value={id}>
-                  {NAV_MODULES[id].label}
-                </option>
-              ))}
-            </select>
+            />
           </section>
 
           <div className="sticky bottom-0 flex flex-wrap items-center gap-3 border-t border-white/10 bg-[#06101c]/90 py-3 backdrop-blur">

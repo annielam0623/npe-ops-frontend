@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  createContext,
   type CSSProperties,
   Fragment,
   useCallback,
+  useContext,
   useEffect,
   useRef,
   useState,
@@ -142,6 +144,7 @@ import {
   markLabel,
   markWho,
 } from "@/components/morning-tracking/config";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /** ✓ 列：staff 在 Morning Tracking 改过（No show 改方向，N5 A）。 */
 function boardingStaffChanged(g: ManifestGuest): boolean {
@@ -244,6 +247,52 @@ function columnsFor(version: ManifestVersion, lunch: boolean): Column[] {
   return cols;
 }
 
+/**
+ * 151 编辑页手机一屏（Annie 2026-11-22「动手」= preview 3RS1yP6wErhpT9wJdXLuY5 推荐：① C 自动横竖屏 + Full screen；
+ * ② A 竖屏 6 列；③ B Text size 编辑卡手机上也一直打开，照 114「不要隐藏」）。只改屏幕上的样子：
+ * 存的字号、打印、Download、每个团藏的列都不变。电脑（宽 ≥ 640 且不是横拿的手机）照旧。
+ *   - portrait：屏宽 < 640（全站手机分界）；
+ *   - landscape：横拿的手机（宽 640–1023、高 ≤ 500）。
+ */
+type Fit = "portrait" | "landscape" | null;
+const FitContext = createContext<Fit>(null);
+const PORTRAIT_MQ = "(max-width: 639.98px)";
+const LANDSCAPE_MQ =
+  "(min-width: 640px) and (max-width: 1023.98px) and (max-height: 500px) and (orientation: landscape)";
+/** 竖屏只出这 6 列（加最后的 ✓；Lankun / West Rim 没有 ✓ 就是 5 列），其余横屏 / 电脑才出（题 ② A）。 */
+const PORTRAIT_KEYS: readonly ManifestColumnKey[] = [
+  "pickup_time",
+  "pickup_location",
+  "last_name",
+  "pax",
+  "notes",
+];
+/** 手机上表格的字按这个比例缩（纸本 16.5 px ⇒ 约 10 px），相对大小同纸本。 */
+const FIT_SCALE = 0.62;
+
+function useFit(): Fit {
+  const [fit, setFit] = useState<Fit>(null);
+  useEffect(() => {
+    const p = window.matchMedia(PORTRAIT_MQ);
+    const l = window.matchMedia(LANDSCAPE_MQ);
+    const update = () =>
+      setFit(p.matches ? "portrait" : l.matches ? "landscape" : null);
+    update();
+    p.addEventListener("change", update);
+    l.addEventListener("change", update);
+    return () => {
+      p.removeEventListener("change", update);
+      l.removeEventListener("change", update);
+    };
+  }, []);
+  return fit;
+}
+
+/** 手机上缩字（只改屏幕）：「16.5px」⇒「10px」，取到半 px。 */
+function fitPx(px: number, fit: Fit): number {
+  return fit ? Math.round(px * FIT_SCALE * 2) / 2 : px;
+}
+
 const VERSIONS: { value: ManifestVersion; label: string }[] = [
   { value: "general", label: "General" },
   { value: "lankun", label: "Lankun" },
@@ -316,6 +365,42 @@ export function ManifestView() {
   >({ kind: "idle" });
   /** 151 View only：开着时 = "all" 或车字母（网址上 ?view= 同步）。 */
   const [paper, setPaper] = useState<string | null>(null);
+  /** 151 编辑页手机一屏：竖屏 / 横屏（电脑 = null）；⛶ Full screen 开着时 = 看哪一台车（blocks 的下标）。 */
+  const fit = useFit();
+  const [full, setFull] = useState<number | null>(null);
+  // 只这一页：横拿手机时藏 shortcut 条、顶栏变 48px；Full screen 时整个顶栏都藏（globals.css）。
+  useEffect(() => {
+    const root = document.documentElement;
+    if (fit) root.dataset.mfFit = fit;
+    else delete root.dataset.mfFit;
+    return () => {
+      delete root.dataset.mfFit;
+    };
+  }, [fit]);
+  useEffect(() => {
+    if (full === null) return;
+    const root = document.documentElement;
+    root.dataset.mfFull = "1";
+    window.scrollTo({ top: 0 });
+    let wasFull = !!document.fullscreenElement;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !document.fullscreenElement) setFull(null);
+    };
+    // 真全屏（Android / 电脑）被浏览器退出（返回键、Esc）⇒ 也退出 Full screen。
+    const onFs = () => {
+      if (document.fullscreenElement) wasFull = true;
+      else if (wasFull) setFull(null);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("fullscreenchange", onFs);
+    return () => {
+      delete root.dataset.mfFull;
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("fullscreenchange", onFs);
+      if (document.fullscreenElement)
+        document.exitFullscreen().catch(() => undefined);
+    };
+  }, [full]);
   /** 有没存的改动时按 Print / Download / View only：先问「Save before printing?」（Q3）。 */
   const [saveFirst, setSaveFirst] = useState<{
     /** view = 151 的 View only（看的是库里存好的，先存）。 */
@@ -872,588 +957,650 @@ export function ManifestView() {
 
   return (
     <ManifestLookContext.Provider value={look}>
-      <ViewOnly.Provider value={viewOnly}>
-        <main data-phone-compact className="text-stone-800">
-          {/* 手机上整页排成一列，How to use 用 order 放到最底（Annie 2026-11-01 手机版规则）。 */}
-          <div className="max-sm:flex max-sm:flex-col">
-            {/* 后端 G29 第 5 条（2026-10-05）：‹ Back 回到点进来的那一页（排车页回去还是那一天、原来的位置）；
+      <FitContext.Provider value={fit}>
+        <ViewOnly.Provider value={viewOnly}>
+          <main data-phone-compact className="text-stone-800">
+            {/* 手机上整页排成一列，How to use 用 order 放到最底（Annie 2026-11-01 手机版规则）。 */}
+            <div className="max-sm:flex max-sm:flex-col">
+              {/* 后端 G29 第 5 条（2026-10-05）：‹ Back 回到点进来的那一页（排车页回去还是那一天、原来的位置）；
             直接打开的 ⇒ 去排车页的这一天。Dispatch · <日子> 不管从哪来都打开排车页的这一天。 */}
-            <nav aria-label="Back" className="flex flex-wrap gap-2">
-              <Link
-                href={backHref}
-                onClick={(e) => {
-                  if (!hasInAppHistory()) return;
-                  e.preventDefault();
-                  router.back();
-                }}
-                className={NAV_LINK}
+              <nav
+                aria-label="Back"
+                className={cn(
+                  "flex flex-wrap gap-2",
+                  full !== null && "hidden",
+                )}
               >
-                ‹ Back
-              </Link>
-              <Link href={backHref} className={NAV_LINK}>
-                {params ? `Dispatch · ${fmtShort(params.date)}` : "Dispatch"}
-              </Link>
-            </nav>
-
-            {view.kind === "bad-link" ? (
-              <div className={cn(WARN, "mt-3.5")}>
-                <p className="font-medium">
-                  This link is missing the day or the tour.
-                </p>
-                <p className="mt-1">
-                  Open the manifest from{" "}
-                  <PageLink
-                    href="/dispatch"
-                    className="text-[#93c5fd] underline"
-                  >
-                    Dispatch
-                  </PageLink>
-                  .
-                </p>
-              </div>
-            ) : view.kind === "forbidden" ? (
-              <p className="mt-3.5 text-[13px] text-[#94a3b8]">
-                Staff access required
-              </p>
-            ) : view.kind === "error" ? (
-              <div className="mt-3.5">
-                <ErrorBanner
-                  actionLabel="Retry"
-                  onAction={() => setReloadKey((k) => k + 1)}
+                <Link
+                  href={backHref}
+                  onClick={(e) => {
+                    if (!hasInAppHistory()) return;
+                    e.preventDefault();
+                    router.back();
+                  }}
+                  className={NAV_LINK}
                 >
-                  Could not load this manifest: {view.message}
-                </ErrorBanner>
-              </div>
-            ) : view.kind === "loading" || !data || !shown || !params ? (
-              <p className="py-10 text-center text-[13px] text-[#94a3b8]">
-                Loading…
-              </p>
-            ) : (
-              <>
-                {/* .mf-head：标题和返回键在左、Print all / Download 在右 */}
-                <header className="mt-1 mb-3.5 flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <h1 className="m-0 flex items-center gap-2.5 text-[24px] font-bold tracking-[-.02em] text-white">
-                      {/* 团色（同 Main manifest / Dispatch，Annie 2026-10-14）。 */}
-                      <span
-                        aria-hidden
-                        className="size-3.5 rounded-[4px]"
-                        style={{ background: tourColorFor(data.tour.name) }}
-                      />
-                      {data.tour.name}
-                    </h1>
-                    <p className="mt-1 text-[13px] text-[#94a3b8]">
-                      {data.date_label} ·{" "}
-                      {data.manifest
-                        ? `${ourOrders(data)} orders, ${ourPax(data)} pax · ${data.manifest.file_name}`
-                        : "no guests yet"}
-                    </p>
-                  </div>
-                  {/* 置顶 114（Annie「我要变的是格式，不是功能。现在这些编辑工具杂乱地显示在那里，我需要它relay list那样整齐明了」）：
+                  ‹ Back
+                </Link>
+                <Link href={backHref} className={NAV_LINK}>
+                  {params ? `Dispatch · ${fmtShort(params.date)}` : "Dispatch"}
+                </Link>
+              </nav>
+
+              {view.kind === "bad-link" ? (
+                <div className={cn(WARN, "mt-3.5")}>
+                  <p className="font-medium">
+                    This link is missing the day or the tour.
+                  </p>
+                  <p className="mt-1">
+                    Open the manifest from{" "}
+                    <PageLink
+                      href="/dispatch"
+                      className="text-[#93c5fd] underline"
+                    >
+                      Dispatch
+                    </PageLink>
+                    .
+                  </p>
+                </div>
+              ) : view.kind === "forbidden" ? (
+                <p className="mt-3.5 text-[13px] text-[#94a3b8]">
+                  Staff access required
+                </p>
+              ) : view.kind === "error" ? (
+                <div className="mt-3.5">
+                  <ErrorBanner
+                    actionLabel="Retry"
+                    onAction={() => setReloadKey((k) => k + 1)}
+                  >
+                    Could not load this manifest: {view.message}
+                  </ErrorBanner>
+                </div>
+              ) : view.kind === "loading" || !data || !shown || !params ? (
+                <p className="py-10 text-center text-[13px] text-[#94a3b8]">
+                  Loading…
+                </p>
+              ) : (
+                <>
+                  {/* 151 ⛶ Full screen：页面其他部分先藏起来（不卸载，暂存、选中的格子都留着），弹窗照旧在下面。 */}
+                  <div
+                    data-mf-page
+                    className={cn("contents", full !== null && "hidden")}
+                  >
+                    {/* .mf-head：标题和返回键在左、Print all / Download 在右 */}
+                    <header className="mt-1 mb-3.5 flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <h1 className="m-0 flex items-center gap-2.5 text-[24px] font-bold tracking-[-.02em] text-white">
+                          {/* 团色（同 Main manifest / Dispatch，Annie 2026-10-14）。 */}
+                          <span
+                            aria-hidden
+                            className="size-3.5 rounded-[4px]"
+                            style={{ background: tourColorFor(data.tour.name) }}
+                          />
+                          {data.tour.name}
+                        </h1>
+                        <p className="mt-1 text-[13px] text-[#94a3b8]">
+                          {data.date_label} ·{" "}
+                          {data.manifest
+                            ? `${ourOrders(data)} orders, ${ourPax(data)} pax · ${data.manifest.file_name}`
+                            : "no guests yet"}
+                        </p>
+                      </div>
+                      {/* 置顶 114（Annie「我要变的是格式，不是功能。现在这些编辑工具杂乱地显示在那里，我需要它relay list那样整齐明了」）：
                     排法照 Relay list 新版——右边一排「● 没存黄字｜Save｜Version｜Canyon order｜Columns｜Print all buses｜Download｜⚙ Settings」，
                     键 34px、前面线条图标，蓝色只给 Save；手机不收进 ⋯，Print all buses / Download / Settings 一排三格。作用一个不变。 */}
-                  <div
-                    data-mf-header-actions
-                    className="flex flex-wrap items-center justify-end gap-2 max-sm:w-full max-sm:justify-start"
-                  >
-                    {/* 存好绿、失败红、有没存的黄（全站规矩）；照 Relay list 放在 Save 左边，前面黄点。 */}
-                    {viewOnly ? null : saveState.kind === "error" ? (
-                      <span
-                        role="alert"
-                        data-page-save-error
-                        className="text-[11.5px] font-semibold text-[#fca5a5] max-sm:order-first max-sm:basis-full"
-                      >
-                        {saveState.message}
-                      </span>
-                    ) : dirty ? (
-                      <span
-                        data-page-unsaved
-                        className="inline-flex max-w-[460px] items-start gap-1.5 text-[11.5px] font-semibold text-[#fcd34d] max-sm:order-first max-sm:max-w-none max-sm:basis-full"
-                      >
-                        <i className="mt-[5px] inline-block h-2 w-2 shrink-0 rounded-full bg-[#fbbf24]" />
-                        <span>
-                          Not saved yet: {summary.join(" · ")}. Click Save to
-                          keep
-                          {summary.length === 1 ? " it" : " them"}.
-                        </span>
-                      </span>
-                    ) : saveState.kind === "saved" ? (
-                      <span
-                        role="status"
-                        data-page-saved
-                        className="text-[11.5px] font-semibold text-[#4ade80] max-sm:order-first max-sm:basis-full"
-                      >
-                        ✓ Saved · {saveState.at}
-                      </span>
-                    ) : null}
-                    {/* 整页 Save（Q1）：蓝色提交键；没有改动时灰的。 */}
-                    {viewOnly ? null : (
-                      <button
-                        type="button"
-                        data-page-save
-                        data-phone-keep
-                        disabled={!dirty || saveState.kind === "saving"}
-                        onClick={() => void savePending()}
-                        className="inline-flex h-[28px] cursor-pointer items-center gap-1.5 rounded-[8px] bg-[#3b82f6] px-3 text-[12.5px] font-bold text-white disabled:cursor-default disabled:opacity-45 max-sm:text-[12px]"
-                      >
-                        <LineIcon name="save" />
-                        {saveState.kind === "saving" ? "Saving…" : "Save"}
-                      </button>
-                    )}
-                    {data.tour.manifest_version !== undefined ? (
-                      <VersionPicker
-                        version={versionOf(shown)}
-                        readOnly={viewOnly}
-                        unsaved={pending.version !== null}
-                        onChange={stageVersion}
-                      />
-                    ) : null}
-                    {shown?.tour.canyon_pages && data.tour.canyon_sections ? (
-                      <CanyonOrderPicker
-                        pages={shown.tour.canyon_pages}
-                        readOnly={viewOnly}
-                        onChange={(pages) =>
-                          setCanyon({ key: canyonKey, pages })
-                        }
-                      />
-                    ) : null}
-                    {data.tour.bus_column_options?.length ? (
-                      <ColumnsPicker
-                        options={data.tour.bus_column_options}
-                        hidden={
-                          pending.hiddenColumns ??
-                          data.tour.bus_hidden_columns ??
-                          []
-                        }
-                        noLunchVendor={!hasLunchVendor(data)}
-                        readOnly={viewOnly}
-                        unsaved={pending.hiddenColumns !== null}
-                        onChange={stageHiddenColumns}
-                      />
-                    ) : null}
-                    <div
-                      data-mf-output-keys
-                      className="contents max-sm:grid max-sm:basis-full max-sm:grid-cols-3 max-sm:gap-2"
-                    >
-                      {/* 151 题 ⑤：白键「View only」在 Print all buses 前面（白色：蓝色只给提交键），能开这一页的人都有（题 ⑦）。 */}
-                      {data.manifest && data.blocks.length > 0 ? (
-                        <button
-                          type="button"
-                          data-view-only="all"
-                          data-phone-keep
-                          onClick={() => openPaper("all")}
-                          className={MF_WHITE_KEY}
-                        >
-                          View only
-                        </button>
-                      ) : null}
-                      {canPrint && data.manifest && data.blocks.length > 0 ? (
-                        <a
-                          href={manifestPrintUrl(
-                            params.date,
-                            params.tour,
-                            undefined,
-                            canyonPages,
-                          )}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          data-phone-keep
-                          onClick={(e) => {
-                            const url = e.currentTarget.href;
-                            if (
-                              guardOutput("print", allOrders, () =>
-                                window.open(
-                                  url,
-                                  "_blank",
-                                  "noopener,noreferrer",
-                                ),
-                              )
-                            )
-                              e.preventDefault();
-                          }}
-                          className={cn(MF_WHITE_KEY, "no-underline")}
-                        >
-                          <LineIcon name="print" />
-                          <span className="max-sm:hidden">Print all buses</span>
-                          <span className="sm:hidden">Print all</span>
-                        </a>
-                      ) : null}
-                      {viewOnly || !canDownload ? null : (
-                        <form
-                          ref={downloadRef}
-                          method="post"
-                          action={MANIFEST_DOWNLOAD_URL}
-                          className="m-0 max-sm:contents"
-                          onSubmit={(e) => {
-                            // form.submit() 不会再触发 onSubmit，所以「Download anyway」直接交。
-                            if (
-                              guardOutput("download", allOrders, () =>
-                                downloadRef.current?.submit(),
-                              )
-                            )
-                              e.preventDefault();
-                          }}
-                        >
-                          <input
-                            type="hidden"
-                            name="date"
-                            value={params.date}
-                          />
-                          <input
-                            type="hidden"
-                            name="tour"
-                            value={params.tour}
-                          />
-                          {canyonPages ? (
-                            <input
-                              type="hidden"
-                              name={CANYON_PARAM}
-                              value={JSON.stringify(canyonPages)}
-                            />
-                          ) : null}
-                          <button
-                            type="submit"
-                            data-phone-keep
-                            disabled={!data.manifest}
-                            className={cn(
-                              MF_WHITE_KEY,
-                              "disabled:cursor-default disabled:opacity-50 max-sm:w-full",
-                            )}
-                          >
-                            <LineIcon name="download" />
-                            Download
-                          </button>
-                        </form>
-                      )}
-                      {layout && !perms.isPartner ? (
-                        <button
-                          type="button"
-                          data-layout-open
-                          data-phone-keep
-                          onClick={() => {
-                            setLayoutDraft(layout.settings);
-                            setRelayDraft(
-                              relaySettings ? toDraft(relaySettings) : null,
-                            );
-                            setLayoutOpen(true);
-                          }}
-                          className={MF_WHITE_KEY}
-                        >
-                          <LineIcon name="gear" />
-                          Settings
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                </header>
-
-                {!data.manifest ? (
-                  <Warn>
-                    The main manifest has no orders for this tour on this day.
-                    An order whose product has no Group is not on any tour: set
-                    its Group in Settings → Products.
-                  </Warn>
-                ) : null}
-                {data.mode === "none" ? (
-                  <Warn>
-                    No bus is scheduled for this tour on this day yet. Add one
-                    on the Dispatch page.
-                  </Warn>
-                ) : data.mode === "unlettered" ? (
-                  <Warn>
-                    This tour has more than one bus, but not every bus has its
-                    own letter. Give each bus a letter (A, B ...) on the
-                    Dispatch page. Until then no guest can be put on a bus.
-                  </Warn>
-                ) : null}
-
-                {actionError ? (
-                  // .mf-err
-                  <div
-                    role="alert"
-                    className="mb-3.5 flex flex-wrap items-center justify-between gap-2 rounded-[10px] border border-[rgba(239,68,68,.35)] bg-[rgba(239,68,68,.12)] px-3.5 py-2.5 text-[13px] text-[#fecaca]"
-                  >
-                    <span>{actionError}</span>
-                    <button
-                      type="button"
-                      onClick={() => setActionError(null)}
-                      className="text-[12px] text-[#fecaca] underline"
-                    >
-                      Dismiss
-                    </button>
-                  </div>
-                ) : null}
-
-                {farmedOut ? (
-                  // Q3：转完提醒还要去 Dispatch 选酒店、发 Farm out 通知；点 × 关掉。
-                  <div
-                    data-farm-out-done
-                    className="mb-3.5 flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-[10px] border border-[rgba(251,191,36,.34)] bg-[rgba(251,191,36,.10)] px-3.5 py-2.5 text-[13px] text-[#fde68a] max-sm:flex-nowrap"
-                  >
-                    <PhoneOneLine className="max-sm:min-w-0 max-sm:flex-1">
-                      Bus {farmedOut.bus} is farmed out to{" "}
-                      <b>{farmedOut.partner}</b>. Pick each order&rsquo;s hotel
-                      and send the farm out notice on{" "}
-                      <Link
-                        href={backHref}
-                        className="text-[#93c5fd] underline"
-                      >
-                        Dispatch
-                      </Link>
-                      .
-                    </PhoneOneLine>
-                    <button
-                      type="button"
-                      aria-label="Dismiss"
-                      onClick={() => setFarmedOut(null)}
-                      className="ml-auto text-[12px] text-[#fde68a] underline"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ) : null}
-
-                <Stage.Provider
-                  value={{
-                    movedFrom,
-                    attractions: pending.attractions,
-                    stageAttraction,
-                    notes: pending.notes,
-                    failed: saveState.kind === "error",
-                  }}
-                >
-                  {shown.blocks.map((block, i) => (
-                    <BusCard
-                      key={block.bus.id}
-                      data={shown}
-                      params={params}
-                      block={block}
-                      farmOut={
-                        // 只有第二辆车有（同 Dispatch 的规矩，Q1）。
-                        farmOutOn && i === 1 ? (
-                          <FarmOutButton
-                            date={params.date}
-                            tour={params.tour}
-                            block={block}
-                            partners={partners}
-                            blocked={dirty}
-                            onDone={(partner) => {
-                              setActionError(null);
-                              setFarmedOut({ bus: block.bus_number, partner });
-                              setReloadKey((k) => k + 1);
-                            }}
-                            onError={(m) => setActionError(m)}
-                            onUnauthorized={redirectToLogin}
-                          />
-                        ) : null
-                      }
-                      viewOnly={viewOnly}
-                      canPrint={canPrint}
-                      onBusChange={stageMove}
-                      onNotesChange={changeNotes}
-                      onActionError={onActionError}
-                      stagedTextSize={pending.textSizes[block.bus_key]}
-                      onStageTextSize={(ts) => stageTextSize(block.bus_key, ts)}
-                      onPrintGuard={(go) =>
-                        guardOutput("print", busOrders(block.bus_key), go)
-                      }
-                      onViewOnly={() => openPaper(block.bus_key || "all")}
-                    />
-                  ))}
-
-                  {shown.unplaced.sections.length > 0 ? (
-                    <section aria-label="Not on a bus yet" className={CARD}>
-                      {/* 旧页同样是一个 .mf-card + 团色条，标题写 Not on a bus yet。 */}
                       <div
-                        className="flex flex-wrap items-end gap-[22px] rounded-[3px] px-3 py-1.5"
-                        style={{ background: data.tour.band_color }}
+                        data-mf-header-actions
+                        className="flex flex-wrap items-center justify-end gap-2 max-sm:w-full max-sm:justify-start"
                       >
-                        <span className="text-[26px] font-extrabold">
-                          Not on a bus yet · {data.unplaced.totals.pax} pax
-                        </span>
-                        <span className="ml-auto text-[19px] font-bold">
-                          {data.date_label}
-                        </span>
+                        {/* 存好绿、失败红、有没存的黄（全站规矩）；照 Relay list 放在 Save 左边，前面黄点。 */}
+                        {viewOnly ? null : saveState.kind === "error" ? (
+                          <span
+                            role="alert"
+                            data-page-save-error
+                            className="text-[11.5px] font-semibold text-[#fca5a5] max-sm:order-first max-sm:basis-full"
+                          >
+                            {saveState.message}
+                          </span>
+                        ) : dirty ? (
+                          <span
+                            data-page-unsaved
+                            className="inline-flex max-w-[460px] items-start gap-1.5 text-[11.5px] font-semibold text-[#fcd34d] max-sm:order-first max-sm:max-w-none max-sm:basis-full"
+                          >
+                            <i className="mt-[5px] inline-block h-2 w-2 shrink-0 rounded-full bg-[#fbbf24]" />
+                            <span>
+                              Not saved yet: {summary.join(" · ")}. Click Save
+                              to keep
+                              {summary.length === 1 ? " it" : " them"}.
+                            </span>
+                          </span>
+                        ) : saveState.kind === "saved" ? (
+                          <span
+                            role="status"
+                            data-page-saved
+                            className="text-[11.5px] font-semibold text-[#4ade80] max-sm:order-first max-sm:basis-full"
+                          >
+                            ✓ Saved · {saveState.at}
+                          </span>
+                        ) : null}
+                        {/* 整页 Save（Q1）：蓝色提交键；没有改动时灰的。 */}
+                        {viewOnly ? null : (
+                          <button
+                            type="button"
+                            data-page-save
+                            data-phone-keep
+                            disabled={!dirty || saveState.kind === "saving"}
+                            onClick={() => void savePending()}
+                            className="inline-flex h-[28px] cursor-pointer items-center gap-1.5 rounded-[8px] bg-[#3b82f6] px-3 text-[12.5px] font-bold text-white disabled:cursor-default disabled:opacity-45 max-sm:text-[12px]"
+                          >
+                            <LineIcon name="save" />
+                            {saveState.kind === "saving" ? "Saving…" : "Save"}
+                          </button>
+                        )}
+                        {/* 151 题 ① C：手机上（竖屏、横屏）多一个 ⛶ Full screen，只剩客人表；白键（不是提交键）。电脑上没有。 */}
+                        {fit && shown.blocks.length > 0 ? (
+                          <button
+                            type="button"
+                            data-mf-fullscreen
+                            data-phone-keep
+                            onClick={() => {
+                              enterFullscreen();
+                              setFull(0);
+                            }}
+                            className={MF_WHITE_KEY}
+                          >
+                            <span aria-hidden>⛶</span>
+                            Full screen
+                          </button>
+                        ) : null}
+                        {data.tour.manifest_version !== undefined ? (
+                          <VersionPicker
+                            version={versionOf(shown)}
+                            readOnly={viewOnly}
+                            unsaved={pending.version !== null}
+                            onChange={stageVersion}
+                          />
+                        ) : null}
+                        {shown?.tour.canyon_pages &&
+                        data.tour.canyon_sections ? (
+                          <CanyonOrderPicker
+                            pages={shown.tour.canyon_pages}
+                            readOnly={viewOnly}
+                            onChange={(pages) =>
+                              setCanyon({ key: canyonKey, pages })
+                            }
+                          />
+                        ) : null}
+                        {data.tour.bus_column_options?.length ? (
+                          <ColumnsPicker
+                            options={data.tour.bus_column_options}
+                            hidden={
+                              pending.hiddenColumns ??
+                              data.tour.bus_hidden_columns ??
+                              []
+                            }
+                            noLunchVendor={!hasLunchVendor(data)}
+                            readOnly={viewOnly}
+                            unsaved={pending.hiddenColumns !== null}
+                            onChange={stageHiddenColumns}
+                          />
+                        ) : null}
+                        <div
+                          data-mf-output-keys
+                          className="contents max-sm:grid max-sm:basis-full max-sm:grid-cols-3 max-sm:gap-2"
+                        >
+                          {/* 151 题 ⑤：白键「View only」在 Print all buses 前面（白色：蓝色只给提交键），能开这一页的人都有（题 ⑦）。 */}
+                          {data.manifest && data.blocks.length > 0 ? (
+                            <button
+                              type="button"
+                              data-view-only="all"
+                              data-phone-keep
+                              onClick={() => openPaper("all")}
+                              className={MF_WHITE_KEY}
+                            >
+                              View only
+                            </button>
+                          ) : null}
+                          {canPrint &&
+                          data.manifest &&
+                          data.blocks.length > 0 ? (
+                            <a
+                              href={manifestPrintUrl(
+                                params.date,
+                                params.tour,
+                                undefined,
+                                canyonPages,
+                              )}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              data-phone-keep
+                              onClick={(e) => {
+                                const url = e.currentTarget.href;
+                                if (
+                                  guardOutput("print", allOrders, () =>
+                                    window.open(
+                                      url,
+                                      "_blank",
+                                      "noopener,noreferrer",
+                                    ),
+                                  )
+                                )
+                                  e.preventDefault();
+                              }}
+                              className={cn(MF_WHITE_KEY, "no-underline")}
+                            >
+                              <LineIcon name="print" />
+                              <span className="max-sm:hidden">
+                                Print all buses
+                              </span>
+                              <span className="sm:hidden">Print all</span>
+                            </a>
+                          ) : null}
+                          {viewOnly || !canDownload ? null : (
+                            <form
+                              ref={downloadRef}
+                              method="post"
+                              action={MANIFEST_DOWNLOAD_URL}
+                              className="m-0 max-sm:contents"
+                              onSubmit={(e) => {
+                                // form.submit() 不会再触发 onSubmit，所以「Download anyway」直接交。
+                                if (
+                                  guardOutput("download", allOrders, () =>
+                                    downloadRef.current?.submit(),
+                                  )
+                                )
+                                  e.preventDefault();
+                              }}
+                            >
+                              <input
+                                type="hidden"
+                                name="date"
+                                value={params.date}
+                              />
+                              <input
+                                type="hidden"
+                                name="tour"
+                                value={params.tour}
+                              />
+                              {canyonPages ? (
+                                <input
+                                  type="hidden"
+                                  name={CANYON_PARAM}
+                                  value={JSON.stringify(canyonPages)}
+                                />
+                              ) : null}
+                              <button
+                                type="submit"
+                                data-phone-keep
+                                disabled={!data.manifest}
+                                className={cn(
+                                  MF_WHITE_KEY,
+                                  "disabled:cursor-default disabled:opacity-50 max-sm:w-full",
+                                )}
+                              >
+                                <LineIcon name="download" />
+                                Download
+                              </button>
+                            </form>
+                          )}
+                          {layout && !perms.isPartner ? (
+                            <button
+                              type="button"
+                              data-layout-open
+                              data-phone-keep
+                              onClick={() => {
+                                setLayoutDraft(layout.settings);
+                                setRelayDraft(
+                                  relaySettings ? toDraft(relaySettings) : null,
+                                );
+                                setLayoutOpen(true);
+                              }}
+                              className={MF_WHITE_KEY}
+                            >
+                              <LineIcon name="gear" />
+                              Settings
+                            </button>
+                          ) : null}
+                        </div>
                       </div>
-                      <GuestTable
+                    </header>
+
+                    {!data.manifest ? (
+                      <Warn>
+                        The main manifest has no orders for this tour on this
+                        day. An order whose product has no Group is not on any
+                        tour: set its Group in Settings → Products.
+                      </Warn>
+                    ) : null}
+                    {data.mode === "none" ? (
+                      <Warn>
+                        No bus is scheduled for this tour on this day yet. Add
+                        one on the Dispatch page.
+                      </Warn>
+                    ) : data.mode === "unlettered" ? (
+                      <Warn>
+                        This tour has more than one bus, but not every bus has
+                        its own letter. Give each bus a letter (A, B ...) on the
+                        Dispatch page. Until then no guest can be put on a bus.
+                      </Warn>
+                    ) : null}
+
+                    {actionError ? (
+                      // .mf-err
+                      <div
+                        role="alert"
+                        className="mb-3.5 flex flex-wrap items-center justify-between gap-2 rounded-[10px] border border-[rgba(239,68,68,.35)] bg-[rgba(239,68,68,.12)] px-3.5 py-2.5 text-[13px] text-[#fecaca]"
+                      >
+                        <span>{actionError}</span>
+                        <button
+                          type="button"
+                          onClick={() => setActionError(null)}
+                          className="text-[12px] text-[#fecaca] underline"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    ) : null}
+
+                    {farmedOut ? (
+                      // Q3：转完提醒还要去 Dispatch 选酒店、发 Farm out 通知；点 × 关掉。
+                      <div
+                        data-farm-out-done
+                        className="mb-3.5 flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-[10px] border border-[rgba(251,191,36,.34)] bg-[rgba(251,191,36,.10)] px-3.5 py-2.5 text-[13px] text-[#fde68a] max-sm:flex-nowrap"
+                      >
+                        <PhoneOneLine className="max-sm:min-w-0 max-sm:flex-1">
+                          Bus {farmedOut.bus} is farmed out to{" "}
+                          <b>{farmedOut.partner}</b>. Pick each order&rsquo;s
+                          hotel and send the farm out notice on{" "}
+                          <Link
+                            href={backHref}
+                            className="text-[#93c5fd] underline"
+                          >
+                            Dispatch
+                          </Link>
+                          .
+                        </PhoneOneLine>
+                        <button
+                          type="button"
+                          aria-label="Dismiss"
+                          onClick={() => setFarmedOut(null)}
+                          className="ml-auto text-[12px] text-[#fde68a] underline"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ) : null}
+
+                    <Stage.Provider
+                      value={{
+                        movedFrom,
+                        attractions: pending.attractions,
+                        stageAttraction,
+                        notes: pending.notes,
+                        failed: saveState.kind === "error",
+                      }}
+                    >
+                      {shown.blocks.map((block, i) => (
+                        <BusCard
+                          key={block.bus.id}
+                          data={shown}
+                          params={params}
+                          block={block}
+                          farmOut={
+                            // 只有第二辆车有（同 Dispatch 的规矩，Q1）。
+                            farmOutOn && i === 1 ? (
+                              <FarmOutButton
+                                date={params.date}
+                                tour={params.tour}
+                                block={block}
+                                partners={partners}
+                                blocked={dirty}
+                                onDone={(partner) => {
+                                  setActionError(null);
+                                  setFarmedOut({
+                                    bus: block.bus_number,
+                                    partner,
+                                  });
+                                  setReloadKey((k) => k + 1);
+                                }}
+                                onError={(m) => setActionError(m)}
+                                onUnauthorized={redirectToLogin}
+                              />
+                            ) : null
+                          }
+                          viewOnly={viewOnly}
+                          canPrint={canPrint}
+                          onBusChange={stageMove}
+                          onNotesChange={changeNotes}
+                          onActionError={onActionError}
+                          stagedTextSize={pending.textSizes[block.bus_key]}
+                          onStageTextSize={(ts) =>
+                            stageTextSize(block.bus_key, ts)
+                          }
+                          onPrintGuard={(go) =>
+                            guardOutput("print", busOrders(block.bus_key), go)
+                          }
+                          onViewOnly={() => openPaper(block.bus_key || "all")}
+                        />
+                      ))}
+
+                      {shown.unplaced.sections.length > 0 ? (
+                        <section aria-label="Not on a bus yet" className={CARD}>
+                          {/* 旧页同样是一个 .mf-card + 团色条，标题写 Not on a bus yet。 */}
+                          <div
+                            className="flex flex-wrap items-end gap-[22px] rounded-[3px] px-3 py-1.5"
+                            style={{ background: data.tour.band_color }}
+                          >
+                            <span className="text-[26px] font-extrabold">
+                              Not on a bus yet · {data.unplaced.totals.pax} pax
+                            </span>
+                            <span className="ml-auto text-[19px] font-bold">
+                              {data.date_label}
+                            </span>
+                          </div>
+                          <GuestTable
+                            data={shown}
+                            sections={shown.unplaced.sections}
+                            onBusChange={stageMove}
+                            onNotesChange={changeNotes}
+                            attraction={null}
+                          />
+                        </section>
+                      ) : null}
+                    </Stage.Provider>
+
+                    {data.affiliate ? (
+                      <AffiliateCard affiliate={data.affiliate} data={data} />
+                    ) : null}
+
+                    {data.gone?.length ? <GoneCard gone={data.gone} /> : null}
+
+                    {viewOnly ? null : (
+                      <div className="max-sm:order-last">
+                        <HowToUse
+                          layout={!!layout}
+                          columns={!!data.tour.bus_column_options?.length}
+                        />
+                      </div>
+                    )}
+                    {/* 改动记录（Annie 2026-10-30「同意所有推荐。动手」，preview https://claude.ai/artifact/YEgERHNDiL45TCkbzyJisa ）：
+                  页面最下面，同 Dispatch 页那块；只看当前这个团（c）、打印 / 下载也列（a）、能改这页的人才看得到（b）。 */}
+                    {viewOnly || !params ? null : (
+                      <div className="mt-6" data-manifest-log>
+                        <ActionLogPanel
+                          refreshKey={`${params.date}|${params.tour}|${saveState.kind === "saved" ? saveState.at : ""}`}
+                          reloadOnOpen
+                          onUnauthorized={redirectToLogin}
+                          verbs={MANIFEST_LOG_VERBS}
+                          note={
+                            <>
+                              Changes to the Bus Manifest for{" "}
+                              <b>{data.tour.name}</b> on{" "}
+                              <b>{data.date_label}</b>. Newest first.
+                            </>
+                          }
+                          load={(before, signal) =>
+                            fetchActionLog(
+                              "/api/dispatch/manifest/action-log",
+                              before,
+                              signal,
+                              { date: params.date, tour: String(params.tour) },
+                            )
+                          }
+                        />
+                      </div>
+                    )}
+                  </div>
+                  {full !== null && shown.blocks.length > 0 ? (
+                    <Stage.Provider
+                      value={{
+                        movedFrom,
+                        attractions: pending.attractions,
+                        stageAttraction,
+                        notes: pending.notes,
+                        failed: saveState.kind === "error",
+                      }}
+                    >
+                      <FullScreenBus
                         data={shown}
-                        sections={shown.unplaced.sections}
+                        index={Math.min(full, shown.blocks.length - 1)}
+                        onIndex={setFull}
+                        onClose={() => setFull(null)}
+                        textSizes={pending.textSizes}
                         onBusChange={stageMove}
                         onNotesChange={changeNotes}
-                        attraction={null}
+                        onActionError={onActionError}
                       />
-                    </section>
+                    </Stage.Provider>
                   ) : null}
-                </Stage.Provider>
-
-                {data.affiliate ? (
-                  <AffiliateCard affiliate={data.affiliate} data={data} />
-                ) : null}
-
-                {data.gone?.length ? <GoneCard gone={data.gone} /> : null}
-
-                {viewOnly ? null : (
-                  <div className="max-sm:order-last">
-                    <HowToUse
-                      layout={!!layout}
-                      columns={!!data.tour.bus_column_options?.length}
-                    />
-                  </div>
-                )}
-                {/* 改动记录（Annie 2026-10-30「同意所有推荐。动手」，preview https://claude.ai/artifact/YEgERHNDiL45TCkbzyJisa ）：
-                  页面最下面，同 Dispatch 页那块；只看当前这个团（c）、打印 / 下载也列（a）、能改这页的人才看得到（b）。 */}
-                {viewOnly || !params ? null : (
-                  <div className="mt-6" data-manifest-log>
-                    <ActionLogPanel
-                      refreshKey={`${params.date}|${params.tour}|${saveState.kind === "saved" ? saveState.at : ""}`}
-                      reloadOnOpen
-                      onUnauthorized={redirectToLogin}
-                      verbs={MANIFEST_LOG_VERBS}
-                      note={
-                        <>
-                          Changes to the Bus Manifest for{" "}
-                          <b>{data.tour.name}</b> on <b>{data.date_label}</b>.
-                          Newest first.
-                        </>
-                      }
-                      load={(before, signal) =>
-                        fetchActionLog(
-                          "/api/dispatch/manifest/action-log",
-                          before,
-                          signal,
-                          { date: params.date, tour: String(params.tour) },
+                  {saveFirst ? (
+                    <SaveFirstDialog
+                      action={saveFirst.action}
+                      items={summary}
+                      onCancel={() => setSaveFirst(null)}
+                      onConfirm={async () => {
+                        const r = await savePending();
+                        if (r.error) return r.error;
+                        const { action, ordersOf, go } = saveFirst;
+                        setSaveFirst(null);
+                        // 存好了：照新的数据看餐不符，没有就直接打开 / 下载；View only 直接打开（打印时再看餐不符）。
+                        if (action === "view") go();
+                        else if (
+                          !guardMismatch(action, ordersOf(r.data ?? data), go)
                         )
-                      }
+                          go();
+                        return null;
+                      }}
                     />
-                  </div>
-                )}
-                {saveFirst ? (
-                  <SaveFirstDialog
-                    action={saveFirst.action}
-                    items={summary}
-                    onCancel={() => setSaveFirst(null)}
-                    onConfirm={async () => {
-                      const r = await savePending();
-                      if (r.error) return r.error;
-                      const { action, ordersOf, go } = saveFirst;
-                      setSaveFirst(null);
-                      // 存好了：照新的数据看餐不符，没有就直接打开 / 下载；View only 直接打开（打印时再看餐不符）。
-                      if (action === "view") go();
-                      else if (
-                        !guardMismatch(action, ordersOf(r.data ?? data), go)
-                      )
+                  ) : null}
+                  {leaveAsk ? (
+                    <LeaveDialog
+                      items={summary}
+                      onCancel={() => {
+                        leaveAsk.resolve(false);
+                        setLeaveAsk(null);
+                      }}
+                      onDiscard={() => {
+                        leaveAsk.resolve(true);
+                        setLeaveAsk(null);
+                      }}
+                      onSave={async () => {
+                        const r = await savePending();
+                        if (r.error) return r.error;
+                        leaveAsk.resolve(true);
+                        setLeaveAsk(null);
+                        return null;
+                      }}
+                    />
+                  ) : null}
+                  {mismatch && !paper ? (
+                    <LunchMismatchDialog
+                      action={mismatch.action}
+                      dateLabel={data.date_label}
+                      orders={mismatch.orders}
+                      differs={mismatch.differs}
+                      onCancel={() => setMismatch(null)}
+                      onConfirm={() => {
+                        const { go } = mismatch;
+                        setMismatch(null);
                         go();
-                      return null;
-                    }}
-                  />
-                ) : null}
-                {leaveAsk ? (
-                  <LeaveDialog
-                    items={summary}
-                    onCancel={() => {
-                      leaveAsk.resolve(false);
-                      setLeaveAsk(null);
-                    }}
-                    onDiscard={() => {
-                      leaveAsk.resolve(true);
-                      setLeaveAsk(null);
-                    }}
-                    onSave={async () => {
-                      const r = await savePending();
-                      if (r.error) return r.error;
-                      leaveAsk.resolve(true);
-                      setLeaveAsk(null);
-                      return null;
-                    }}
-                  />
-                ) : null}
-                {mismatch && !paper ? (
-                  <LunchMismatchDialog
-                    action={mismatch.action}
-                    dateLabel={data.date_label}
-                    orders={mismatch.orders}
-                    differs={mismatch.differs}
-                    onCancel={() => setMismatch(null)}
-                    onConfirm={() => {
-                      const { go } = mismatch;
-                      setMismatch(null);
-                      go();
-                    }}
-                  />
-                ) : null}
-              </>
-            )}
-          </div>
-        </main>
-        {paper && data && params && data.manifest ? (
-          <PaperView
-            date={params.date}
-            tour={params.tour}
-            title={data.tour.name}
-            dateLabel={data.date_label}
-            buses={data.blocks
-              .filter((b) => b.bus_key)
-              .map((b) => ({ key: b.bus_key, id: b.bus.id }))}
-            selected={
-              data.blocks.some((b) => b.bus_key === paper) ? paper : "all"
-            }
-            canyonPages={canyonPages}
-            canPrint={canPrint}
-            // 题 ⑥（Annie「可以打印可以下载」）：只读的 staff 账号在 View only 里也能下载；partner 后端不给，照旧没有。
-            canDownload={canDownload}
-            guardPrint={(key, go) =>
-              guardOutput("print", key ? busOrders(key) : allOrders, go)
-            }
-            guardDownload={(go) => guardOutput("download", allOrders, go)}
-            onSelect={showPaper}
-            onClose={closePaper}
-            notOnBus={data.unplaced?.totals ?? null}
-          >
-            {mismatch ? (
-              <LunchMismatchDialog
-                action={mismatch.action}
-                dateLabel={data.date_label}
-                orders={mismatch.orders}
-                differs={mismatch.differs}
-                onCancel={() => setMismatch(null)}
-                onConfirm={() => {
-                  const { go } = mismatch;
-                  setMismatch(null);
-                  go();
-                }}
-              />
-            ) : null}
-          </PaperView>
-        ) : null}
-        {layoutOpen && layout && data ? (
-          <ManifestLayoutDialog
-            tour={{ id: data.tour.id, name: data.tour.name }}
-            version={shown?.tour.manifest_version ?? "general"}
-            sectionTitles={tourSections}
-            busKeys={data.blocks.map((b) => b.bus_key).filter(Boolean)}
-            layout={layout}
-            draft={layoutDraft ?? layout.settings}
-            onDraft={setLayoutDraft}
-            relay={relaySettings}
-            relayDraft={relayDraft}
-            onRelayDraft={setRelayDraft}
-            dataColor={dataColor}
-            canEdit={layoutEdit}
-            onSaved={(next) => {
-              setLayout(next);
-              setLayoutDraft(null);
-              setRelayDraft(null);
-              // 车抬头等颜色后端重算：重读这一页（和 Relay list 设置）。
-              setReloadKey((k) => k + 1);
-            }}
-            onClose={() => {
-              setLayoutOpen(false);
-              setLayoutDraft(null);
-              setRelayDraft(null);
-            }}
-          />
-        ) : null}
-      </ViewOnly.Provider>
+                      }}
+                    />
+                  ) : null}
+                </>
+              )}
+            </div>
+          </main>
+          {paper && data && params && data.manifest ? (
+            <PaperView
+              date={params.date}
+              tour={params.tour}
+              title={data.tour.name}
+              dateLabel={data.date_label}
+              buses={data.blocks
+                .filter((b) => b.bus_key)
+                .map((b) => ({ key: b.bus_key, id: b.bus.id }))}
+              selected={
+                data.blocks.some((b) => b.bus_key === paper) ? paper : "all"
+              }
+              canyonPages={canyonPages}
+              canPrint={canPrint}
+              // 题 ⑥（Annie「可以打印可以下载」）：只读的 staff 账号在 View only 里也能下载；partner 后端不给，照旧没有。
+              canDownload={canDownload}
+              guardPrint={(key, go) =>
+                guardOutput("print", key ? busOrders(key) : allOrders, go)
+              }
+              guardDownload={(go) => guardOutput("download", allOrders, go)}
+              onSelect={showPaper}
+              onClose={closePaper}
+              notOnBus={data.unplaced?.totals ?? null}
+            >
+              {mismatch ? (
+                <LunchMismatchDialog
+                  action={mismatch.action}
+                  dateLabel={data.date_label}
+                  orders={mismatch.orders}
+                  differs={mismatch.differs}
+                  onCancel={() => setMismatch(null)}
+                  onConfirm={() => {
+                    const { go } = mismatch;
+                    setMismatch(null);
+                    go();
+                  }}
+                />
+              ) : null}
+            </PaperView>
+          ) : null}
+          {layoutOpen && layout && data ? (
+            <ManifestLayoutDialog
+              tour={{ id: data.tour.id, name: data.tour.name }}
+              version={shown?.tour.manifest_version ?? "general"}
+              sectionTitles={tourSections}
+              busKeys={data.blocks.map((b) => b.bus_key).filter(Boolean)}
+              layout={layout}
+              draft={layoutDraft ?? layout.settings}
+              onDraft={setLayoutDraft}
+              relay={relaySettings}
+              relayDraft={relayDraft}
+              onRelayDraft={setRelayDraft}
+              dataColor={dataColor}
+              canEdit={layoutEdit}
+              onSaved={(next) => {
+                setLayout(next);
+                setLayoutDraft(null);
+                setRelayDraft(null);
+                // 车抬头等颜色后端重算：重读这一页（和 Relay list 设置）。
+                setReloadKey((k) => k + 1);
+              }}
+              onClose={() => {
+                setLayoutOpen(false);
+                setLayoutDraft(null);
+                setRelayDraft(null);
+              }}
+            />
+          ) : null}
+        </ViewOnly.Provider>
+      </FitContext.Provider>
     </ManifestLookContext.Provider>
   );
 }
@@ -1749,15 +1896,9 @@ function BusCard({
           sandwich={block.restaurant?.totals ?? null}
           big={version === "marcello"}
         />
-        {block.restaurant ? (
-          <RestaurantBlock
-            restaurant={block.restaurant}
-            busNumber={block.bus_number}
-          />
-        ) : null}
       </section>
-      {/* Lankun 不另印午餐单，餐厅信息在合计下面（定 19）；General / Marcello 照旧（Q31）。 */}
-      {block.lunch && version !== "lankun" ? (
+      {/* 午餐单：所有版式都接在车后面。Lankun 也单独一张、合计下面不再放餐厅块（Annie 2026-11-22「Lankun 餐单两个都选A，动手」，取代定 19）。 */}
+      {block.lunch ? (
         <LunchSheet
           lunch={block.lunch}
           paper={data.paper_colors}
@@ -1767,6 +1908,104 @@ function BusCard({
         />
       ) : null}
     </>
+  );
+}
+
+/**
+ * 151 题 ① C：⛶ Full screen（手机）。只剩一条细栏（团名 · 车、A / B 换车、✕）和这台车的客人表；
+ * 页面其他东西先藏起来（不卸载）。顶栏由 globals.css 跟着 html[data-mf-full] 藏；整页照旧用窗口滚，右下角 ↑↓ 照用。
+ * 表里照旧能改备注、换车（暂存，回到页面按 Save 才存）；字号编辑卡不在这里出（回到页面照旧一直打开）。
+ */
+function FullScreenBus({
+  data,
+  index,
+  onIndex,
+  onClose,
+  textSizes,
+  onBusChange,
+  onNotesChange,
+  onActionError,
+}: {
+  data: ManifestData;
+  index: number;
+  onIndex: (i: number) => void;
+  onClose: () => void;
+  textSizes: Record<string, ManifestTextSize>;
+  onBusChange: (guest: ManifestGuest, label: string) => void;
+  onNotesChange: (guest: ManifestGuest, notes: string | null) => void;
+  onActionError: (e: unknown) => void;
+}) {
+  const phone = usePhoneWidth();
+  const block = data.blocks[index];
+  const label = (b: ManifestBlock) => b.bus_key || b.bus_number;
+  return (
+    <div data-mf-full className="-mx-3 -mt-3">
+      <div
+        data-mf-full-bar
+        className="sticky top-0 z-20 flex items-center gap-2 bg-[#0b1724] py-1.5 pr-[max(10px,env(safe-area-inset-right))] pl-[max(10px,env(safe-area-inset-left))] text-[13px] text-[#e2e8f0]"
+      >
+        <b className="min-w-0 flex-1 truncate" data-mf-full-title>
+          {data.tour.name} · Bus {block.bus_number}
+        </b>
+        {data.blocks.length > 1 ? (
+          <span
+            role="group"
+            aria-label="Bus"
+            className="inline-flex flex-none overflow-hidden rounded-[8px] border border-white/30"
+          >
+            {data.blocks.map((b, i) => (
+              <button
+                key={b.bus.id}
+                type="button"
+                data-mf-full-bus={label(b)}
+                aria-pressed={i === index}
+                onClick={() => {
+                  onIndex(i);
+                  window.scrollTo({ top: 0 });
+                }}
+                className={cn(
+                  "h-[26px] cursor-pointer px-2.5 text-[12.5px] font-semibold",
+                  i === index
+                    ? "bg-[#e2e8f0] text-[#0b1724]"
+                    : "bg-transparent text-[#e2e8f0]",
+                )}
+              >
+                {label(b)}
+              </button>
+            ))}
+          </span>
+        ) : null}
+        <button
+          type="button"
+          data-mf-full-close
+          aria-label="Exit full screen"
+          title="Exit full screen (Esc)"
+          onClick={onClose}
+          className="inline-flex h-[26px] flex-none cursor-pointer items-center justify-center rounded-[8px] border border-white/30 px-2.5 text-[14px] text-[#e2e8f0]"
+        >
+          ✕
+        </button>
+      </div>
+      <div className="bg-paper px-1.5 pb-2 font-[Arial,'Helvetica_Neue',Helvetica,sans-serif] text-[#111]">
+        <GuestTable
+          data={data}
+          sections={block.sections}
+          onBusChange={onBusChange}
+          onNotesChange={onNotesChange}
+          textSize={textSizes[block.bus_key] ?? block.text_size}
+          phone={phone}
+          attraction={
+            data.manifest
+              ? {
+                  tourManifestId: data.manifest.id,
+                  busKey: block.bus_key,
+                  onError: onActionError,
+                }
+              : null
+          }
+        />
+      </div>
+    </div>
   );
 }
 
@@ -1801,20 +2040,20 @@ function VersionPicker({
       )}
     >
       Version:
-      <select
+      <SelectMenu
         data-version-select
         data-phone-keep
         aria-label="Bus Manifest version"
-        value={version}
-        onChange={(e) => onChange(e.target.value as ManifestVersion)}
+        value={String(version)}
+        options={[
+          ...VERSIONS.map((v) => ({
+            value: String(v.value),
+            label: String(v.label),
+          })),
+        ]}
+        onChange={(next) => onChange(next as ManifestVersion)}
         className="h-6 cursor-pointer rounded-md border-0 bg-transparent px-1 py-0 text-[11.5px] leading-none font-semibold text-white disabled:opacity-50 [&>option]:text-[#111]"
-      >
-        {VERSIONS.map((v) => (
-          <option key={v.value} value={v.value}>
-            {v.label}
-          </option>
-        ))}
-      </select>
+      />
       {unsaved ? (
         <span
           data-version-unsaved
@@ -1906,23 +2145,30 @@ function GuestTable({
   phone?: boolean;
   edit?: TextEdit | null;
 }) {
-  const lettered = data.mode === "lettered";
+  // 151：手机竖屏只出 6 列（Bus 换车、ASSIST、Lunch 等横屏才出），横屏全出；两种都缩字、不设最小宽度。
+  const fit = useContext(FitContext);
+  const portrait = fit === "portrait";
+  const lettered = data.mode === "lettered" && !portrait;
   const version = versionOf(data);
-  const columns = columnsFor(version, !!data.tour.lunch_column);
+  const allColumns = columnsFor(version, !!data.tour.lunch_column);
+  const columns = portrait
+    ? allColumns.filter((c) => PORTRAIT_KEYS.includes(c.key))
+    : allColumns;
   // ✓（司机标的上车）：Lankun（定 5）和 West Rim 不要这一列。
   // ✓ 列（司机标的上车 / No show）：West Rim 没有；Lankun 只在屏幕上有、打印不出（Annie 2026-10-30「5 按推荐动手」：
   // 屏幕上留、打印去掉；打印页和 Excel 是后端出的，照旧没有）。
   const boarding = version !== "west";
   const boardingClass = version === "lankun" ? "print:hidden" : "";
-  const assist = !!data.tour.assist_column;
+  const assist = !!data.tour.assist_column && !portrait;
   const cols =
     columns.length + (lettered ? 1 : 0) + (assist ? 1 : 0) + (boarding ? 1 : 0);
   // 版式设置（置顶 92）：Column titles 的底色（没设 = 照旧 #e6eaee）。
   const look = useManifestLook();
   // 每天的起点字号（置顶 92 第 2 批）：表头 / 节标题 / 正文 / 人数各加减 d、可改粗细。
   const tt = look.text;
+  const thPx = HEAD_PX[version].th + (tt.column_titles?.d ?? 0);
   const th = {
-    fontSize: `${HEAD_PX[version].th + (tt.column_titles?.d ?? 0)}px`,
+    fontSize: `${fit ? Math.max(8, Math.round(thPx * 0.9 * 2) / 2) : thPx}px`,
     ...(tt.column_titles?.bold === false ? { fontWeight: 400 } : null),
     ...(look.columnTitles ? { background: look.columnTitles } : null),
   };
@@ -1939,7 +2185,10 @@ function GuestTable({
   const font: CellFont = {
     style: (col, order) => {
       const t = cellText(textSize, col, order, phone, version, start);
-      return { fontSize: t.fontSize, fontWeight: t.fontWeight };
+      return {
+        fontSize: fit ? `${fitPx(parseFloat(t.fontSize), fit)}px` : t.fontSize,
+        fontWeight: t.fontWeight,
+      };
     },
     edit: (col, order) => {
       if (!edit) return { className: "" };
@@ -1969,8 +2218,11 @@ function GuestTable({
   return (
     <div className="overflow-x-auto">
       <table
+        data-mf-fit={fit ?? undefined}
         className={cn(
-          "mt-1.5 w-full min-w-[980px] border-collapse",
+          "mt-1.5 w-full border-collapse",
+          // 手机上格子左右边距缩小（7 ⇒ 3 px），表才放得进一屏。
+          fit ? "[&_td]:px-[3px] [&_th]:px-[3px]" : "min-w-[980px]",
           edit &&
             isPicked(edit.picks, "page") &&
             "outline-2 outline-offset-2 outline-[#2563eb]",
@@ -2001,7 +2253,7 @@ function GuestTable({
                 </th>
               );
             })}
-            {data.tour.assist_column ? (
+            {assist ? (
               <th data-assist-col className={TH} style={th}>
                 ASSIST
               </th>
@@ -2032,9 +2284,13 @@ function GuestTable({
               columns={columns}
               cols={cols}
               lettered={lettered}
+              assist={assist}
               boarding={boarding}
               boardingClass={boardingClass}
-              sectionPx={HEAD_PX[version].section + (tt.section_titles?.d ?? 0)}
+              sectionPx={fitPx(
+                HEAD_PX[version].section + (tt.section_titles?.d ?? 0),
+                fit,
+              )}
               onBusChange={onBusChange}
               onNotesChange={onNotesChange}
               attraction={attraction}
@@ -2116,6 +2372,8 @@ function NotesCell({
   const { notes: stagedNotes } = useStage();
   const editable = !viewOnly && g.notes_edited !== undefined;
   const textEdit = font.edit("notes", g.order_number);
+  // 151：手机上备注在格里换行，表格才放得进一屏。
+  const fit = useContext(FitContext);
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState("");
   const staged = stagedNotes[g.id];
@@ -2136,7 +2394,10 @@ function NotesCell({
     return (
       <td
         data-notes-editor
-        className="min-w-[240px] border border-[#c8ced2] bg-white px-[5px] py-1 align-top"
+        className={cn(
+          "border border-[#c8ced2] bg-white px-[5px] py-1 align-top",
+          fit ? "min-w-[150px]" : "min-w-[240px]",
+        )}
       >
         <textarea
           autoFocus
@@ -2204,8 +2465,13 @@ function NotesCell({
         textEdit.className,
         shown && !hl && "bg-[#fff200]",
         g.notes_check
-          ? "min-w-[220px] whitespace-pre-wrap text-[#d00000]"
-          : "whitespace-nowrap",
+          ? cn(
+              "whitespace-pre-wrap text-[#d00000]",
+              fit ? "[overflow-wrap:anywhere]" : "min-w-[220px]",
+            )
+          : fit
+            ? "[overflow-wrap:anywhere] whitespace-normal"
+            : "whitespace-nowrap",
         editable && "cursor-text",
         staged && UNSAVED_RING,
       )}
@@ -2235,7 +2501,10 @@ function NotesCell({
       {!viewOnly && g.guest_lunch_differs === true && g.guest_lunch ? (
         <span
           data-guest-lunch-differs
-          className="block text-[11.5px] leading-[1.25] font-semibold whitespace-nowrap text-[#c2410c]"
+          className={cn(
+            "block text-[11.5px] leading-[1.25] font-semibold text-[#c2410c]",
+            fit ? "whitespace-normal" : "whitespace-nowrap",
+          )}
         >
           {busManifestGuestLunchNote(g.guest_lunch)}
         </span>
@@ -2302,6 +2571,7 @@ function SectionRows({
   columns,
   cols,
   lettered,
+  assist,
   boarding,
   boardingClass,
   sectionPx,
@@ -2318,6 +2588,8 @@ function SectionRows({
   columns: Column[];
   cols: number;
   lettered: boolean;
+  /** 出不出 ASSIST 空格（手机竖屏不出）。 */
+  assist: boolean;
   /** 出不出 ✓ 列（Lankun 不出）。 */
   boarding: boolean;
   /** Lankun：✓ 列只在屏幕上（print:hidden）。 */
@@ -2335,6 +2607,8 @@ function SectionRows({
   editing: boolean;
 }) {
   const color = sectionColor(data, s);
+  // 151：手机上节标题可以折行；黄框不许把表撑宽（auto-fit 网格的本来宽度约 770px）。
+  const fit = useContext(FitContext);
   // 版式设置（置顶 92）：隔组标色可以关；整列上色是最底下一层（格子自己的颜色、Extra 整行盖过它）。
   const look = useManifestLook();
   const marks =
@@ -2369,7 +2643,7 @@ function SectionRows({
       <tr>
         <td
           colSpan={cols}
-          className={cn(TD, "text-center font-extrabold")}
+          className={cn(fit ? WRAP_TD : TD, "text-center font-extrabold")}
           style={{
             background: color,
             fontSize: `${sectionPx}px`,
@@ -2504,7 +2778,7 @@ function SectionRows({
             }
           })}
           {/* ASSIST（纸本只有 Antelope 有，后端 assist_column）：空格子，给手写打勾。 */}
-          {data.tour.assist_column ? (
+          {assist ? (
             <td data-assist-cell className={cn(TD, "min-w-[54px]")} />
           ) : null}
           {lettered ? (
@@ -2552,14 +2826,16 @@ function SectionRows({
       data.tour.confirm_box !== false ? (
         <tr>
           <td colSpan={cols} className="border-0 px-0 py-0.5">
-            <AttractionBox
-              section={s}
-              color={color}
-              boxColor={data.paper_colors?.confirm_box}
-              tourManifestId={attraction.tourManifestId}
-              busKey={attraction.busKey}
-              onError={attraction.onError}
-            />
+            <div className={fit ? "w-0 min-w-full" : undefined}>
+              <AttractionBox
+                section={s}
+                color={color}
+                boxColor={data.paper_colors?.confirm_box}
+                tourManifestId={attraction.tourManifestId}
+                busKey={attraction.busKey}
+                onError={attraction.onError}
+              />
+            </div>
           </td>
         </tr>
       ) : null}
@@ -2589,11 +2865,18 @@ function BusSelect({
     );
   return (
     <span className="inline-flex flex-col items-start gap-0.5">
-      <select
+      <SelectMenu
         aria-label={`Bus for ${guest.name}`}
-        value={value}
+        value={String(value)}
+        options={[
+          { value: "", label: "—" },
+          ...(value && !labels.includes(value)
+            ? [{ value: String(value), label: String(value) }]
+            : []),
+          ...labels.map((l) => ({ value: String(l), label: String(l) })),
+        ]}
         // 换车先放在页面上（客人马上挪到新车），整页 Save 才存（Q4）。
-        onChange={(e) => onChange(guest, e.target.value)}
+        onChange={(next) => onChange(guest, next)}
         className={cn(
           // .mf-card select.bus（.unset 橙框）
           "h-[26px] rounded-md px-1 font-[inherit] text-[12px] text-[#111]",
@@ -2603,17 +2886,7 @@ function BusSelect({
               ? "border border-[#e0a63a] bg-[#fffaf0]"
               : "border-[0.5px] border-black/25 bg-paper",
         )}
-      >
-        <option value="">—</option>
-        {value && !labels.includes(value) ? (
-          <option value={value}>{value}</option>
-        ) : null}
-        {labels.map((l) => (
-          <option key={l} value={l}>
-            {l}
-          </option>
-        ))}
-      </select>
+      />
       {moved ? (
         <span data-moved-from className={UNSAVED_TAG}>
           from {movedFrom.get(guest.id) || "no bus"} · not saved
@@ -2704,45 +2977,6 @@ function AttractionBox({
   );
 }
 
-/**
- * Lankun 合计一排下面的餐厅块（定 19 / Q30）：只放店名、Contact 两行（亮黄，同午餐单页脚）、这车 B / T / V 合计。
- * 照后端打印模板的 .rest。
- */
-function RestaurantBlock({
-  restaurant: r,
-  busNumber,
-}: {
-  restaurant: ManifestRestaurant;
-  busNumber: string;
-}) {
-  const t = r.totals;
-  return (
-    <div
-      data-restaurant
-      className="mt-2 max-w-[560px] border-2 border-[#444] text-[13px]"
-    >
-      <div className="flex justify-between gap-3 bg-[#fff200] px-2 py-[3px] text-[14px] font-extrabold">
-        <span>{r.title || r.name}</span>
-        <span>Bus {busNumber}</span>
-      </div>
-      {r.footer_lines.length ? (
-        <div className="border-t border-[#444] bg-[#ffff00] px-2 py-1 text-center leading-[1.35] font-extrabold">
-          {r.footer_lines.map((line, i) => (
-            <div key={i}>{line}</div>
-          ))}
-        </div>
-      ) : null}
-      <div
-        data-restaurant-totals
-        className="border-t border-[#444] px-2 py-[3px] font-bold [word-spacing:2px]"
-      >
-        This bus: <b>{t.total}</b> = {t.beef} B &nbsp;{t.turkey} T &nbsp;
-        {t.veggie} V
-      </div>
-    </div>
-  );
-}
-
 function Footer({
   cells,
   headColor,
@@ -2752,7 +2986,7 @@ function Footer({
   cells: ManifestFooterCell[];
   /** 格头的灰（后端 paper_colors.foot_head，照纸本）；没带 ⇒ 照旧 #c9d3dc。自定的格子照旧淡紫。 */
   headColor?: string;
-  /** Lankun：合计一排最后加 TOTAL SANDWICH（定 18，读不出的按 Turkey 算，后端算好）。 */
+  /** Lankun：合计一排最后加 TOTAL SANDWICH（定 18，读不出的按 Turkey 算，后端算好，读 block.restaurant.totals；没带 ⇒ 不出这格）。 */
   sandwich?: ManifestRestaurant["totals"] | null;
   /** Marcello：合计一排的数字一起放大（Q24）。 */
   big?: boolean;
@@ -3073,6 +3307,21 @@ function HowToUse({ layout, columns }: { layout: boolean; columns: boolean }) {
         </li>
         <li>{VIEW_ONLY_HOW_TO[0]}</li>
         <li>{VIEW_ONLY_HOW_TO[1]}</li>
+        {/* 151 编辑页手机一屏（preview 3RS1yP6wErhpT9wJdXLuY5 How to use 第 1、2、4 句；第 3 句是 ③ A 的，③ 定 B 不加）。 */}
+        <li>
+          On a phone held upright, each bus shows Pick-up Time, Pick-up
+          Location, Last Name, #, Special Requirements and ✓. Turn the phone
+          sideways to see every column.
+        </li>
+        <li>
+          Tap ⛶ Full screen to show only the guest list. Tap A or B to switch
+          buses, and ✕ to go back. On an iPhone the browser bar stays at the
+          top.
+        </li>
+        <li>
+          Fitting the page to the phone does not change the text sizes, the
+          printed or downloaded manifest, or the columns hidden for this tour.
+        </li>
         {layout ? <li>{LAYOUT_HOW_TO}</li> : null}
         {columns ? <li>{COLUMNS_HOW_TO}</li> : null}
         <li>
@@ -3132,8 +3381,8 @@ function HowToUse({ layout, columns }: { layout: boolean; columns: boolean }) {
           …&rdquo; in Special Requirements means the guest picked a different
           lunch in the tour confirmation, so the lunch in Rezdy is probably
           wrong. Check it and fix Special Requirements in Rezdy. Before you
-          print or download, the page lists these bookings; check them, or
-          print / download anyway.
+          print or download, the page lists these bookings; check them, or print
+          / download anyway.
         </li>
         <li>
           Click Print on a bus (or Print all buses), then Print in the new tab.

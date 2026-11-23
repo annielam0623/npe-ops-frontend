@@ -1,4 +1,18 @@
 const puppeteer = require("puppeteer-core");
+const { SELECT_HELPERS } = require("./select-menu-helper");
+// 全站下拉（Annie 2026-11-21）：原生 select 和 SelectMenu 都认。
+async function pickHandle(page, handle, v) {
+  await page.evaluate(SELECT_HELPERS);
+  await page.evaluate((el, val) => window.$sel(el, val), handle, v);
+}
+async function pickSel(page, selector, v) {
+  await page.evaluate(SELECT_HELPERS);
+  await page.evaluate((sel, val) => window.$sel(document.querySelector(sel), val), selector, v);
+}
+async function optionsOf(page, handle) {
+  await page.evaluate(SELECT_HELPERS);
+  return page.evaluate((el) => window.$selOptions(el), handle);
+}
 
 const BASE = process.env.APP_URL || "http://localhost:3198";
 const MOCK_PORT = Number(process.env.MOCK_PORT) || 8799;
@@ -73,7 +87,7 @@ async function rowText(page, s) {
   check("superadmin row: ✏️ Name available", (await rowText(page, "Second Super")).includes("✏️ Name"));
   // 彻底删除账号搬进 Edit 框（tp 套测）：行上没有 🗑 了。
   check("inactive row has Reactivate, no 🗑 on the row", (await rowText(page, "Carl C")).includes("Reactivate") && !(await rowText(page, "Carl C")).includes("🗑"));
-  const selectCount = await page.$$eval('select[aria-label^="Role for"]', (s) => s.length);
+  const selectCount = await page.$$eval(':is(select,[data-select-menu])[aria-label^="Role for"]', (s) => s.length);
   check("role selects only for alice,bob,carl", selectCount === 3, `got ${selectCount}`);
   check("role legend shown", t.includes("Role permissions:") && t.includes("Field roles"));
 
@@ -180,14 +194,14 @@ async function rowText(page, s) {
   check("teams assigned", bobRow.includes("Morning") && bobRow.includes("Tickets"), bobRow);
 
   // ── role change: driver warning, cancel reverts ──
-  const bobSelect = await page.evaluateHandle(() => [...document.querySelectorAll("tr")].find((tr) => tr.innerText.includes("ZZ Test Bobby")).querySelector("select"));
-  await bobSelect.select("driver");
+  const bobSelect = await page.evaluateHandle(() => [...document.querySelectorAll("tr")].find((tr) => tr.innerText.includes("ZZ Test Bobby")).querySelector("select, [data-select-menu]"));
+  await pickHandle(page, bobSelect, "driver");
   await waitText(page, "LOSE access");
   check("driver warning shown", true);
   await click(page, "Cancel", "dialog");
   await waitNoText(page, "LOSE access");
   check("cancel keeps role staff", (await bobSelect.evaluate((s) => s.value)) === "staff");
-  await bobSelect.select("admin");
+  await pickHandle(page, bobSelect, "admin");
   await waitText(page, "Change ZZ Test Bobby's role to Admin?");
   check("admin change has no warning", !(await text(page)).includes("LOSE access"));
   await click(page, "Change Role", "dialog");
@@ -196,18 +210,18 @@ async function rowText(page, s) {
   check("role now admin", (await bobSelect.evaluate((s) => s.value)) === "admin");
 
   // ── supervisor：后端没上线时不给选、说明里没有 ──
-  check("no Supervisor option before backend supports it", !(await bobSelect.evaluate((s) => [...s.options].some((o) => o.value === "supervisor"))));
+  check("no Supervisor option before backend supports it", !((await optionsOf(page, bobSelect)).some((o) => o.value === "supervisor")));
   check("legend has no Supervisor before backend supports it", !(await page.evaluate(() => [...document.querySelectorAll("section")].find((x) => x.innerText.includes("Role permissions:"))?.innerText ?? "")).includes("Supervisor"));
 
   // ── supervisor：后端上线后（/api/me 带 is_supervisor）可选、可改、说明里有 ──
   await ctl("sup=1");
   await page.goto(PAGE, { waitUntil: "domcontentloaded" });
   await waitText(page, "ZZ Test Bobby");
-  const bobSelect2 = await page.evaluateHandle(() => [...document.querySelectorAll("tr")].find((tr) => tr.innerText.includes("ZZ Test Bobby")).querySelector("select"));
-  const optionLabels = await bobSelect2.evaluate((s) => [...s.options].map((o) => o.textContent));
+  const bobSelect2 = await page.evaluateHandle(() => [...document.querySelectorAll("tr")].find((tr) => tr.innerText.includes("ZZ Test Bobby")).querySelector("select, [data-select-menu]"));
+  const optionLabels = (await optionsOf(page, bobSelect2)).map((o) => o.textContent);
   check("Supervisor option between Admin and Staff", optionLabels.join(",") === "Admin,Supervisor,Staff,Driver,Guide", optionLabels.join(","));
   check("legend explains Supervisor", (await text(page)).includes("Same as Staff today (no Settings or Users)"));
-  await bobSelect2.select("supervisor");
+  await pickHandle(page, bobSelect2, "supervisor");
   await waitText(page, "Change ZZ Test Bobby's role to Supervisor?");
   check("supervisor change has no warning", !(await text(page)).includes("LOSE access"));
   await click(page, "Change Role", "dialog");
@@ -226,13 +240,13 @@ async function rowText(page, s) {
   const ccl = await page.evaluate(() => {
     const tr = [...document.querySelectorAll("tbody tr")].find((r) => r.innerText.includes("@ccl_ops"));
     const link = tr.querySelector('a[href="/settings/team"]');
-    return { text: tr.innerText, role: tr.cells[1].innerText.trim(), select: !!tr.querySelector("select"), link: link ? link.innerText.trim() : null, teams: tr.cells[3].innerText.trim(), teamBtn: !!tr.cells[3].querySelector("button") };
+    return { text: tr.innerText, role: tr.cells[1].innerText.trim(), select: !!tr.querySelector("select, [data-select-menu]"), link: link ? link.innerText.trim() : null, teams: tr.cells[3].innerText.trim(), teamBtn: !!tr.cells[3].querySelector("button") };
   });
   check("partner row: read-only Partner badge, no role dropdown (never falls back to Admin / Staff)",
     ccl.role.startsWith("Partner") && !ccl.role.includes("Admin") && !ccl.role.includes("Staff") && !ccl.select, JSON.stringify(ccl));
   check("partner row: no 'Change type on the Team page' link any more (same page now)", ccl.link === null);
   check("partner row: teams cell is — and not clickable", ccl.teams === "—" && !ccl.teamBtn, JSON.stringify(ccl));
-  check("other rows still get the role dropdown", !!(await page.$('select[aria-label="Role for ZZ Test Bobby"]')));
+  check("other rows still get the role dropdown", !!(await page.$(':is(select,[data-select-menu])[aria-label="Role for ZZ Test Bobby"]')));
   await ctl("viewer=admin");
   await page.goto(PAGE, { waitUntil: "domcontentloaded" });
   await waitText(page, "@ccl_ops");
@@ -275,17 +289,17 @@ async function rowText(page, s) {
   await page.waitForFunction(() => ![...document.querySelectorAll("tbody tr")].some((tr) => tr.innerText.includes("Bob B")));
   check("search narrows the list", (await rowText(page, "Alice A")) !== null && (await rowText(page, "Carl C")) === null);
   await page.$eval('input[aria-label="Search people"]', (i) => { const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set; set.call(i, ""); i.dispatchEvent(new Event("input", { bubbles: true })); });
-  await page.select('select[aria-label="Show"]', "inactive");
+  await pickSel(page, ':is(select,[data-select-menu])[aria-label="Show"]', "inactive");
   await page.waitForFunction(() => ![...document.querySelectorAll("tbody tr")].some((tr) => tr.innerText.includes("Alice A")));
   check("Show: Inactive lists only inactive accounts", (await rowText(page, "Carl C")) !== null && (await rowText(page, "Alice A")) === null);
-  await page.select('select[aria-label="Show"]', "all");
+  await pickSel(page, ':is(select,[data-select-menu])[aria-label="Show"]', "all");
   check("counts are plain text", await page.evaluate(() => !!document.querySelector("[data-team-counts]") && document.querySelector("[data-team-counts]").tagName === "SPAN"));
 
   // ── admin viewer: no role selects, reactivate error banner ──
   await ctl("viewer=admin");
   await page.goto(PAGE, { waitUntil: "domcontentloaded" });
   await waitText(page, "Alice A");
-  check("admin: no role selects", (await page.$$eval('select[aria-label^="Role for"]', (s) => s.length)) === 0);
+  check("admin: no role selects", (await page.$$eval(':is(select,[data-select-menu])[aria-label^="Role for"]', (s) => s.length)) === 0);
   t = await text(page);
   check("admin (Annie Qa): Super Admin rows not shown", !t.includes("Second Super") && !t.includes("Boss Lady"));
   check("admin: no Edit / Delete, no Access columns, no Action Log", !/\bEdit\b/.test(t) && !(await page.$("[data-delete-person]")) && !t.includes("Notification duties") && !t.includes("Action Log"));

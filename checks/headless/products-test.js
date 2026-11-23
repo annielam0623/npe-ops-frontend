@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -52,13 +53,21 @@ async function waitFor(expr, timeout = 15000) {
   }
   return false;
 }
+// 大项折叠（Annie 2026-11-21「动手」）：Products 页默认收起。除了专门测折叠的那几项，其余检查打开页面后先全部展开。
+let autoExpand = false;
 async function goto(url) {
   await cdp("Page.navigate", { url });
   await sleep(300);
+  if (autoExpand && url.includes("/settings/products")) await expandAll();
+}
+async function expandAll() {
+  if (!(await waitFor("document.querySelector('[data-fold-tools]')", 5000))) return;
+  await evaluate("const t = document.querySelector('[data-setup-toggle]'); if (t && t.getAttribute('aria-expanded') === 'false') t.click(); const b = [...document.querySelectorAll('[data-fold-tools] button')].find((x) => x.textContent.trim() === 'Expand all'); if (b && !b.disabled) b.click(); return 1;");
+  await sleep(150);
 }
 
 // 页面里用的小工具（每次导航后重新注入）。
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$t = (sel) => [...document.querySelectorAll(sel)].map(e => e.textContent.trim());
 window.$rows = () => [...document.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent.trim()));
 window.$heads = () => [...document.querySelectorAll('thead th')].map(th => th.textContent.replace('⠿','').trim());
@@ -107,6 +116,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
 
   try {
@@ -127,10 +137,6 @@ async function since(before, filter) {
   return (await mockLog()).slice(before).filter(filter);
 }
 const SEL_HELPER = `
-window.$sel = (el, value) => {
-  Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, value);
-  el.dispatchEvent(new Event('change', { bubbles: true }));
-};
 window.$q = (s) => document.querySelector(s);
 window.$blur = (el) => el.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
 window.$prodCount = () => [...document.querySelectorAll('section:not([data-missing-card]) [aria-label^="Internal name for"]')].length;
@@ -154,16 +160,64 @@ async function run() {
   await waitFor("document.body.textContent.includes('All Products') && document.body.textContent.includes('not in this list yet')");
   await h();
 
+  // ── 大项折叠（Annie 2026-11-21「Products 大项折叠可以，动手」；Q1–Q3 都选 A）──
+  const foldState = () => evaluate("return [...document.querySelectorAll('[data-section-toggle]')].map((b) => b.dataset.sectionToggle + ':' + b.getAttribute('aria-expanded') + ':' + (b.closest('tbody').nextElementSibling.hidden ? 'hidden' : 'shown')).join('|');");
+  check("折叠：打开页面时 No group 展开、其余组收起（行藏起来）", (await foldState()) === "none:true:shown|1:false:hidden|2:false:hidden", await foldState());
+  check("折叠：表格上面写 3 groups · Expand all · Collapse all", await evaluate("return [...document.querySelector('[data-fold-tools]').children].map((e) => e.textContent.trim()).join('|') === '3 groups|Expand all|Collapse all';"), await evaluate("return document.querySelector('[data-fold-tools]').textContent;"));
+  await waitFor("/[0-9]+ tours/.test(document.querySelector('[data-setup-toggle]')?.textContent || '')");
+  check("折叠：Bus Manifest setup 默认收起、标题后写 N tours、团下拉不显示", await evaluate("const t = document.querySelector('[data-setup-toggle]'); return t.getAttribute('aria-expanded') === 'false' && /[0-9]+ tours/.test(t.textContent) && !document.querySelector('[aria-label=\"Tour group\"]') && t.closest('section').querySelector(':scope > div[hidden]') !== null;"));
+  check("折叠：两个提醒块照旧展开（Q2=A）", await evaluate("const m = document.querySelector('[data-missing-card]'); return !!m && m.getBoundingClientRect().height > 0 && m.textContent.includes('not in this list yet');"));
+  await evaluate("document.querySelector('[data-section-toggle=\"1\"]').click(); return 1;");
+  await sleep(150);
+  check("折叠：点组标题 ▸ 展开那一组", (await foldState()) === "none:true:shown|1:true:shown|2:false:hidden", await foldState());
+  await evaluate("[...document.querySelectorAll('[data-fold-tools] button')].find((x) => x.textContent.trim() === 'Collapse all').click(); return 1;");
+  await sleep(150);
+  check("折叠：Collapse all 全部收起（No group 也收）", (await foldState()) === "none:false:hidden|1:false:hidden|2:false:hidden", await foldState());
+  await evaluate("[...document.querySelectorAll('[data-fold-tools] button')].find((x) => x.textContent.trim() === 'Expand all').click(); return 1;");
+  await sleep(150);
+  check("折叠：Expand all 全部展开", (await foldState()) === "none:true:shown|1:true:shown|2:true:shown", await foldState());
+  await evaluate("[...document.querySelectorAll('[data-fold-tools] button')].find((x) => x.textContent.trim() === 'Collapse all').click(); return 1;");
+  await sleep(150);
+  await evaluate("const i = document.querySelector('input[aria-label=Search]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(i, 'Antelope'); i.dispatchEvent(new Event('input', { bubbles: true })); return 1;");
+  await sleep(300);
+  check("折叠：搜索时有结果的组自动展开，Expand all / Collapse all 灰掉", (await foldState()).includes("1:true:shown") && (await evaluate("return [...document.querySelectorAll('[data-fold-tools] button')].every((b) => b.disabled);")), await foldState());
+  await evaluate("const i = document.querySelector('input[aria-label=Search]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(i, ''); i.dispatchEvent(new Event('input', { bubbles: true })); return 1;");
+  await sleep(300);
+  check("折叠：清掉搜索回到原来的（都收起）", (await foldState()) === "none:false:hidden|1:false:hidden|2:false:hidden", await foldState());
+  await evaluate("document.querySelector('[data-setup-toggle]').click(); return 1;");
+  await sleep(200);
+  check("折叠：点 Bus Manifest setup 展开、团下拉出来", await evaluate("const t = document.querySelector('[data-setup-toggle]'); return t.getAttribute('aria-expanded') === 'true' && !!document.querySelector('[aria-label=\"Tour group\"]');"));
+  await goto(`${APP}/settings/products`);
+  await waitFor("document.querySelector('[data-section-toggle]')");
+  check("折叠：不记住（Q3=A）——重开页面又回到默认", (await foldState()) === "none:true:shown|1:false:hidden|2:false:hidden" && (await evaluate("return document.querySelector('[data-setup-toggle]').getAttribute('aria-expanded');")) === "false", await foldState());
+  autoExpand = true;
+  await expandAll();
+
+  // ── 来源小标签（Annie 2026-11-21：TripGuru 的产品不能写死 REZDY）──
+  const tagsOf = (code) => evaluate(`const tr = [...document.querySelectorAll("tbody tr")].find((r) => r.querySelector("td:nth-child(2)")?.textContent.trim() === ${JSON.stringify(code)}); return tr ? [...tr.querySelectorAll("[data-product-source]")].map((e) => e.textContent.trim()).join("+") : null;`);
+  check("来源：旧后端（没有 source）⇒ 名字旁不出 REZDY / TRIPGURU", (await evaluate("return document.querySelectorAll('[data-product-source]').length;")) === 0 && !(await evaluate("return [...document.querySelectorAll('tbody td')].some((td) => td.textContent.includes('REZDY'));")));
+  await ctl({ source: true });
+  await goto(`${APP}/settings/products`);
+  await waitFor("document.querySelector('[data-product-source]')");
+  await h();
+  const src = { UAC01: await tagsOf("UAC01"), UAC02: await tagsOf("UAC02"), SHT01: await tagsOf("SHT01"), LEG01: await tagsOf("LEG01") };
+  check("来源：rezdy ⇒ REZDY、tripguru ⇒ TRIPGURU、both ⇒ 两个、没有 source ⇒ 不出", src.UAC01 === "REZDY" && src.UAC02 === "TRIPGURU" && src.SHT01 === "REZDY+TRIPGURU" && src.LEG01 === "", JSON.stringify(src));
+  check("来源：TRIPGURU 蓝（同 Order List 的 TripGuru：底 #E6F1FB、字 #185FA5），REZDY 照旧灰（#f0f0ee），字号一样 9px", await evaluate("const [a, b] = [document.querySelector('[data-product-source=rezdy]'), document.querySelector('[data-product-source=tripguru]')]; const c = (e) => getComputedStyle(e); return !!a && !!b && c(b).backgroundColor === 'rgb(230, 241, 251)' && c(b).color === 'rgb(24, 95, 165)' && c(a).backgroundColor === 'rgb(240, 240, 238)' && c(a).fontSize === '9px' && c(b).fontSize === '9px';"), await evaluate("return [...document.querySelectorAll('[data-product-source]')].map((e) => e.dataset.productSource + ' ' + getComputedStyle(e).backgroundColor + ' ' + getComputedStyle(e).color).join(' | ');"));
+  await ctl({ source: false });
+  await goto(`${APP}/settings/products`);
+  await waitFor("document.body.textContent.includes('All Products') && document.body.textContent.includes('not in this list yet')");
+  await h();
+
   // ── 列表 ──
   check("计数：5 products · 1 inactive", await evaluate("return document.body.textContent.includes('5 products · 1 inactive');"));
-  const headings = await evaluate("return [...document.querySelectorAll('section:not([data-missing-card]) tbody tr td[colspan=\"7\"]')].map(td => td.textContent);");
-  check("按组分段：Upper Antelope 2 / LV Shuttle 1 / No group 2", headings.join("|") === "Upper Antelope 2|LV Shuttle 1|No group 2", headings.join("|"));
+  const headings = await evaluate("return [...document.querySelectorAll('section:not([data-missing-card]) tbody tr td[colspan=\"7\"]')].map(td => td.textContent.replace(/[▸▾]/g, ''));");
+  check("按组分段：No group 放最前（Annie 2026-10-23 / 11-21「放到页首」），其余照后端顺序：No group 2 / Upper Antelope 2 / LV Shuttle 1", headings.join("|") === "No group 2|Upper Antelope 2|LV Shuttle 1", headings.join("|"));
   check("Rezdy 名照原样显示（不当 HTML）", await evaluate("return $prodRow('SHT01').children[2].textContent.startsWith('LV Shuttle <b>x</b>');"));
   check("没名字显示 (no name yet)", await evaluate("return $prodRow('PFYF01').children[2].textContent.includes('(no name yet)');"));
   check("库里有、清单里没有的分类照实显示", (await evaluate("return $prodRow('LEG01').querySelector('[aria-label^=\"Category for\"]').value;")) === "weird_old");
   check("缺分类的行有橙色左边", (await evaluate("return $prodRow('UAC02').children[0].style.boxShadow;")).includes("inset"));
   // 这个模拟接口的 /groups 既没有 ticket_tour_types 也没有 bus_tour_types（后端都还没上）：整列不显示（有清单时见 ptt 套）。
-  check("没有 ticket_tour_types / bus_tour_types：没有 Tour type 列、也没有 Tour type 下拉", await evaluate("return ![...document.querySelectorAll('thead th')].some(th => th.textContent.trim() === 'Tour type') && !document.querySelector('select[aria-label^=\"Tour type for\"]');"));
+  check("没有 ticket_tour_types / bus_tour_types：没有 Tour type 列、也没有 Tour type 下拉", await evaluate("return ![...document.querySelectorAll('thead th')].some(th => th.textContent.trim() === 'Tour type') && !document.querySelector(':is(select,[data-select-menu])[aria-label^=\"Tour type for\"]');"));
   check("缺分类提示：1 product has no category yet",await evaluate("return document.body.textContent.includes('1 product has no category yet');"));
   await evaluate("$btn('Show only these').click();");
   await sleep(150);
@@ -179,7 +233,7 @@ async function run() {
   const rowQ = (code, sel) => `$prodRow('${code}').querySelector('${sel}')`;
   check("没改过的行没有 Save", await evaluate(`return !${rowQ("UAC02", "[data-save-btn]")};`));
   let before = (await mockLog()).length;
-  await evaluate(`$sel(${rowQ("UAC02", '[aria-label^="Category for"]')}, 'ticket');`);
+  await evaluate(`await $sel(${rowQ("UAC02", '[aria-label^="Category for"]')}, 'ticket');`);
   await sleep(500);
   check("改分类：不发请求", (await since(before, (e) => e.path === "/api/settings/products/11")).length === 0);
   check("改分类：这一行出蓝色 Save、琥珀色 Not saved yet，在 Deactivate 左边", await evaluate(`const b = ${rowQ("UAC02", "[data-save-btn]")}; const d = $btn('Deactivate', $prodRow('UAC02')); return !!b && !b.disabled && getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)' && !!${rowQ("UAC02", "[data-save-unsaved]")} && (b.compareDocumentPosition(d) & Node.DOCUMENT_POSITION_FOLLOWING) > 0;`));
@@ -201,7 +255,7 @@ async function run() {
   check("存不上：改过的格描红", await evaluate(`return ${rowQ("UAC02", '[aria-label^="Internal name for"]')}.className.includes('A32D2D');`));
   // 一行连着改两格，一次存（不再排队发两个 PUT）。
   before = (await mockLog()).length;
-  await evaluate(`$sel(${rowQ("UAC02", '[aria-label^="Category for"]')}, 'shuttle'); $setValue(${rowQ("UAC02", '[aria-label^="Internal name for"]')}, 'ZZ Serial');`);
+  await evaluate(`await $sel(${rowQ("UAC02", '[aria-label^="Category for"]')}, 'shuttle'); $setValue(${rowQ("UAC02", '[aria-label^="Internal name for"]')}, 'ZZ Serial');`);
   check("再改：红字不留，回到 Not saved yet", await evaluate(`return !${rowQ("UAC02", "[data-save-error]")} && !!${rowQ("UAC02", "[data-save-unsaved]")};`));
   await evaluate(`const i = ${rowQ("UAC02", '[aria-label^="Internal name for"]')}; i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));`);
   put = await waitPut(before, "/api/settings/products/11");
@@ -213,12 +267,12 @@ async function run() {
   await evaluate(`$setValue(${rowQ("UAC02", '[aria-label^="Internal name for"]')}, 'ZZ Keep');`);
   const setupBefore = (await mockLog()).filter((e) => e.path === "/api/settings/manifest-setup").length;
   before = (await mockLog()).length;
-  await evaluate(`$sel(${rowQ("SHT01", '[aria-label^="Group for"]')}, '1');`);
+  await evaluate(`await $sel(${rowQ("SHT01", '[aria-label^="Group for"]')}, '1');`);
   await sleep(400);
-  check("改组：按 Save 之前不发请求、行不挪", (await since(before, (e) => e.path === "/api/settings/products/12")).length === 0 && (await evaluate("return document.querySelectorAll('section:not([data-missing-card]) tbody tr td[colspan=\"7\"]')[0].textContent;")) === "Upper Antelope 2");
+  check("改组：按 Save 之前不发请求、行不挪", (await since(before, (e) => e.path === "/api/settings/products/12")).length === 0 && (await evaluate("return document.querySelectorAll('section:not([data-missing-card]) tbody tr td[colspan=\"7\"]')[1].textContent.replace(/[▸▾]/g, '');")) === "Upper Antelope 2");
   await evaluate(`${rowQ("SHT01", "[data-save-btn]")}.click();`);
   put = await waitPut(before, "/api/settings/products/12");
-  await waitFor("document.querySelectorAll('section:not([data-missing-card]) tbody tr td[colspan=\"7\"]')[0].textContent === 'Upper Antelope 3'");
+  await waitFor("document.querySelectorAll('section:not([data-missing-card]) tbody tr td[colspan=\"7\"]')[1].textContent.replace(/[▸▾]/g, '') === 'Upper Antelope 3'");
   check("改组：PUT manifest_id=1，行挪到新组下", put && put.body.manifest_id === 1, JSON.stringify(put?.body));
   await sleep(300);
   check("改组：挪到新组下以后仍显示绿字 ✓ Saved", await evaluate(`return !!${rowQ("SHT01", "[data-save-ok]")};`));
@@ -267,7 +321,7 @@ async function run() {
   check("取消到剩 1 个：条消失", await evaluate(`return ${bars}.length === 0;`));
   await evaluate("$q('[aria-label=\"Select everything currently shown\"]').click();");
   await sleep(150);
-  await evaluate("$sel($q('[aria-label=\"Category for selected\"]'), 'unmapped');");
+  await evaluate("await $sel($q('[aria-label=\"Category for selected\"]'), 'unmapped');");
   await sleep(100);
   await evaluate("$btn('Apply').click();");
   await waitFor(dialog);
@@ -283,8 +337,8 @@ async function run() {
   // ── 还没加进列表 ──
   check("缺失卡片标题：2 products on upcoming orders", await evaluate("return document.body.textContent.includes('2 products on upcoming orders are not in this list yet');"));
   const missRow = (code) => `[...document.querySelector('section[data-missing-card]').querySelectorAll('tbody tr')].find(tr => tr.children[1] && tr.children[1].textContent === '${code}')`;
-  await evaluate(`$sel(${missRow("NEW01")}.querySelector('[aria-label="Group for NEW01"]'), '1');`);
-  await evaluate(`$sel(${missRow("NEW01")}.querySelector('[aria-label="Category for NEW01"]'), 'bus_tour');`);
+  await evaluate(`await $sel(${missRow("NEW01")}.querySelector('[aria-label="Group for NEW01"]'), '1');`);
+  await evaluate(`await $sel(${missRow("NEW01")}.querySelector('[aria-label="Category for NEW01"]'), 'bus_tour');`);
   await evaluate(`$setValue(${missRow("NEW01")}.querySelector('[aria-label="Internal name for NEW01"]'), ' ZZ New ');`);
   before = (await mockLog()).length;
   await evaluate(`$btn('Add', ${missRow("NEW01")}).click();`);
@@ -441,7 +495,7 @@ async function run() {
   await waitFor("document.querySelectorAll('[aria-label=\"Extra name\"]').length === 3");
   check("新加一个：整组 PUT（老的带 id，新的不带），存好后多一行空行、Type 下拉多 Extra: ZZX", JSON.stringify(put?.body) === '{"extras":[{"id":5,"name":"HELI","seats":"12"},{"name":"ZZX","seats":"8"}]}' && (await evaluate("return document.body.textContent.includes('Saved') && [...$q('[aria-label=\"Type for UAC01\"]').options].some(o => o.textContent === 'Extra: ZZX');")), JSON.stringify(put?.body));
   before = (await mockLog()).length;
-  await evaluate("$sel($q('[aria-label=\"Type for UAC01\"]'), 'extra:5');");
+  await evaluate("await $sel($q('[aria-label=\"Type for UAC01\"]'), 'extra:5');");
   await sleep(400);
   check("Sections 表改了 Type：先不存，这一行写 Not saved yet、下面的 Save 变蓝", (await since(before, (e) => e.path === "/api/settings/manifest-setup/products/10")).length === 0 && (await evaluate("return $q('[aria-label=\"Type for UAC01\"]').closest('tr').textContent.includes('Not saved yet') && !$q('[data-field=sections] [data-save-btn]').disabled;")));
   await evaluate(saveIn("sections"));
@@ -456,7 +510,7 @@ async function run() {
   // ── 往返 shuttle（后端 G36）：Type 选 Shuttle round trip 才出现回程两格，离开格子就存 ──
   check("Type 不是 Shuttle round trip：没有回程两格", await evaluate("return !$q('[aria-label=\"Return pickup time for UAC01\"]');"));
   before = (await mockLog()).length;
-  await evaluate("$sel($q('[aria-label=\"Type for UAC01\"]'), 'roundtrip');");
+  await evaluate("await $sel($q('[aria-label=\"Type for UAC01\"]'), 'roundtrip');");
   await evaluate(saveIn("sections"));
   put = await waitPut(before, "/api/settings/manifest-setup/products/10");
   await waitFor("$q('[aria-label=\"Return pickup time for UAC01\"]')");
@@ -475,7 +529,7 @@ async function run() {
   check("示意图：往返 shuttle 去程、回程各一节", await evaluate("const t = $q('[aria-label=\"Where each setting shows\"]').textContent; return t.includes('// OUTBOUND') && t.includes('// INBOUND');"));
   check("How to use 写了往返 shuttle", await evaluate("return [...document.querySelectorAll('details')].some(d => d.textContent.includes('pick Shuttle round trip, then fill Return pickup time and Return pickup place'));"));
   before = (await mockLog()).length;
-  await evaluate("$sel($q('[aria-label=\"Type for UAC01\"]'), 'tour');");
+  await evaluate("await $sel($q('[aria-label=\"Type for UAC01\"]'), 'tour');");
   await evaluate(saveIn("sections"));
   put = await waitPut(before, "/api/settings/manifest-setup/products/10");
   await waitFor("!$q('[aria-label=\"Return pickup time for UAC01\"]')");
@@ -492,7 +546,7 @@ async function run() {
   check("Manifest setup：勾 2 个出现批量条，贴在 UAC02（最后一个已勾行）下面，不是 sticky", await evaluate(`const bar = ${msBar}; if (!bar) return false; let sticky = false; for (let e = bar; e; e = e.parentElement) { const p = getComputedStyle(e).position; if (p === 'sticky' || p === 'fixed') sticky = true; } return bar.textContent.includes('2 product(s) selected') && bar.closest('tr').previousElementSibling.textContent.includes('UAC02') && !sticky;`));
   check("Manifest setup：两个都没选要改什么时 Apply 灰着", await evaluate(`return [...${msBar}.querySelectorAll('button')].find((b) => b.textContent === 'Apply').disabled;`));
   before = (await mockLog()).length;
-  await evaluate(`$setValue($q('[aria-label="Section for selected"]'), 'late'); $sel($q('[aria-label="Type for selected"]'), 'inbound');`);
+  await evaluate(`$setValue($q('[aria-label="Section for selected"]'), 'late'); await $sel($q('[aria-label="Type for selected"]'), 'inbound');`);
   await sleep(100);
   await evaluate(`[...${msBar}.querySelectorAll('button')].find((b) => b.textContent === 'Apply').click();`);
   await waitFor("$q('[aria-label=\"Section for UAC02\"]').value === 'LATE'");
@@ -515,7 +569,7 @@ async function run() {
   check("批量里存不上的那一行：这次批量的值留在页面上（Not saved yet）", await evaluate(`return $q('[aria-label="Section for UAC02"]').value === 'early' && $q('[aria-label="Section for UAC02"]').closest('tr').textContent.includes('Not saved yet');`));
   before = (await mockLog()).length;
   for (const code of ["UAC01", "UAC02"]) {
-    await evaluate(`const t = $q('[aria-label="Section for ${code}"]'); $setValue(t, ''); $sel($q('[aria-label="Type for ${code}"]'), 'tour');`);
+    await evaluate(`const t = $q('[aria-label="Section for ${code}"]'); $setValue(t, ''); await $sel($q('[aria-label="Type for ${code}"]'), 'tour');`);
   }
   await sleep(200);
   await evaluate(saveIn("sections"));
@@ -584,7 +638,7 @@ async function run() {
   const relaySel = "$q('[aria-label=\"Morning Relay round\"]')";
   check("Morning Relay round：下拉三项照接口、现值 1st Round；How to use 写了", await evaluate(`return [...${relaySel}.options].map(o => o.value + ':' + o.textContent).join('|') === ':Not on Morning Relay|relay:1st Round|relay_2:2nd Round' && ${relaySel}.value === 'relay' && [...document.querySelectorAll('details')].some(d => d.textContent.includes('Morning Relay round: pick the round whose relay cars bring this tour'));`));
   before = (await mockLog()).length;
-  await evaluate(`$sel(${relaySel}, 'relay_2');`);
+  await evaluate(`await $sel(${relaySel}, 'relay_2');`);
   await sleep(300);
   check("选了 2nd Round：先不存", (await since(before, (e) => e.path.endsWith("/relay-round"))).length === 0);
   await evaluate(saveIn("relay"));
@@ -592,21 +646,21 @@ async function run() {
   await sleep(200);
   check("选 2nd Round：PUT relay_round=relay_2；右边 Dispatch 写 2nd Round", JSON.stringify(put?.body) === '{"relay_round":"relay_2"}' && (await evaluate("return $q('[data-zone=relay]').textContent.includes('2nd Round') && $q('[data-zone=relay]').textContent.includes('texted in this round');")), JSON.stringify(put?.body));
   before = (await mockLog()).length;
-  await evaluate(`$sel(${relaySel}, '');`);
+  await evaluate(`await $sel(${relaySel}, '');`);
   await evaluate(saveIn("relay"));
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1/relay-round");
   await sleep(200);
   check("选 Not on Morning Relay：PUT 空串；右边写不进 relay", JSON.stringify(put?.body) === '{"relay_round":""}' && (await evaluate("return $q('[data-zone=relay]').textContent.includes('Not on Morning Relay: Upper Antelope guests are not in the relay.');")));
   await ctl({ relayFail: true });
   before = (await mockLog()).length;
-  await evaluate(`$sel(${relaySel}, 'relay');`);
+  await evaluate(`await $sel(${relaySel}, 'relay');`);
   await evaluate(saveIn("relay"));
   await waitPut(before, "/api/settings/manifest-setup/groups/1/relay-round");
   await sleep(300);
   check("存不上：这一项红字写服务端原话、下拉留着选的值", await evaluate(`return $q('[data-field=relay] [data-save-error]').textContent.includes('Only admins can change the Morning Relay round.') && ${relaySel}.value === 'relay';`));
   await ctl({ relayFail: false });
   // 选回已存的值：不算改动（后面的检查要换页，不留没存的改动）。
-  await evaluate(`$sel(${relaySel}, '');`);
+  await evaluate(`await $sel(${relaySel}, '');`);
   await sleep(150);
   await evaluate(hover("[data-field=relay]"));
   await sleep(100);
@@ -620,7 +674,7 @@ async function run() {
   await sleep(200);
   check("节名按 Save 保存，显示后端规整后的值", put && put.body.section === "zz sec" && put.body.kind === "tour" && (await evaluate("return $q('[aria-label=\"Section for UAC01\"]').value;")) === "ZZ SEC");
   before = (await mockLog()).length;
-  await evaluate("$sel($q('[aria-label=\"Type for UAC01\"]'), 'outbound');");
+  await evaluate("await $sel($q('[aria-label=\"Type for UAC01\"]'), 'outbound');");
   await evaluate(saveIn("sections"));
   put = await waitPut(before, "/api/settings/manifest-setup/products/10");
   check("类型改了按 Save 存", put && put.body.kind === "outbound" && put.body.section === "ZZ SEC");
@@ -628,28 +682,28 @@ async function run() {
   // ── 换团：有没存的改动先问 Save / Don't save / Cancel（主窗口 eb 2026-10-30，同离开页面） ──
   const tourSel = "$q('[aria-label=\"Tour group\"]')";
   await evaluate(`$setValue(${perBus}, '45');`);
-  await evaluate(`$sel(${tourSel}, '7');`);
+  await evaluate(`await $sel(${tourSel}, '7');`);
   await waitFor("document.querySelector('[data-leave-dialog]')");
   check("换团：弹 Leave without saving?，列出 Upper Antelope: Guests per bus", await evaluate("return document.querySelector('[data-leave-dialog]').textContent.includes('Upper Antelope: Guests per bus');"));
   await evaluate("$btn('Cancel', document.querySelector('[data-leave-dialog]')).click();");
   await sleep(300);
   check("换团 Cancel：还在 Upper Antelope，45 还在", (await evaluate(`return ${tourSel}.value;`)) === "1" && (await evaluate(`return ${perBus}.value;`)) === "45");
   before = (await mockLog()).length;
-  await evaluate(`$sel(${tourSel}, '7');`);
+  await evaluate(`await $sel(${tourSel}, '7');`);
   await waitFor("document.querySelector('[data-leave-dialog]')");
   await evaluate("document.querySelector('[data-leave-dialog] [data-leave-save]').click();");
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1");
   await waitFor(`${tourSel}.value === '7'`);
   check("换团选 Save：先存（PUT guests_per_bus 45）再换到 Private", put && put.body.guests_per_bus === "45" && (await evaluate(`return ${tourSel}.value;`)) === "7", JSON.stringify(put?.body));
-  await evaluate(`$sel(${tourSel}, '1');`);
+  await evaluate(`await $sel(${tourSel}, '1');`);
   await waitFor(`${tourSel}.value === '1'`);
   await evaluate(`$setValue(${perBus}, '46');`);
   before = (await mockLog()).length;
-  await evaluate(`$sel(${tourSel}, '7');`);
+  await evaluate(`await $sel(${tourSel}, '7');`);
   await waitFor("document.querySelector('[data-leave-dialog]')");
   await evaluate("document.querySelector('[data-leave-dialog] [data-leave-discard]').click();");
   await waitFor(`${tourSel}.value === '7'`);
-  await evaluate(`$sel(${tourSel}, '1');`);
+  await evaluate(`await $sel(${tourSel}, '1');`);
   await waitFor(`${tourSel}.value === '1'`);
   check("换团选 Don't save：不存、换过去再回来是已存的 45", (await since(before, (e) => e.path === "/api/settings/manifest-setup/groups/1")).length === 0 && (await evaluate(`return ${perBus}.value;`)) === "45");
 
@@ -680,7 +734,7 @@ async function run() {
   await evaluate(`${gCard}.querySelector('summary').click();`);
   await waitFor(`${gCard}.open && ${gCard}.querySelector('[data-gid]')`);
   check("展开：每个组一行（Short name、显示名、分类、产品数、停用的组标 Inactive）", await evaluate(`const r = (id) => ${gCard}.querySelector('[data-gid="' + id + '"]'); return r(1).textContent.includes('upper_antelope') && r(1).querySelector('[aria-label="Display name for upper_antelope"]').value === 'Upper Antelope' && r(1).textContent.includes('Bus Tour') && r(3).textContent.includes('Inactive') && !!r(3).querySelector('button') && r(3).querySelector('button').textContent === 'Reactivate';`));
-  check("Group 下拉不列停用的组（产品不在里面时）", await evaluate("return ![...$prodRow('UAC01').querySelectorAll('select')[0].options].some(o => o.textContent.includes('Old Group')) && ![...document.querySelectorAll('select[aria-label=\"Group for selected\"] option')].some(o => o.textContent.includes('Old Group'));"));
+  check("Group 下拉不列停用的组（产品不在里面时）", await evaluate("return ![...$prodRow('UAC01').querySelectorAll('select, [data-select-menu]')[0].options].some(o => o.textContent.includes('Old Group')) && ![...document.querySelectorAll(':is(select,[data-select-menu])[aria-label=\"Group for selected\"] option')].some(o => o.textContent.includes('Old Group'));"));
   const disp2 = `${gCard}.querySelector('[aria-label="Display name for shuttle_lv"]')`;
   before = (await mockLog()).length;
   const gSave = (id) => `${gCard}.querySelector('[data-gid="${id}"] [data-save-btn]').click();`;
@@ -696,7 +750,7 @@ async function run() {
   let gp = (await waitPut(before, "/api/settings/products/groups/2"));
   await waitFor("document.body.textContent.includes('ZZ LV Shuttle')");
   check("改名、框里按 Enter = Save：绿字 ✓ Saved", await evaluate(`return !!${gCard}.querySelector('[data-gid="2"] [data-save-ok]');`));
-  check("改名：PATCH 只带 display_name、产品的 Group 下拉跟着变成新名字", gp?.method === "PATCH" && JSON.stringify(gp.body) === '{"display_name":"ZZ LV Shuttle"}' && (await evaluate("return [...$prodRow('LEG01').querySelectorAll('select')[0].options].some(o => o.textContent === 'ZZ LV Shuttle') && ![...$prodRow('LEG01').querySelectorAll('select')[0].options].some(o => o.textContent === 'LV Shuttle');")), JSON.stringify(gp?.body));
+  check("改名：PATCH 只带 display_name、产品的 Group 下拉跟着变成新名字", gp?.method === "PATCH" && JSON.stringify(gp.body) === '{"display_name":"ZZ LV Shuttle"}' && (await evaluate("return [...$prodRow('LEG01').querySelectorAll('select, [data-select-menu]')[0].options].some(o => o.textContent === 'ZZ LV Shuttle') && ![...$prodRow('LEG01').querySelectorAll('select, [data-select-menu]')[0].options].some(o => o.textContent === 'LV Shuttle');")), JSON.stringify(gp?.body));
   before = (await mockLog()).length;
   await evaluate(`const i = ${gCard}.querySelector('[aria-label="Order for shuttle_lv"]'); $setValue(i, '0'); $blur(i);`);
   await evaluate(gSave(2));
@@ -711,13 +765,13 @@ async function run() {
   gp = (await waitPut(before, "/api/settings/products/groups/1"));
   await waitFor(`!${dialog} && ${gCard}.querySelector('[data-gid="1"]').textContent.includes('Reactivate')`);
   check("停用：PATCH is_active false、这一行变 Reactivate + Inactive", JSON.stringify(gp?.body) === '{"is_active":false}' && (await evaluate(`return ${gCard}.querySelector('[data-gid="1"]').textContent.includes('Inactive');`)));
-  check("停用后：组里的产品下拉照常列出它（标 inactive），不在组里的产品（LEG01）不列", await evaluate("const opts = (code) => [...$prodRow(code).querySelectorAll('select')[0].options].map(o => o.textContent); return opts('UAC01').some(t => t === 'Upper Antelope (inactive)') && !opts('LEG01').some(t => t.startsWith('Upper Antelope'));"), await evaluate("const opts = (code) => $prodRow(code) ? [...$prodRow(code).querySelectorAll('select')[0].options].map(o => o.textContent).join('|') : 'no row'; return opts('UAC01') + ' // ' + opts('LEG01');"));
+  check("停用后：组里的产品下拉照常列出它（标 inactive），不在组里的产品（LEG01）不列", await evaluate("const opts = (code) => [...$prodRow(code).querySelectorAll('select, [data-select-menu]')[0].options].map(o => o.textContent); return opts('UAC01').some(t => t === 'Upper Antelope (inactive)') && !opts('LEG01').some(t => t.startsWith('Upper Antelope'));"), await evaluate("const opts = (code) => $prodRow(code) ? [...$prodRow(code).querySelectorAll('select, [data-select-menu]')[0].options].map(o => o.textContent).join('|') : 'no row'; return opts('UAC01') + ' // ' + opts('LEG01');"));
   before = (await mockLog()).length;
   await evaluate(`${gCard}.querySelector('[data-gid="1"] button').click();`);
   gp = (await waitPut(before, "/api/settings/products/groups/1"));
   check("Reactivate 不用确认：PATCH is_active true", JSON.stringify(gp?.body) === '{"is_active":true}');
   await waitFor(`${gCard}.querySelector('[data-gid="1"] button')?.textContent === 'Deactivate'`);
-  await evaluate(`$setValue(${gCard}.querySelector('[aria-label="Short name for the new group"]'), 'ZZ Test'); $setValue(${gCard}.querySelector('[aria-label="Display name for the new group"]'), 'ZZ Test Group'); $sel(${gCard}.querySelector('[aria-label="Category for the new group"]'), 'bus_tour');`);
+  await evaluate(`$setValue(${gCard}.querySelector('[aria-label="Short name for the new group"]'), 'ZZ Test'); $setValue(${gCard}.querySelector('[aria-label="Display name for the new group"]'), 'ZZ Test Group'); await $sel(${gCard}.querySelector('[aria-label="Category for the new group"]'), 'bus_tour');`);
   await evaluate(`[...${gCard}.querySelectorAll('button')].find(b => b.textContent === 'Add group').click();`);
   await waitFor(`${gCard}.textContent.includes('Could not add')`);
   check("新建：Short name 不合规矩写服务端原话", await evaluate(`return ${gCard}.textContent.includes('Could not add: Short name: letters and numbers only, no spaces.');`));
@@ -820,7 +874,7 @@ async function run() {
   );
 
   fBefore = (await mockLog()).length;
-  await evaluate(`$sel($q('[aria-label="Dated cap row"]'), 'LOWER'); $setValue($q('[aria-label="Dated cap from"]'), '2026-11-25'); $setValue($q('[aria-label="Dated cap to"]'), '2026-12-02'); $setValue($q('[aria-label="Dated cap time"]'), '11a'); $setValue($q('[aria-label="Dated cap max guests"]'), '18');`);
+  await evaluate(`await $sel($q('[aria-label="Dated cap row"]'), 'LOWER'); $setValue($q('[aria-label="Dated cap from"]'), '2026-11-25'); $setValue($q('[aria-label="Dated cap to"]'), '2026-12-02'); $setValue($q('[aria-label="Dated cap time"]'), '11a'); $setValue($q('[aria-label="Dated cap max guests"]'), '18');`);
   await waitFor("!$btn('Add', $q('[data-dated-caps]')).disabled");
   await evaluate(`$btn('Add', $q('[data-dated-caps]')).click();`);
   await waitFor("document.body.textContent.includes('LOWER already has a different cap from 2026-11-20 to 2026-11-30.')");
@@ -896,7 +950,7 @@ async function run() {
   check("指到 10 Max allotments：右边 Forecast 那块亮", await evaluate("$q('[data-field=allotments]').dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); return true;") && (await waitFor("[...document.querySelectorAll('[data-zone][data-on]')].some(z => z.dataset.zone === 'allotments')")));
   check("How to use 写了 Running days / Max allotments / List each order", await evaluate("return [...document.querySelectorAll('details')].some(d => d.textContent.includes('How to use — Bus Manifest setup') && d.textContent.includes('Running days, Max allotments and List each order only change the 7 Days Forecast'));"));
   // 切到 Private（id 7，没有单独成块）：9–11 跟着换成 Private 的，勾 11 发的是 7
-  await evaluate("$sel($q('[aria-label=\"Tour group\"]'), '7');");
+  await evaluate("await $sel($q('[aria-label=\"Tour group\"]'), '7');");
   await waitFor("!!document.querySelector('[data-field=orderList]') && !document.querySelector('[role=tab]') && !!document.querySelector('[data-allot-row=\"BUS TOUR\"]')");
   check(
     "切到 Private：9–11 都在（没有块标签），Max allotments 只有 BUS TOUR 一行，List each order 没勾",
@@ -962,7 +1016,7 @@ async function run() {
   check("code 不合规矩（Bad-Code）：照后端原话显示，没有多出一行", await evaluate(`return document.body.textContent.includes('Could not add: Code must be lowercase letters, numbers and underscores only') && ${catCard}.querySelectorAll('tr[data-category]').length === 5;`));
   // typeLabel 认显示名：产品选了 CHD Fee，下拉里显示 CHD Fee 不是 chd_fee
   before = (await mockLog()).length;
-  await evaluate(`$sel(${catSel("UAC02")}, 'chd_fee');`);
+  await evaluate(`await $sel(${catSel("UAC02")}, 'chd_fee');`);
   await evaluate("$prodRow('UAC02').querySelector('[data-save-btn]').click();");
   await waitPut(before, "/api/settings/products/11");
   await waitFor("!!$prodRow('UAC02').querySelector('[data-save-ok]')");

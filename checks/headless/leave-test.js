@@ -2,6 +2,7 @@
 // 前提：leave-mock 在 MOCK_PORT（它自己起 sch-mock / tp-mock 当上游），next dev 在 APP_PORT。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -58,12 +59,13 @@ async function goto(url) {
 }
 
 // 页面里用的小工具（每次导航后重新注入）。
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$t = (sel) => [...document.querySelectorAll(sel)].map(e => e.textContent.trim());
 window.$rows = () => [...document.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent.trim()));
 window.$heads = () => [...document.querySelectorAll('thead th')].map(th => th.textContent.replace('⠿','').trim());
 window.$btn = (text, root=document) => [...root.querySelectorAll('button')].find(b => b.textContent.trim().startsWith(text));
 window.$setValue = (el, value) => {
+  if ($isSelectMenu(el)) return $sel(el, value);
   const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
   Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, value);
   el.dispatchEvent(new Event('input', { bubbles: true }));
@@ -107,6 +109,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
 
   try {
@@ -148,6 +151,7 @@ async function openMyLeave({ openForm = true } = {}) {
 const click = (sel) => evaluate(`const el = document.querySelector(${JSON.stringify(sel)}); if (!el) return false; el.click(); return true;`);
 async function setField(sel, value) {
   await evaluate(`const el = document.querySelector(${JSON.stringify(sel)});
+    if ($isSelectMenu(el)) return $sel(el, ${JSON.stringify(value)});
     const proto = el.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
     Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, ${JSON.stringify(value)});
     el.dispatchEvent(new Event('input', { bubbles: true }));
@@ -326,7 +330,7 @@ async function run() {
   const dialogSave = () => evaluate("const b = [...document.querySelectorAll('[role=dialog] button')].find(b => b.innerText.trim() === 'Save'); if (!b) return false; b.click(); return true;");
   check("Team 页 @grace 那行有 Edit", await clickRowBtn("Edit", "@grace"));
   await waitFor("document.querySelector('[data-member-manager]')");
-  const opts = await evaluate("return [...document.querySelectorAll('[data-member-manager] option')].map(o => o.textContent);");
+  const opts = await evaluate("return [...document.querySelectorAll('[data-member-manager]')].flatMap((s) => [...s.options]).map(o => o.textContent);");
   check("Manager 下拉：No manager + 候选人，不含自己（grace = 2 = Tessa）", opts[0] === "No manager (use team lead)" && opts.includes("CLIN") && !opts.includes("Tessa"), JSON.stringify(opts));
   const dlg = await evaluate("return document.querySelector('[role=dialog]').innerText;");
   check("Manager 说明：没设时写发给 team lead / Super Admin", dlg.includes("go to the team lead of each of their teams"));

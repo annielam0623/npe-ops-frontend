@@ -176,7 +176,7 @@ async function run() {
   check("一行的格子：时间 / 酒店简称 / 人数 / 名字 / 电话 / Tour 简称 / 单号", await evaluate("const r = document.querySelector('[data-relay-total=relay] tr[data-relay-row=CHDZZA02]'); return JSON.stringify([...r.children].map(td => td.textContent.trim())) === JSON.stringify(['4:35 AM','Aria','3','Amy Abel','+15550100002','CanyonX','CHDZZA02']);"));
   check("酒店格涂负责那台车的颜色：Relay 1 黄；1855 是 South 的大巴 ⇒ 团色", await evaluate(`const c = (o) => getComputedStyle(document.querySelector('[data-relay-total=relay] tr[data-relay-row=' + o + ']').children[1]).backgroundColor; return c('CHDZZA01') === '${rgb("#fff605")}' && c('CHDZZH01') === '${rgb("#b5de86")}';`));
   check("图例第一排是接驳车：Relay 1 · ZZ Bruce - 1724、Relay 2 · ZZ David - 1725（没客人的车也列）", await evaluate("const r = [...document.querySelector('[data-relay-total=relay] .rl-legend tr').children].map(td => td.textContent.trim()); return JSON.stringify(r) === JSON.stringify(['Relay 1','ZZ Bruce - 1724','Relay 2','ZZ David - 1725']);"));
-  check("图例下面是大巴，同团叠一栏：ANTELOPE A（Lower+Upper）/ ANTELOPE B / SOUTH C / BZ", await evaluate("const t = document.querySelector('[data-relay-total=relay] .rl-legend').textContent; return t.includes('ANTELOPE A') && t.includes('ZZ Luis + ZZ Scarlett - 2056=A (Lower+Upper)') && t.includes('ANTELOPE B') && t.includes('ZZ Lankun - 2622=B (CanyonX)') && t.includes('SOUTH C') && t.includes('BZ');"));
+  check("图例下面是大巴，同团叠一栏：ANTELOPE A / ANTELOPE B / SOUTH C / BZ（不写节，同色条）", await evaluate("const t = document.querySelector('[data-relay-total=relay] .rl-legend').textContent; return t.includes('ANTELOPE A') && t.includes('ZZ Luis + ZZ Scarlett - 2056=A') && !t.includes('(Lower+Upper)') && t.includes('ANTELOPE B') && t.includes('ZZ Lankun - 2622=B') && !t.includes('(CanyonX)') && t.includes('SOUTH C') && t.includes('BZ');"));
   check("Hoover（Tour bus pick up）的客人不出现", !(await evaluate("return document.body.textContent.includes('Hoover Guest');")));
 
   // 每台车一张
@@ -184,7 +184,7 @@ async function run() {
   check("Relay 1 分表：抬头用后端给的车色（纸本 #fff605）「Relay 1  ZZ Bruce - 1724」+ Service Date: 11/3/26", await evaluate(`const s = document.querySelector('[data-relay-car="901"] .rl-head'); return getComputedStyle(s).backgroundColor === '${rgb("#fff605")}' && s.textContent.replace(/\\s+/g, ' ').includes('Relay 1 ZZ Bruce - 1724') && s.textContent.includes('11/3/26');`));
   check("分表列：Time · Hotel · Qty · Full Name · Phone # · Product · Order #", await evaluate("const h = [...document.querySelectorAll('[data-relay-car=\"901\"] thead th')].map(x => x.textContent.trim()); return JSON.stringify(h) === JSON.stringify(['Time','Hotel','Qty','Full Name','Phone #','Product','Order #']);"));
   check("Total Pax = 这台车的人数（2 + 3 + 1 = 6）", await evaluate("return document.querySelector('[data-relay-car=\"901\"] [data-relay-total-pax]').textContent.trim() === '6';"));
-  check("底部色条只列这台车客人要去的大巴：Antelope A / B、South C，各涂团色", await evaluate(`const b = [...document.querySelectorAll('[data-relay-car="901"] [data-relay-bus]')]; const t = b.map(x => x.textContent.trim()); return b.length === 3 && t.includes('Antelope Bus A: Lower & Upper - ZZ Luis + ZZ Scarlett - 2056=A') && t.includes('Antelope Bus B: CanyonX - ZZ Lankun - 2622=B') && t.includes('South Bus C - ZZ Carlos + ZZ Glenn - 1855=C') && getComputedStyle(b.find(x => x.textContent.startsWith('South'))).backgroundColor === '${rgb("#b5de86")}';`));
+  check("底部色条只列这台车客人要去的大巴，照纸本「团: 司机 + 导游 - 车号=字母」（不写节、不写 Bus X）：Antelope A / B、South C，各涂团色", await evaluate(`const b = [...document.querySelectorAll('[data-relay-car="901"] [data-relay-bus]')]; const t = b.map(x => x.textContent.trim()); return b.length === 3 && t.includes('Antelope: ZZ Luis + ZZ Scarlett - 2056=A') && t.includes('Antelope: ZZ Lankun - 2622=B') && t.includes('South: ZZ Carlos + ZZ Glenn - 1855=C') && getComputedStyle(b.find(x => x.textContent.startsWith('South'))).backgroundColor === '${rgb("#b5de86")}';`));
   check("1855 当天也是 South 的大巴：抬头写「SOUTH C  ZZ Carlos + ZZ Glenn - 1855=C」、团色，不写 Relay N", await evaluate(`const s = document.querySelector('[data-relay-car="902"] .rl-head'); return s.textContent.replace(/\\s+/g, ' ').includes('SOUTH C ZZ Carlos + ZZ Glenn - 1855=C') && !s.textContent.includes('Relay') && getComputedStyle(s).backgroundColor === '${rgb("#b5de86")}';`));
   check("一台车挂两个团：抬头两个都列，红字 This van is on 2 tour buses today.（print_warnings）", await evaluate("const s = document.querySelector('[data-relay-car=\"904\"]'); return s.querySelector('.rl-head').textContent.includes('SOUTH C') && s.querySelector('.rl-head').textContent.includes('BZ') && s.textContent.includes('This van is on 2 tour buses today.');"));
   check("还没上 relay 车的客人：屏幕上单独一块，写原因", await evaluate("const u = document.querySelector('[data-relay-unplaced]'); return !!u && u.textContent.includes('Not on any relay car yet — 1 order, 2 pax') && u.textContent.includes('No relay car stops at this hotel in this round');"));
@@ -225,11 +225,26 @@ async function run() {
   await open(URL0);
   await waitFor("document.querySelector('[data-relay-car=\"907\"]')", 30000);
   check("relay 卡司机 ≠ 大巴司机：2556 抬头「ANTELOPE CANYON  ZZ Robert - 2556」，不写大巴司机 / 导游，用团色，不占 Relay 编号", await evaluate(`const s = document.querySelector('[data-relay-car="907"] .rl-head'); const t = s.textContent.replace(/\\s+/g, ' '); return t.includes('ANTELOPE CANYON ZZ Robert - 2556') && !t.includes('ZZ John') && !t.includes('ZZ Olivia') && !t.includes('Relay') && !/^rgba\\(0, 0, 0, 0\\)$/.test(getComputedStyle(s).backgroundColor);`));
-  check("2556 的客人归属不变：底部色条仍是 Antelope Bus A（ZZ Luis + ZZ Scarlett - 2056=A）", await evaluate("const b = [...document.querySelectorAll('[data-relay-car=\"907\"] [data-relay-bus]')].map(x => x.textContent.trim()); return b.length === 1 && b[0] === 'Antelope Bus A: Lower & Upper - ZZ Luis + ZZ Scarlett - 2056=A';"));
+  check("2556 的客人归属不变：底部色条仍是「Antelope: ZZ Luis + ZZ Scarlett - 2056=A」", await evaluate("const b = [...document.querySelectorAll('[data-relay-car=\"907\"] [data-relay-bus]')].map(x => x.textContent.trim()); return b.length === 1 && b[0] === 'Antelope: ZZ Luis + ZZ Scarlett - 2056=A';"));
   check("加了 2556 后 relay 卡司机 = 大巴司机的 1855 照旧「ZZ Carlos + ZZ Glenn - 1855=C」，普通 relay 车照旧 Relay 1 / Relay 2", await evaluate("const h = document.querySelector('[data-relay-car=\"902\"] .rl-head').textContent.replace(/\\s+/g, ' '); const r = [...document.querySelector('[data-relay-total=relay] .rl-legend tr').children].map(td => td.textContent.trim()); return h.includes('SOUTH C ZZ Carlos + ZZ Glenn - 1855=C') && JSON.stringify(r) === JSON.stringify(['Relay 1','ZZ Bruce - 1724','Relay 2','ZZ David - 1725']);"));
   check("RELAY SPLITS 总表图例：2556 那格「ANTELOPE CANYON | ZZ Robert - 2556」，整张总表不出现 ZZ John / ZZ Olivia；客人行照列", await evaluate("const t = document.querySelector('[data-relay-total=relay]'); const cells = [...t.querySelectorAll('.rl-legend td')].map(td => td.textContent.trim()); const i = cells.indexOf('ANTELOPE CANYON'); return i >= 0 && cells[i + 1] === 'ZZ Robert - 2556' && !t.textContent.includes('ZZ John') && !t.textContent.includes('ZZ Olivia') && !!t.querySelector('tr[data-relay-row=CHDZZR01]');"));
   check("总表图例里 1855 照旧「SOUTH C | ZZ Carlos + ZZ Glenn - 1855=C」", await evaluate("const cells = [...document.querySelectorAll('[data-relay-total=relay] .rl-legend td')].map(td => td.textContent.trim()); const i = cells.indexOf('SOUTH C'); return i >= 0 && cells[i + 1] === 'ZZ Carlos + ZZ Glenn - 1855=C';"));
-  await ctl({ swap: false });
+  // 后端 5dde636d：没字母的大巴也带 bus（并带 id）。Annie 11-21「我记得我们原来设计的relay split单里是会把这台车去接的客人最后上哪台bus，哪个司机和导游，都显示出来」。
+  await ctl({ swap: false, noLetter: true });
+  await open(URL0);
+  await waitFor("document.querySelector('[data-relay-car=\"951\"]')", 30000);
+  {
+    const bars = await evaluate("return [...document.querySelectorAll('[data-relay-car=\"951\"] [data-relay-bus]')].map((x) => ({ t: x.textContent.trim(), c: getComputedStyle(x).backgroundColor }));");
+    const txt = bars.map((b) => b.t);
+    check("没字母的单车团：色条「BZ: ZZ Jimmy - 2415」，不写 Bus / =字母，涂团色", txt.includes("BZ: ZZ Jimmy - 2415") && bars.find((b) => b.t === "BZ: ZZ Jimmy - 2415")?.c === "rgb(244, 147, 142)", JSON.stringify(bars));
+    check("两台都没字母、还没排车号的 Hoover：按 id 分成 2 条（ZZ Yan + ZZ Lankun / ZZ Mia），末尾没有空的「 - 」", txt.includes("Hoover: ZZ Yan + ZZ Lankun") && txt.includes("Hoover: ZZ Mia"), JSON.stringify(txt));
+    check("1726 底部一共 3 条色条（同一台大巴的两位客人只算 1 条）", txt.length === 3, JSON.stringify(txt));
+    const page = await evaluate("return document.body.innerText;");
+    check("整页没有「=null」「Bus null」「null」或车号后面单独的「=」", !/=null|Bus null|\bnull\b/.test(page) && !/\d=(\s|$|[^A-Z])/.test(page), (page.match(/.{0,30}(=null|Bus null|\bnull\b|\d=(\s|$|[^A-Z])).{0,30}/) || [""])[0]);
+    const cells = await evaluate("return [...document.querySelectorAll('[data-relay-total=relay] .rl-legend td')].map((x) => x.textContent.trim());");
+    check("RELAY SPLITS 总表图例：BZ 那格「ZZ Jimmy - 2415」，Hoover 两格「ZZ Yan + ZZ Lankun」「ZZ Mia」；名字格「BZ」，「HOOVER」两格", cells.includes("ZZ Jimmy - 2415") && cells.includes("ZZ Yan + ZZ Lankun") && cells.includes("ZZ Mia") && cells.includes("BZ") && cells.filter((x) => x === "HOOVER").length === 2, cells.join(" | "));
+  }
+  await ctl({ noLetter: false });
   await open(URL0);
   await waitFor("document.querySelectorAll('[data-relay-total]').length === 2", 30000);
 

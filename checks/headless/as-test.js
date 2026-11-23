@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -60,7 +61,7 @@ async function goto(url) {
 }
 
 // 页面里用的小工具（每次导航后重新注入）。
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$q = (s, root=document) => root.querySelector(s);
 window.$btn = (text, root=document) => [...root.querySelectorAll('button')].find(b => b.textContent.trim().startsWith(text));
 window.$dialog = () => document.querySelector('[role=dialog]');
@@ -343,7 +344,7 @@ async function run() {
   from = (await mockLog()).length;
   await openPage();
   await waitFor("$q('[data-field=tour-templates]')");
-  await evaluate(`window.$pick = (el, v) => { Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('change', { bubbles: true })); };`);
+  await evaluate(`window.$pick = (el, v) => { return $sel(el, v); };`);
   check("新后端：Tour 卡片 Max per batch 100", (await evaluate("return $q('#tour-max')?.value;")) === "100");
   check("G258：两行模板下拉，选项照 tour_templates（Tour confirmation / Last Minute），值照 config", await evaluate("const r = $q('#tour-template-regular'), l = $q('#tour-template-last-minute'); return [...r.options].map(o => o.textContent).join('|') === 'Tour confirmation|Last Minute' && r.value === 'tour_confirmation' && l.value === 'last_minute';"), await evaluate("return $q('[data-field=tour-templates]')?.textContent;"));
   check("G258：两行的名字 Orders before the cutoff / Orders after the cutoff", await evaluate("const t = $q('[data-field=tour-templates]').textContent; return t.includes('Message template') && t.includes('Orders before the cutoff') && t.includes('Orders after the cutoff');"));
@@ -355,7 +356,7 @@ async function run() {
   check("G258：How to use 有 Message template 那一条（最后一次 11:59 PM the day before，没有 12:00 AM on the tour day）", await evaluate("return !!$q('[data-howto-last-minute]') && $q('[data-howto-last-minute]').textContent.includes('Orders after the cutoff') && $q('[data-howto-last-minute]').textContent.includes('the last check is at 11:59 PM the day before the tour') && $q('[data-howto-last-minute]').textContent.includes('Orders placed after 11:59 PM need to be sent by hand on Manifests.') && !document.body.textContent.includes('12:00 AM on the tour day');"));
 
   // 改 Last Minute 模板 ⇒ Save ⇒ PUT 带两个模板、保留 last_minute_cutoff；tickets 不带不再用的键
-  await evaluate("$pick($q('#tour-template-last-minute'), 'tour_confirmation');");
+  await evaluate("await $pick($q('#tour-template-last-minute'), 'tour_confirmation');");
   check("改模板：Save 能点（暂存，没马上存）", (await evaluate("return !$save($tour()).disabled;")) && (await since(from, isPut)).length === 0);
   from = (await mockLog()).length;
   await evaluate("$save($tour()).click();");
@@ -390,9 +391,9 @@ async function run() {
   // 加一行、挑 Upper ⇒ Save
   await evaluate("$q('[data-add-lead]').click();");
   await waitFor("$q('[data-lead-row=\"1\"]')");
-  check("+ Add another time：新一行，Lower 灰、点不了、写 - 3 days before", await evaluate("const o = [...$q('[data-lead-row=\"1\"] select').options].find(o => o.value === 'lower'); return !!o && o.disabled && o.textContent.includes('- 3 days before');"));
+  check("+ Add another time：新一行，Lower 灰、点不了、写 - 3 days before", await evaluate("const o = [...$q('[data-lead-row=\"1\"] :is(select,[data-select-menu])').options].find(o => o.value === 'lower'); return !!o && o.disabled && o.textContent.includes('- 3 days before');"));
   await evaluate("$setValue($q('[aria-label=\"Days before, time 2\"]'), '7');");
-  await evaluate("$pick($q('[data-lead-row=\"1\"] select'), 'upper');");
+  await evaluate("await $pick($q('[data-lead-row=\"1\"] :is(select,[data-select-menu])'), 'upper');");
   from = (await mockLog()).length;
   await evaluate("$save($tix()).click();");
   await waitFor("$status($tix()) === 'Saved.'");
@@ -444,14 +445,14 @@ async function run() {
   await ctl({ v3: true, r98: true });
   await openPage();
   await waitFor("$q('#tour-report-time')");
-  await evaluate(`window.$pick = (el, v) => { Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('change', { bubbles: true })); };`);
+  await evaluate(`window.$pick = (el, v) => { return $sel(el, v); };`);
   const opts = (id) => evaluate(`return [...$q('#${id}').options].map(o => o.textContent).join('|');`);
   check("置顶 98：门票「Send the report after」下拉 = 门票的 Send times，最后一个写 (last batch)，默认 5:00 PM", (await opts("tickets-report-time")) === "9:00 AM|12:00 PM|5:00 PM (last batch)" && (await evaluate("return $q('#tickets-report-time').value;")) === "17:00", await opts("tickets-report-time"));
   check("置顶 98：Tour 卡新的 Daily report：开关 OFF、下拉 7:00 AM|6:00 PM (last batch) 默认 6:00 PM、收件人 reservations@", (await opts("tour-report-time")) === "7:00 AM|6:00 PM (last batch)" && (await evaluate("const d = $q('[data-daily-report=tour]'); return $q('#tour-report-time').value === '18:00' && $switch(d).getAttribute('aria-checked') === 'false' && $emails(d) === 'reservations@nationalparkexpress.com' && d.textContent.includes(\"the bus tour orders that should have had a confirmation by then but didn't\");")));
   check("置顶 98：默认最后一批时没有灰字", await evaluate("return !$q('[data-report-early]') && !$q('[data-report-fallback]');"));
   check("置顶 98：How to use 换成新的门票 Daily report 条、加 Tour Daily report 条", await evaluate("return $q('[data-howto-report-time]')?.textContent.includes('It goes out after the batch you pick in Send the report after') && $q('[data-howto-tour-report]')?.textContent.includes('Shuttle and return legs are not listed');"));
 
-  await evaluate("$pick($q('#tickets-report-time'), '12:00');");
+  await evaluate("await $pick($q('#tickets-report-time'), '12:00');");
   check("置顶 98：门票选 12:00 PM ⇒ 灰字原文、Save 能点（暂存）", (await evaluate("return $q('[data-daily-report=tickets] [data-report-early]')?.textContent.replace(/\\s+/g, ' ').trim();")) === "Only batches up to 12:00 PM are in the report. The email says 5:00 PM is not included." && (await evaluate("return !$save($tix()).disabled;")), await evaluate("return $q('[data-report-early]')?.textContent;"));
   from = (await mockLog()).length;
   await evaluate("$save($tix()).click();");
@@ -473,7 +474,7 @@ async function run() {
   }
 
   // Tour 卡：选早一批 + 存
-  await evaluate("$pick($q('#tour-report-time'), '07:00');");
+  await evaluate("await $pick($q('#tour-report-time'), '07:00');");
   check("置顶 98：Tour 选 7:00 AM ⇒ 灰字「…up to 7:00 AM… 6:00 PM is not included.」", (await evaluate("return $q('[data-daily-report=tour] [data-report-early]')?.textContent.replace(/\\s+/g, ' ').trim();")) === "Only batches up to 7:00 AM are in the report. The email says 6:00 PM is not included.");
   from = (await mockLog()).length;
   await evaluate("$save($tour()).click();");
@@ -565,6 +566,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
 
   try {

@@ -12,6 +12,7 @@ import { fetchScheduleWeek, setScheduleTimeOff } from "@/lib/schedule-api";
 import { bulkCreateSlots } from "@/lib/schedule-rules-api";
 import {
   generateWeek,
+  runReportFlags,
   seedFromBase,
   type DayIndex,
   type DayShift,
@@ -38,6 +39,7 @@ import {
 } from "./config";
 import { type DescribeContext, describeRule } from "./rules";
 import { OffCard } from "./week-grid";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /** 往前看几周当「历史」（周末轮值接着往下排、跨周休息间隔用）。 */
 const HISTORY_WEEKS = 4;
@@ -308,6 +310,13 @@ export function AutoFillDialog({
     else runEngine(s.weeks, s.history, "replace", 1);
   }
 
+  /** G272：几周连着排时哪一周写哪几种提醒（见 runReportFlags）。 */
+  const reportFlags = (weeks: WeekInfo[], i: number) =>
+    runReportFlags(
+      weeks.map((w) => w.published),
+      i,
+    );
+
   function runEngine(
     weeks: WeekInfo[],
     history: WeekPlan[],
@@ -345,6 +354,7 @@ export function AutoFillDialog({
           end: settings.work_window.end_time,
         },
         seed: seed * 101 + i,
+        ...reportFlags(weeks, i),
         locked,
         leave: leaveFor(w),
       });
@@ -443,6 +453,7 @@ export function AutoFillDialog({
           end: settings.work_window.end_time,
         },
         seed: seed * 101 + i,
+        ...reportFlags(weeks, i),
         locked: start,
         leave: leaveFor(w),
       });
@@ -660,27 +671,28 @@ export function AutoFillDialog({
               <div className="flex flex-col gap-2" data-autofill-base>
                 <label className="flex flex-wrap items-center gap-2 text-[12.5px] text-white/85">
                   Base week
-                  <select
+                  <SelectMenu
                     data-base-week
-                    value={baseWeek}
-                    onChange={(e) => setBaseWeek(e.target.value)}
+                    value={String(baseWeek)}
+                    options={[
+                      ...Array.from({ length: 7 }, (_, i) =>
+                        shiftYmd(thisWeek, (i - 6) * 7),
+                      )
+                        .reverse()
+                        .map((ws) => ({
+                          value: String(ws),
+                          label: `${rangeText(ws, 1)}${
+                            ws === thisWeek
+                              ? " (this week)"
+                              : ws === shiftYmd(thisWeek, -7)
+                                ? " (last week)"
+                                : ""
+                          }`,
+                        })),
+                    ]}
+                    onChange={(next) => setBaseWeek(next)}
                     className={SELECT}
-                  >
-                    {Array.from({ length: 7 }, (_, i) =>
-                      shiftYmd(thisWeek, (i - 6) * 7),
-                    )
-                      .reverse()
-                      .map((ws) => (
-                        <option key={ws} value={ws}>
-                          {rangeText(ws, 1)}
-                          {ws === thisWeek
-                            ? " (this week)"
-                            : ws === shiftYmd(thisWeek, -7)
-                              ? " (last week)"
-                              : ""}
-                        </option>
-                      ))}
-                  </select>
+                  />
                 </label>
                 <label
                   className={cn(
@@ -689,42 +701,41 @@ export function AutoFillDialog({
                   )}
                 >
                   Fill
-                  <select
+                  <SelectMenu
                     data-base-count
-                    value={baseCount}
-                    onChange={(e) => setBaseCount(Number(e.target.value))}
+                    value={String(baseCount)}
+                    options={[
+                      ...Array.from(
+                        { length: BASE_MAX_WEEKS },
+                        (_, i) => i + 1,
+                      ).map((n) => ({
+                        value: String(n),
+                        label: `${n} week${n === 1 ? "" : "s"}`,
+                      })),
+                    ]}
+                    onChange={(next) => setBaseCount(Number(next))}
                     className={SELECT}
-                  >
-                    {Array.from(
-                      { length: BASE_MAX_WEEKS },
-                      (_, i) => i + 1,
-                    ).map((n) => (
-                      <option key={n} value={n}>
-                        {n} week{n === 1 ? "" : "s"}
-                      </option>
-                    ))}
-                  </select>
+                  />
                   starting
-                  <select
-                    data-base-start
+                  <SelectMenu
+                    data-base-start=""
                     value={baseStart}
-                    onChange={(e) => setBaseStart(e.target.value)}
-                    className={SELECT}
-                  >
-                    {[0, 1, 2].map((k) => {
+                    options={[0, 1, 2].map((k) => {
                       const ws = shiftYmd(thisWeek, k * 7);
-                      return (
-                        <option key={ws} value={ws}>
-                          {rangeText(ws, 1)}
-                          {k === 0
+                      return {
+                        value: ws,
+                        label: `${rangeText(ws, 1)}${
+                          k === 0
                             ? " (this week)"
                             : k === 1
                               ? " (next week)"
-                              : ""}
-                        </option>
-                      );
+                              : ""
+                        }`,
+                      };
                     })}
-                  </select>
+                    onChange={(next) => setBaseStart(next)}
+                    className={SELECT}
+                  />
                   <span className="text-white/70">
                     · {rangeText(baseStart, baseCount)}
                   </span>

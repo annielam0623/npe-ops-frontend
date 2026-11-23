@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Modal } from "@/components/ui/modal";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { cn } from "@/lib/utils";
+import { optionsFromChildren, SelectMenu } from "@/components/ui/select-menu";
 
 /** 补录预览的一行：后端标了 duplicate；Rezdy CSV 的行才有 pax / pax_ok / qty_label。 */
 export interface ImportRowBase {
@@ -195,18 +196,19 @@ export function ImportDialog<R extends ImportRowBase>({
             </h2>
           </div>
           <div className="flex flex-col gap-2 p-5">
-            <select
+            <SelectMenu
               aria-label="Tour type"
               value={tourType}
-              onChange={(e) => {
-                setTourType(e.target.value);
+              options={[
+                { value: "", label: "— Select tour type —" },
+                ...optionsFromChildren(options),
+              ]}
+              onChange={(next) => {
+                setTourType(next);
                 setStep({ kind: "pick", error: null });
               }}
-              className="w-full rounded-[7px] border border-[#cbd5e1] bg-paper px-2.5 py-2 text-[13px] text-[#1a1a1a]"
-            >
-              <option value="">— Select tour type —</option>
-              {options}
-            </select>
+              className="w-full rounded-[7px] border border-[#cbd5e1] bg-paper px-2.5 py-2 text-[#1a1a1a]"
+            />
             {step.error ? (
               <p role="alert" className="text-xs text-[#A32D2D]">
                 {step.error}

@@ -11,6 +11,7 @@ import {
   overCapacity,
   overHours,
   restHours,
+  runReportFlags,
   shiftHours,
 } from "../lib/schedule-engine.ts";
 
@@ -548,6 +549,54 @@ check("110 续 题 7：exceptionsOn 给出那天生效的例外（班次 null = 
     assert.ok(v.some((x) => /Lizzie/.test(x)), JSON.stringify(v));
   });
 }
+
+// ── G272（Trello「排班 Rules」两张卡，Annie 2026-11-22「以上全部」）──
+check("G272 ①：没在任何 Days per week 规则里的人（Anita）⇒ 4 周只在第一周写一行说明、点名；有固定班的 Veronica 不写；人照旧不补满", () => {
+  const rules = baseRules().map((x) => (x.id === "d1" ? r("d1", "days_per_week", { mode: "max", n: 5, employee_ids: [L, N, J] }) : x));
+  const res = run(rules);
+  const notes = res.map((w) => w.problems.filter((p) => p.message.startsWith("Not in any Days per week rule")));
+  assert.equal(notes[0].length, 1, JSON.stringify(res[0].problems));
+  assert.ok(notes[0][0].message.includes(": Anita. Add them to a Days per week rule"), notes[0][0].message);
+  assert.ok(!notes[0][0].message.includes("Veronica"));
+  for (const k of [1, 2, 3]) assert.equal(notes[k].length, 0, `week ${k + 1}: ${JSON.stringify(notes[k])}`);
+  // 行为不变：Anita 平日不被补排（只可能上周末轮值）
+  for (const w of res) for (const d of [1, 2, 3, 4, 5]) assert.equal(w.plan.byEmployee[A][d], null);
+});
+check("G272 ①：Everyone 的 Days per week（baseRules）⇒ 不写；Exclude from rotation 的人不写；reportNoDaysRule:false 不写", () => {
+  assert.ok(!run(baseRules()).flatMap((w) => w.problems).some((p) => p.message.startsWith("Not in any Days per week rule")));
+  const rules = [...baseRules().map((x) => (x.id === "d1" ? r("d1", "days_per_week", { mode: "max", n: 5, employee_ids: [L, N, J] }) : x)), r("x1", "exclude_from_rotation", { employee_id: A })];
+  assert.ok(!run(rules).flatMap((w) => w.problems).some((p) => p.message.startsWith("Not in any Days per week rule")));
+  const one = generateWeek({ weekStart: START, employees, rules: baseRules().filter((x) => x.id !== "d1"), previous: null, fallbackTimes: FALLBACK, seed: 1, reportNoDaysRule: false });
+  assert.ok(!one.problems.some((p) => p.message.startsWith("Not in any Days per week rule")));
+});
+check("G272 ②：每 4 周至少 n 天没达到 ⇒ 4 周连着排只在第 4 周报，每人一条（原来每周都把前 3 周再报一遍）", () => {
+  const rules = [...baseRules(), r("m4", "min_days_on_shift", { shift_type: "close", n: 25, per: "4weeks", exclude_employee_ids: [V] })];
+  const res = run(rules);
+  const perWeek = res.map((w) => w.problems.filter((p) => p.message.includes("per 4 weeks")));
+  for (const k of [0, 1, 2]) assert.equal(perWeek[k].length, 0, `week ${k + 1}: ${JSON.stringify(perWeek[k])}`);
+  assert.ok(perWeek[3].length >= 1, "week 4 should report");
+  const names = perWeek[3].map((p) => p.message.split(":")[0]);
+  assert.equal(new Set(names).size, names.length, JSON.stringify(names));
+});
+check("G272 ②：5 周连着排 ⇒ 第 1 周、第 5 周各报一次（从最后一周往前每 4 周一个窗口）；每周的规则照旧每周报；只排一周照旧报", () => {
+  const rules = [...baseRules(), r("m4", "min_days_on_shift", { shift_type: "close", n: 25, per: "4weeks", exclude_employee_ids: [V] }), r("m1", "min_days_on_shift", { shift_type: "close", n: 6, per: "week", employee_ids: [L] })];
+  const res = generateWeeks({ weekStart: START, weeks: 5, employees, rules, previous: null, fallbackTimes: FALLBACK, seed: 1 });
+  const four = res.map((w) => w.problems.filter((p) => p.message.includes("per 4 weeks")).length);
+  assert.ok(four[0] > 0 && four[4] > 0 && four[1] === 0 && four[2] === 0 && four[3] === 0, JSON.stringify(four));
+  for (const w of res) assert.ok(w.problems.some((p) => p.message.startsWith("Lizzie:") && p.message.includes("per week")), "weekly rule every week");
+  const one = generateWeek({ weekStart: START, employees, rules, previous: null, fallbackTimes: FALLBACK, seed: 1 });
+  assert.ok(one.problems.some((p) => p.message.includes("per 4 weeks")));
+});
+check("G272：runReportFlags（Auto-fill 弹窗用）——4 周只第 4 周报 4 周规则、只第 1 周写说明；7 周 ⇒ 第 3、7 周；已发布的周跳过不算", () => {
+  const f = (pub) => pub.map((_, i) => runReportFlags(pub, i));
+  assert.deepEqual(f([false, false, false, false]).map((x) => x.reportFourWeekMinDays), [false, false, false, true]);
+  assert.deepEqual(f([false, false, false, false]).map((x) => x.reportNoDaysRule), [true, false, false, false]);
+  assert.deepEqual(f(Array(7).fill(false)).map((x) => x.reportFourWeekMinDays), [false, false, true, false, false, false, true]);
+  const p = f([true, false, false, true, false]);
+  assert.ok(p[1].reportNoDaysRule && !p[2].reportNoDaysRule && !p[4].reportNoDaysRule);
+  assert.ok(p[4].reportFourWeekMinDays && !p[1].reportFourWeekMinDays && !p[2].reportFourWeekMinDays);
+  assert.deepEqual(f([false]).map((x) => [x.reportFourWeekMinDays, x.reportNoDaysRule]), [[true, true]]);
+});
 
 console.log(`\n${passed}/${passed + failed} passed`);
 process.exit(failed ? 1 : 0);

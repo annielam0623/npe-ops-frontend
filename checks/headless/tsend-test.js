@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -58,7 +59,7 @@ async function goto(url) {
 }
 
 // 页面里用的小工具（每次导航后重新注入）。
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$t = (sel) => [...document.querySelectorAll(sel)].map(e => e.textContent.trim());
 window.$rows = () => [...document.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent.trim()));
 window.$heads = () => [...document.querySelectorAll('thead th')].map(th => th.textContent.replace('⠿','').trim());
@@ -107,6 +108,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
 
   try {
@@ -137,13 +139,12 @@ const rowOf = (order, nth = 0) => `[...document.querySelectorAll('tbody tr')].fi
 async function upload(scenario, extra = {}) {
   await ctl({ scenario, serverSkip: ["T05"], fail502At: 0, reject400: "", noPhone: [], applyDelay: 0, ...extra });
   await goto(`${APP}/tickets-reminder/send`);
-  await waitFor("document.querySelector('select option[value=upper_antelope_tsosie]') && document.querySelector('input[type=file]')");
+  await waitFor("[...document.querySelectorAll('select, [data-select-menu]')].some((s) => [...s.options].some((o) => o.value === 'upper_antelope_tsosie')) && document.querySelector('input[type=file]')");
   await sleep(500);
   await helpers();
   await evaluate(`
-    const sel = document.querySelector('select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'upper_antelope_tsosie');
-    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    const sel = document.querySelector('select, [data-select-menu]');
+    await $sel(sel, 'upper_antelope_tsosie');
     const d = document.querySelector('input[type=date]');
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(d, '${DATE}');
     d.dispatchEvent(new Event('input', { bubbles: true }));
@@ -166,8 +167,8 @@ async function run() {
   require("fs").writeFileSync(`${DIR}/manifest-${DATE}.csv`, "Order Number\nT01\n");
   await goto(`${APP}/tickets-reminder/send`);
   await waitFor("document.querySelector('input[type=file]')");
-  await waitFor("document.querySelector('option[value=zz_test_new_tour]')", 10000);
-  check("G190：Content Studio 新建、已填齐的团接在 Tour Type 下拉 Other 组最后，现有分组不变", await evaluate("const s = document.querySelector('option[value=upper_antelope_tsosie]')?.closest('select'); if (!s) return false; const g = [...s.querySelectorAll('optgroup')]; const other = g.find(x => x.label === 'Other'); return g.map(x => x.label).join('|') === 'Upper Antelope Canyon|Lower Antelope Canyon|Other' && other.lastElementChild.value === 'zz_test_new_tour' && other.lastElementChild.textContent === 'ZZ Test New Tour' && g[0].children.length === 6;"));
+  await waitFor("[...document.querySelectorAll('select, [data-select-menu]')].some((s) => [...s.options].some((o) => o.value === 'zz_test_new_tour'))", 10000);
+  check("G190：Content Studio 新建、已填齐的团接在 Tour Type 下拉 Other 组最后，现有分组不变", await evaluate("const s = [...document.querySelectorAll('select, [data-select-menu]')].find((x) => [...x.options].some((o) => o.value === 'upper_antelope_tsosie')); if (!s) return false; const g = (await $selGroups(s)).filter((x) => x.group); const other = g.find(x => x.group === 'Other'); const last = other.options[other.options.length - 1]; return g.map(x => x.group).join('|') === 'Upper Antelope Canyon|Lower Antelope Canyon|Other' && last.value === 'zz_test_new_tour' && last.label === 'ZZ Test New Tour' && g[0].options.length === 6;"));
   check("上传页：文件框收 .csv 和 .xlsx、有 How to use", await evaluate("return document.querySelector('input[type=file]').accept === '.csv,.xlsx' && document.body.textContent.includes('Manifest (.csv or .xlsx)') && document.body.textContent.includes('How to use — Tickets Reminder');"));
   // 「改回」（Annie 2026-10-20，审计 #16）：How to use 一字不差照旧 send_tickets.html。
   {

@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -108,6 +109,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
 
   try {
@@ -125,7 +127,7 @@ async function main() {
 async function since(before, filter) {
   return (await mockLog()).slice(before).filter(filter);
 }
-const SEL = `window.$sel = (el, v) => { Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('change', { bubbles: true })); };
+const SEL = `${SELECT_HELPERS}
 window.$tr = (code) => [...document.querySelectorAll('tr[data-product="' + code + '"]')];
 window.$vals = (code, metric) => $tr(code).flatMap((tr) => [...tr.querySelectorAll('td[data-metric="' + metric + '"]')].map((td) => td.textContent.trim()));
 window.$tot = (code, metric) => { const td = $tr(code).map((tr) => tr.querySelector('td[data-total="' + metric + '"]')).find(Boolean); return td ? td.textContent.trim() : null; };
@@ -153,7 +155,7 @@ async function run() {
   check("默认 All three：并行请求三次（orders / pax / amount），周期参数相同", new Set(log.map(metricOf)).size === 3 && log.length <= 6 && ["orders", "pax", "amount"].every((k) => log.some((e) => metricOf(e) === k)) && log.every((e) => e.query.includes(`granularity=week&year=${y}&month=${m}`)), JSON.stringify(log.map((e) => e.query)));
   check("默认：All three、3 rows per product、Week 选中", await evaluate("const on = [...document.querySelectorAll('[aria-pressed=true]')].map((b) => b.textContent); return on.includes('All three') && on.includes('3 rows per product') && on.includes('Week');"));
   // 固定到 2026 年 10 月，后面的数字才可预期
-  await evaluate("$sel(document.querySelector('[aria-label=Year]'), '2026'); $sel(document.querySelector('[aria-label=Month]'), '10');");
+  await evaluate("await $sel(document.querySelector('[aria-label=Year]'), '2026'); await $sel(document.querySelector('[aria-label=Month]'), '10');");
   await sleep(500);
   await waitFor("$heads()[0] && $heads()[0].includes('W5')");
   // 年、月两次选择各触发一次重拉：等最后一次落定再往下测（否则点开产品时表还在换，agent 请求会重发）。
@@ -282,7 +284,7 @@ async function run() {
   q = await since(before, prodCalls);
   check("Year：granularity=year&years=3，最近三年", q.length === 3 && q.every((e) => e.query.includes("granularity=year&year=2026&years=3")) && JSON.stringify((await evaluate("return $heads();"))[0].slice(2, 5)) === JSON.stringify(["2024", "2025", "2026"]));
   before = (await mockLog()).length;
-  await evaluate("$sel(document.querySelector('[aria-label=\"Years shown\"]'), '5');");
+  await evaluate("await $sel(document.querySelector('[aria-label=\"Years shown\"]'), '5');");
   await waitFor("$heads()[0].includes('2022')");
   check("Years shown = 5：years=5", (await since(before, prodCalls)).every((e) => e.query.includes("years=5")));
 
@@ -297,7 +299,7 @@ async function run() {
   await waitFor("$heads()[0].includes('Total') && $heads()[0].length === 4");
   q = await since(before, prodCalls);
   check("Custom + One Total column：start_date / end_date / bucket=none，一个 Total 列", q.length === 3 && q.every((e) => e.query.includes("start_date=2026-10-01&end_date=2026-10-22&bucket=none")) && JSON.stringify((await evaluate("return $heads();"))[0]) === JSON.stringify(["Group / section / product", "Count", "Total", "Total"]), JSON.stringify((await evaluate("return $heads();"))[0]));
-  await evaluate("$sel(document.querySelector('[aria-label=Columns]'), 'month'); $setValue(document.querySelector('[aria-label=\"Start date\"]'), '2026-09-15');");
+  await evaluate("await $sel(document.querySelector('[aria-label=Columns]'), 'month'); $setValue(document.querySelector('[aria-label=\"Start date\"]'), '2026-09-15');");
   before = (await mockLog()).length;
   await evaluate("$byText('button', 'Show').click();");
   await waitFor("$heads()[0].includes('Sep 2026')");
@@ -315,7 +317,7 @@ async function run() {
 
   // ── 失败 / 没数据 ──
   await ctl({ failMetric: "pax" });
-  await evaluate("$sel(document.querySelector('[aria-label=Month]'), '9');");
+  await evaluate("await $sel(document.querySelector('[aria-label=Month]'), '9');");
   await waitFor("document.body.textContent.includes('Pax could not load')");
   check("All three 里 Pax 请求失败：红字写原因 + Retry，其余两项照常，Pax 格子写 —", (await evaluate("return document.body.textContent.includes('mock: pax is down') && !!$byText('button', 'Retry') && $vals('LAK001', 'pax').every((v) => v === '—') && $vals('LAK001', 'orders')[0] === '10';")));
   await ctl({ failMetric: "" });
@@ -323,7 +325,7 @@ async function run() {
   await waitFor("!document.body.textContent.includes('could not load') && $vals('LAK001', 'pax')[0] === '20'");
   check("Retry：Pax 回来，红字没了", await evaluate("return $vals('LAK001', 'pax')[0] === '20' && !document.body.textContent.includes('could not load');"));
   await ctl({ failAll: true });
-  await evaluate("$sel(document.querySelector('[aria-label=Month]'), '8');");
+  await evaluate("await $sel(document.querySelector('[aria-label=Month]'), '8');");
   await waitFor("document.body.textContent.includes('Failed to load')");
   check("三个都失败：整块写 Failed to load + 原因，有 Retry", await evaluate("return document.body.textContent.includes('Failed to load: mock: everything is down') && !!$byText('button', 'Retry');"));
   await ctl({ failAll: false, zero: true });

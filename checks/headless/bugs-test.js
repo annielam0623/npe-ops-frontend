@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -107,6 +108,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
 
   try {
@@ -133,7 +135,7 @@ async function setFiles(selector, files) {
   await cdp("DOM.setFileInputFiles", { nodeId, files: files.map((f) => `${DIR}/${f}`) });
 }
 const H2 = `
-window.$sel = (el, v) => { Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('change', { bubbles: true })); };
+${SELECT_HELPERS}
 window.$cards = () => [...document.querySelectorAll('article')].map(a => a.querySelector('[data-card-title]')?.textContent);
 window.$card = (name) => [...document.querySelectorAll('article')].find(a => a.textContent.includes(name));
 `;
@@ -169,19 +171,19 @@ async function run() {
   await sleep(100);
   check("空的状态：目前为空", await evaluate("return document.body.textContent.includes('目前为空');"));
   await evaluate("[...document.querySelectorAll('[aria-label=Status] button')][0].click();");
-  await evaluate("$sel(document.querySelector('[aria-label=Reporter]'), 'Annie');");
+  await evaluate("await $sel(document.querySelector('[aria-label=Reporter]'), 'Annie');");
   await sleep(100);
   check("提交人筛选（从描述里读）", (await evaluate("return $cards().join('|');")) === "ZZ <b>Login</b> fails");
-  check("提交人下拉不重复", (await evaluate("return [...document.querySelectorAll('[aria-label=Reporter] option')].map(o => o.textContent).join('|');")) === "所有提交人|Annie|Max");
-  await evaluate("$sel(document.querySelector('[aria-label=Reporter]'), '');");
+  check("提交人下拉不重复", (await evaluate("return (await $selOptions(document.querySelector('[aria-label=Reporter]'))).map(o => o.textContent).join('|');")) === "所有提交人|Annie|Max");
+  await evaluate("await $sel(document.querySelector('[aria-label=Reporter]'), '');");
   await evaluate("$setValue(document.querySelector('main input[type=search],main input[inputmode=search]'), 'bob');");
   await sleep(100);
   check("搜索负责人", (await evaluate("return $cards().join('|');")) === "ZZ Old done");
   await evaluate("$setValue(document.querySelector('main input[type=search],main input[inputmode=search]'), '');");
-  await evaluate("$sel(document.querySelector('[aria-label=Sort]'), 'days-desc');");
+  await evaluate("await $sel(document.querySelector('[aria-label=Sort]'), 'days-desc');");
   await sleep(100);
   check("天数最多优先（关闭的仍在后）", (await evaluate("return $cards().join('|');")) === "ZZ <b>Login</b> fails|ZZ Typo|ZZ Old done|ZZ Rejected");
-  await evaluate("$sel(document.querySelector('[aria-label=Sort]'), 'priority');");
+  await evaluate("await $sel(document.querySelector('[aria-label=Sort]'), 'priority');");
 
   // ── 展开、评论 ──
   let before = (await mockLog()).length;
@@ -266,7 +268,7 @@ async function run() {
   // ── 新建 ──
   await evaluate("$btn('＋ New Bug').click();");
   await waitFor(dialog);
-  check("Severity 选项来自 Bug Severity 字段（P0/P1/P2）", (await evaluate(`return [...${dialog}.querySelector('[aria-label=Severity]').options].map(o => o.textContent).join('|');`)) === "— Select —|P0|P1|P2");
+  check("Severity 选项来自 Bug Severity 字段（P0/P1/P2）", (await evaluate(`return (await $selOptions(${dialog}.querySelector('[aria-label=Severity]'))).map(o => o.textContent).join('|');`)) === "— Select —|P0|P1|P2");
   check("Reported By 默认填当前用户", (await evaluate(`return [...${dialog}.querySelectorAll('input')].find(i => i.placeholder === 'Your name').value;`)) === "ZZ Tester");
   await evaluate(`$btn('Submit', ${dialog}).click();`);
   await sleep(100);
@@ -276,8 +278,8 @@ async function run() {
   await waitFor(`${dialog}.querySelector('[role=alert]')?.textContent.includes('Task name invalid')`);
   check("ClickUp 拒绝：显示 ClickUp 给的原因", (await evaluate(`return ${dialog}.querySelector('[role=alert]').textContent;`)) === "Submit failed: HTTP 502: Task name invalid");
   await evaluate(`$setValue(${dialog}.querySelector('input[placeholder="Bug title"]'), 'ZZ Test new bug');`);
-  const sels = `[...${dialog}.querySelectorAll('select')]`;
-  await evaluate(`$sel(${sels}[0], 'p1'); $sel(${sels}[1], 'Tour'); $sel(${sels}[2], '1');`);
+  const sels = `[...${dialog}.querySelectorAll('select, [data-select-menu]')]`;
+  await evaluate(`await $sel(${sels}[0], 'p1'); await $sel(${sels}[1], 'Tour'); await $sel(${sels}[2], '1');`);
   await evaluate(`$setValue(${dialog}.querySelector('input[type=date]'), '2026-10-20');`);
   await evaluate(`$setValue(${dialog}.querySelector('textarea'), 'Desc here');`);
   await setFiles("[role=dialog] input[type=file]", ["manifest.csv"]);

@@ -873,12 +873,7 @@ function Preview({
               {fo ? (
                 <div className="mb-2 border-b border-black/10 pb-2 text-[12px] night:border-white/10">
                   Subject:{" "}
-                  <b>
-                    {fillFarmOut(
-                      studio.draft(foKey(fo.slug, "email_subject")),
-                      foSample,
-                    )}
-                  </b>
+                  <i>set automatically: tour name, date, order number</i>
                 </div>
               ) : null}
               <span className="rounded-[3px] bg-[#fffbcc] px-0.5 night:bg-amber-400/10">

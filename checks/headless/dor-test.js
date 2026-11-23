@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -107,6 +108,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
 
   try {
@@ -128,7 +130,7 @@ const sel = "document.querySelector('[aria-label=\"Daily Operation Report\"]')";
 const dialog = "document.querySelector('[role=dialog]')";
 const BLOCK = '[aria-label="Daily Operation Report"]';
 const H2 = `
-window.$sel = (el, v) => { Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('change', { bubbles: true })); };
+${SELECT_HELPERS}
 window.$field = (label) => { const l = [...document.querySelectorAll('[role=dialog] label')].find(x => x.textContent.replace('*','').trim() === label); return l && document.getElementById(l.htmlFor); };
 window.$ids = (root) => [...document.querySelectorAll(root + ' li[data-report-id]')].map(li => li.dataset.reportId);
 window.$dialogBtn = (t) => [...document.querySelectorAll('[role=dialog] button')].find(b => b.textContent.trim() === t);
@@ -161,12 +163,12 @@ async function run() {
   check("统计块 Open reports = 未结数 3；板块可见时才有这一项", await waitFor(`document.querySelector('[data-stat=reports]')?.textContent.replace('→', '').trim() === '3Open reports'`));
   // ── 2. 主管改状态 / 跟进人 ──
   let before = (await mockLog()).length;
-  await evaluate(`$sel($item(2).querySelector('select[aria-label^="Follow-up"]'), '9');`);
-  await waitFor(`$item(2) && $item(2).querySelector('select[aria-label^="Follow-up"]').value === '9'`);
+  await evaluate(`await $sel($item(2).querySelector(':is(select,[data-select-menu])[aria-label^="Follow-up"]'), '9');`);
+  await waitFor(`$item(2) && $item(2).querySelector(':is(select,[data-select-menu])[aria-label^="Follow-up"]').value === '9'`);
   let patches = (await mockLog()).slice(before).filter((e) => e.method === "PATCH");
   check("改跟进人：PATCH 只带 follow_up_user_id", patches.length === 1 && JSON.stringify(patches[0].body) === '{"follow_up_user_id":9}');
   before = (await mockLog()).length;
-  await evaluate(`$sel($item(2).querySelector('select[aria-label^="Status"]'), 'resolved');`);
+  await evaluate(`await $sel($item(2).querySelector(':is(select,[data-select-menu])[aria-label^="Status"]'), 'resolved');`);
   await waitFor(`!$item(2)`);
   patches = (await mockLog()).slice(before).filter((e) => e.method === "PATCH");
   check("改成 Resolved：PATCH status，记录从块里消失", patches.length === 1 && patches[0].body.status === "resolved");
@@ -176,7 +178,7 @@ async function run() {
 
   // ── 员工：本人登记的能改，别人的只看（Annie 10-26 G187、10-30「只能本人改」；后端 _can_edit）──
   // 登录的是 lizzie（id 8）：报告 2、3 是她登记的，1 是 Annie 登记的。
-  const editable = (id) => `!!$item(${id}).querySelector('select')`;
+  const editable = (id) => `!!$item(${id}).querySelector('select, [data-select-menu]')`;
   await ctl({ reset: true, supervisor: false });
   before = (await mockLog()).length;
   await openDashboard();
@@ -202,7 +204,7 @@ async function run() {
   await goto(`${APP}/daily-report`);
   await waitFor("document.querySelectorAll('li[data-report-id]').length >= 2");
   await helpers();
-  check("partner：自己的、别人的都不能改（勾了 report.edit 也不能）", await evaluate("return !document.querySelector('li[data-report-id] select');"));
+  check("partner：自己的、别人的都不能改（勾了 report.edit 也不能）", await evaluate("return !document.querySelector('li[data-report-id] :is(select,[data-select-menu])');"));
   await evaluate(H2);
   await evaluate(`$btnIn($item(1), 'Details').click();`);
   await waitFor(`$item(1).querySelector('[data-update-id]')`);
@@ -224,7 +226,7 @@ async function run() {
   await evaluate(`$btnIn(${dialog}, 'Itinerary').click();`);
   check("切到 Itinerary：标签变 Itinerary or tour name", await waitFor(`$field('Itinerary or tour name')`));
   await waitFor(`$field('Follow-up').options.length > 1`);
-  await evaluate(`$setValue($field('Itinerary or tour name'), 'ZZ Tour'); $setValue($field('CHD# / order'), 'CHDZZ1'); $setValue($field('What happened'), 'ZZ Too short stop'); $sel($field('Follow-up'), '8');`);
+  await evaluate(`$setValue($field('Itinerary or tour name'), 'ZZ Tour'); $setValue($field('CHD# / order'), 'CHDZZ1'); $setValue($field('What happened'), 'ZZ Too short stop'); await $sel($field('Follow-up'), '8');`);
   before = (await mockLog()).length;
   await evaluate(`$dialogBtn('Save').click();`);
   await waitFor(`!${dialog}`);
@@ -288,7 +290,7 @@ async function run() {
   await evaluate(`$setValue($field('Accident date'), '${yesterday}'); $setValue($field('Accident time'), '23:40'); $setValue($field('What happened'), 'ZZ Late entry'); $setValue($field('Location'), 'ZZ Parking lot'); $setValue($field('Injuries'), 'None'); $dialogBtn('Save').click();`);
   await waitFor(`${dialog}.textContent.includes('Vehicle #, Driver, Police report')`);
   check("车号、司机、是否报警缺了仍然拦下", (await evaluate(`return ${dialog}.querySelector('[role=alert]').textContent;`)) === "Please fill in: Vehicle #, Driver, Police report.");
-  await evaluate(`[...${dialog}.querySelectorAll('button')].filter(b => b.textContent.trim() === 'Unknown').forEach(b => b.click()); $sel($field('Police report'), 'unknown');`);
+  await evaluate(`[...${dialog}.querySelectorAll('button')].filter(b => b.textContent.trim() === 'Unknown').forEach(b => b.click()); await $sel($field('Police report'), 'unknown');`);
   check("Unknown 按钮填入车号和司机", await evaluate(`return $field('Vehicle #').value === 'Unknown' && $field('Driver').value === 'Unknown';`));
   before = (await mockLog()).length;
   await evaluate(`$dialogBtn('Save').click();`);
@@ -364,7 +366,7 @@ async function run() {
   check("已解决的状态标签是绿（已处理 = 绿，Annie 2026-10-24 全站规则）", await evaluate(`const s = [...$item(4).querySelectorAll('span')].find((e) => e.textContent.trim() === 'Resolved'); return !!s && getComputedStyle(s).color === 'rgb(74, 222, 128)';`));
   await evaluate(`$btnIn(document.querySelector('[aria-label="Status filter"]'), 'All').click();`);
   check("筛选 All：四条（含已解决）", await waitFor(`$ids('main').length === 4`));
-  await evaluate(`$sel(document.querySelector('[aria-label="Type filter"]'), 'complaint');`);
+  await evaluate(`await $sel(document.querySelector('[aria-label="Type filter"]'), 'complaint');`);
   await waitFor(`$ids('main').join(',') === '3,2'`);
   check("筛选类型 Complaint", (await mockLog()).some((e) => e.query.includes("type=complaint")));
   await evaluate(`$setValue(document.querySelector('[aria-label="Search reports"]'), 'refund');`);
@@ -372,11 +374,11 @@ async function run() {
   check("搜索 refund（防抖后带 q 查询）", (await mockLog()).some((e) => e.query.includes("q=refund")));
   await evaluate(`$setValue(document.querySelector('[aria-label="Search reports"]'), 'zzznothing');`);
   check("没有匹配：显示空提示", await waitFor(`document.body.textContent.includes('No reports match these filters.')`));
-  await evaluate(`$setValue(document.querySelector('[aria-label="Search reports"]'), ''); $sel(document.querySelector('[aria-label="Type filter"]'), '');`);
+  await evaluate(`$setValue(document.querySelector('[aria-label="Search reports"]'), ''); await $sel(document.querySelector('[aria-label="Type filter"]'), '');`);
   await waitFor(`$ids('main').length === 4`);
   before = (await mockLog()).length;
-  await evaluate(`$sel($item(4).querySelector('select[aria-label^="Status"]'), 'open');`);
-  await waitFor(`$item(4) && $item(4).querySelector('select[aria-label^="Status"]').value === 'open'`);
+  await evaluate(`await $sel($item(4).querySelector(':is(select,[data-select-menu])[aria-label^="Status"]'), 'open');`);
+  await waitFor(`$item(4) && $item(4).querySelector(':is(select,[data-select-menu])[aria-label^="Status"]').value === 'open'`);
   check("页面里可以把已解决改回 Open（重新打开）", (await mockLog()).slice(before).some((e) => e.method === "PATCH" && e.body.status === "open"));
 
   await goto(`${APP}/daily-report?id=3`);
@@ -419,7 +421,7 @@ async function run() {
   await evaluate(H2);
   await evaluate(`$btnIn($item(1), 'Details').click();`);
   await waitFor(`${upd(1)} && ${updBox(1)}`);
-  check("员工：别人登记的（不能改状态）也能加 Updates", await evaluate(`return !$item(1).querySelector('select') && !!${upd(1)}.querySelector('[data-update-save]');`));
+  check("员工：别人登记的（不能改状态）也能加 Updates", await evaluate(`return !$item(1).querySelector('select, [data-select-menu]') && !!${upd(1)}.querySelector('[data-update-save]');`));
   // 后端 G224 上线前详情没有 updates：写 No updates yet.，不崩
   await ctl({ supervisor: true, noUpdates: true });
   await goto(`${APP}/daily-report?id=1`);
