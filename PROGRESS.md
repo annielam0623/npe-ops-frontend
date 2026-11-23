@@ -52,6 +52,7 @@
 - 导游页 D 第 6 版（Annie 在后端窗口「导游，把picked up也放在客人名字旁边吧」「导游只需要点击两个键：borad和no show」）：relay 结果标签在名字旁（绿 Picked up / 红 Not at hotel / 蓝 TI / 灰 Bus），右边只有 Board、No show，改餐点「2T / 1B ✎」；D6 / D8 改、D9 新。又加中午 12 点后收 tour（Annie 问），D10–D13。全部在 Annie_待答题_2026-11-23_导游页D.xlsx（D2–D13）。
 - 后端 95：Order List 搜索加产品码（28922a46，接口不变）⇒ 派 9b 改搜索框占位字 + How to use；TripGuru 行 pickup_time 有值（c366a543，前端不用改）。
 - Annie 新要求（截图 /manifests 选择条空白处画红框，原话）「我需要在页面画了红框的这个位置做个醒目的提示，3天内的订单如果还有新单进来没有发送的话，就在这里出现，超过3单就列数字，数字还是按照网站的红色气泡形式。然后这个提醒要出现在res team当班的所有人的notice里」⇒ 记录，非动手。派 bb 出 preview（判据同 NEW 标签 sent_tour_at / sent_tickets_at、3 天怎么算、全站还是当前标签、≤3 列单号 / >3 红气泡数字、Res team 当班谁、Notice 何时发、总开关题、要后端的）。
+- ✅ Order List 搜索提示加 product code 上 main 197616f1（9b，功能 ab5f2705）：占位字「Search order#, name, email, phone, product, product code, agent ref...」（无 agent 权限去掉 agent ref）；How to use 第 1 条加「product or product code (part of a code is enough, like PHSU5Q)」。orders 174、nav 40，tsc / eslint 0 error / build。
 
 ## 2026-11-20（周五）前端主窗口 `npe-ops-frontend-5e`[614588]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工：origin/main 9ab99466（主目录 detached 改 PROGRESS）。资源：空闲内存 38.2 / 61.8 GB，node 0、chrome 71。现在没有工作窗口；后端在线 `npe-confirmation-service-bb`[282016]。
