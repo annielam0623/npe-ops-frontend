@@ -62,6 +62,7 @@
 - 后端转：Annie 在后端窗口对 Mirror 说「动手」：Order List 加 Mirror 列（Rezdy 行显示 TripGuru 对应单号、反之亦然，可点开详情，Export 也加）；顶栏订单搜索结果也显示对方渠道单号；配对 = Rezdy agent ref 含 TripGuru 单号，或 日期 + 开始时间 + 名字 + 电话末 10 位 + 产品名；只显示。后端 95 做，合同 + SHA 之后发。派 9b task/order-mirror 先规划 + 占位 mock；合前要合同、后端 PASS、截图给 Annie。
 - ✅ Annie（原话）「Tracking搜索全部同意推荐，动手」⇒ Q1–Q6 全 A；Q7 按前台能写定 B（后端加只读 find-order 接口，能开 Tracking 就能用，含名字 / 电话 Search all dates）。已发后端要合同；bb task/tracking-any-date-search 先照 mock 写，合同 + 后端 PASS 才合。
 - 📌 Mirror 前端（9b，占位形状）task/order-mirror **3c208b70**（未合）：Order List Mirror 列放 Source 后、对方渠道单号做成小胶囊（TripGuru 蓝 / Rezdy 灰）、多个上下排、没有写「—」、点开 /orders/<单号>；顶栏搜索多结果加 Mirror 列、单结果卡加 Mirror 字段；How to use 一句。orders 184（+10）、os +5、nav 40。截图 C:\Users\annzh\Downloads\order-mirror\，📌 给 Annie 看（列位置 / 胶囊 / 不写渠道字）。占位形状 rows[].mirror=[{order_number, source}] 已发 95 核。
+- Tracking 不限日期搜索后端上 main（47：27ba952c / b72ec854 / 3bfd9440；合同 docs/interfaces/tracking-find-order-2026-11-23.md）：GET /api/notifications/tracking/find-order?order=（完整单号，products[] 带 tour_date / status / page tour|tickets|null）、GET …/search-all-dates?q=（电话 ≥4 位 / 名字 ≥2 字，最多 20 行 + truncated）；权限 tour.view 或 tickets.view，不要 orders.view。已转 bb 对齐。
 
 ## 2026-11-20（周五）前端主窗口 `npe-ops-frontend-5e`[614588]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工：origin/main 9ab99466（主目录 detached 改 PROGRESS）。资源：空闲内存 38.2 / 61.8 GB，node 0、chrome 71。现在没有工作窗口；后端在线 `npe-confirmation-service-bb`[282016]。
