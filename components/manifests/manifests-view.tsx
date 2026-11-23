@@ -1196,8 +1196,10 @@ export function ManifestsView() {
                     : "max-sm:hidden",
                 )}
               >
-                <span className="mr-auto text-[#cbd5e1] tabular-nums max-sm:min-w-0 max-sm:truncate">
-                  {plural(pickedOrders, "order")} selected · {pickedPax} pax
+                <span className="mr-auto text-[#cbd5e1] tabular-nums max-sm:min-w-0 max-sm:text-[12px] max-sm:leading-tight">
+                  {plural(pickedOrders, "order")}
+                  <span className="max-sm:hidden"> selected</span> · {pickedPax}{" "}
+                  pax
                   {foldedPicked.orders
                     ? ` (${foldedPicked.orders} in ${foldedPicked.groups === 1 ? "a collapsed group" : "collapsed groups"})`
                     : ""}
