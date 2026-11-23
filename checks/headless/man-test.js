@@ -1613,7 +1613,7 @@ async function run() {
   await waitFor("$box('CHD1001')");
   await evaluate("$box('CHD1001').click();");
   check("操作条：Send tour confirmation / Send message 浅蓝实心 #3b82f6；Last Minute Order 白底蓝字 + 蓝边；Clear 不是", await evaluate("const cs = (t) => getComputedStyle($btn(t, $bar())); return ['Send tour confirmation', 'Send message'].every((t) => cs(t).backgroundColor === 'rgb(59, 130, 246)') && cs('Last Minute Order').backgroundColor === 'rgb(255, 255, 255)' && cs('Last Minute Order').color === 'rgb(37, 99, 235)' && cs('Last Minute Order').borderTopColor === 'rgb(59, 130, 246)' && cs('Clear').backgroundColor !== 'rgb(59, 130, 246)';"));
-  check("Last Minute 紧挨在 Send tour confirmation 右边", await evaluate("return [...$bar().querySelectorAll('button')].map((b) => b.textContent.trim()).join('|') === 'Send tour confirmation|Last Minute Order|Send message|Clear';"));
+  check("Last Minute 紧挨在 Send tour confirmation 右边", await evaluate("return [...$bar().querySelectorAll('button:not([data-phone-more])')].map((b) => b.textContent.trim()).join('|') === 'Send tour confirmation|Last Minute Order|Send message|Clear';"));
   await evaluate("$btn('Last Minute Order', $bar()).click();");
   await waitFor("$dialog() && [...$dialog().querySelectorAll('select, [data-select-menu]')].flatMap((s) => [...s.options]).length > 2");
   check("Last Minute Order 弹窗：标题 Send Last Minute Order、说明里写 Last Minute Order", await evaluate("return $dialog().querySelector('h2').textContent === 'Send Last Minute Order' && $dialog().textContent.includes('Last Minute Order by email and SMS');"));
@@ -2027,8 +2027,42 @@ async function run() {
   await evaluate("document.querySelector('[data-phone-more]').click();");
   check("手机：Legacy 黄框只占一行，有 More", await evaluate("const o = document.querySelector('[data-phone-oneline]'); return !!o && o.getBoundingClientRect().height < 34 && o.textContent.includes('More');"));
   check("手机：发送条一行", await evaluate("const g = document.querySelector('[aria-label=\"Selected guests\"]'); return !!g && g.getBoundingClientRect().height < 56;"));
+  // 13（Annie 2026-11-23「13 动手」）：手机发送浮条只露几位几人 + 主发送键，Last Minute Order / Send message / Clear 收进条里的 ⋯（往上开）；整页不晃。
+  await evaluate("[...document.querySelectorAll('tbody tr input[type=checkbox]')].slice(0, 2).forEach((b) => b.click());");
+  await sleep(300);
+  {
+    const bar = await evaluate("const vis = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; }; const g = document.querySelector('[data-selected-bar]'); const r = g.getBoundingClientRect(); const shown = [...g.querySelectorAll('button')].filter(vis).map(b => b.getAttribute('aria-label') || b.textContent.trim()); const inside = [...g.querySelectorAll('button')].filter(vis).every(b => { const q = b.getBoundingClientRect(); return q.left >= r.left - 1 && q.right <= r.right + 1; }); return { fixed: getComputedStyle(g).position, h: Math.round(r.height), right: Math.round(r.right), shown, inside };");
+    check("13 手机：发送浮条只露「Send tour confirmation」和 ⋯（More send actions），Last Minute Order / Send message / Clear 不在条上；露出的键都在条里、不被挡", bar.fixed === "fixed" && bar.h < 56 && bar.right <= 390 && bar.inside && JSON.stringify(bar.shown) === JSON.stringify(["Send tour confirmation", "More send actions"]), JSON.stringify(bar));
+    await evaluate("document.querySelector('[data-selected-bar] [data-phone-more]').click();");
+    await sleep(200);
+    const menu = await evaluate("const g = document.querySelector('[data-selected-bar]'); const m = g.querySelector('[data-phone-more-menu]'); if (!m) return null; const r = m.getBoundingClientRect(); return { items: [...m.querySelectorAll('button')].map(b => b.textContent.trim()), top: Math.round(r.top), bottom: Math.round(r.bottom), moreTop: Math.round(g.querySelector('[data-phone-more]').getBoundingClientRect().top), vh: innerHeight };");
+    check("13 手机：点条里的 ⋯ 往上开，出 Last Minute Order / Send message / Clear，整个菜单在屏幕里", !!menu && JSON.stringify(menu.items) === JSON.stringify(["Last Minute Order", "Send message", "Clear"]) && menu.top >= 0 && menu.bottom <= menu.moreTop + 1, JSON.stringify(menu));
+    check("13 手机 390px：勾了行、开着菜单，整页不左右晃", await evaluate("return document.documentElement.scrollWidth <= window.innerWidth + 1;"));
+    await evaluate("[...document.querySelectorAll('[data-selected-bar] [data-phone-more-menu] button')].find(b => b.textContent.trim() === 'Clear').click();");
+    await sleep(200);
+    check("13 手机：菜单里的 Clear 照样清掉勾选（浮条收起）", await evaluate("return [...document.querySelectorAll('tbody tr input[type=checkbox]')].every(b => !b.checked) && document.querySelector('[data-selected-bar]').getBoundingClientRect().height === 0;"));
+  }
+  await openPage(`${APP}/manifests?date=${today}&tab=tickets`);
+  await sleep(500);
+  check("13 手机：门票页缺 Cfm # 的黄字只占一行，有 More", await evaluate("const p = [...document.querySelectorAll('p')].find(x => x.textContent.includes('Orders without a Cfm #')); const o = p?.querySelector('[data-phone-oneline]'); return !!o && o.getBoundingClientRect().height < 34 && o.textContent.includes('More');"), await evaluate("return [...document.querySelectorAll('p')].find(x => x.textContent.includes('Orders without a Cfm #'))?.outerHTML ?? 'no hint';"));
+  check("13 手机 390px：门票页整页不左右晃", await evaluate("return document.documentElement.scrollWidth <= window.innerWidth + 1;"));
   await cdp("Emulation.clearDeviceMetricsOverride");
   await sleep(300);
+  {
+    const d = await evaluate("const vis = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; }; const p = [...document.querySelectorAll('p')].find(x => x.textContent.includes('Orders without a Cfm #')); const o = p?.querySelector('[data-phone-oneline]'); return { hint: !!p && p.getBoundingClientRect().height > 0, more: !!o && [...o.querySelectorAll('button')].some(vis) };");
+    check("13 电脑：门票页黄字照旧整句、没有 More", d.hint && !d.more, JSON.stringify(d));
+  }
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await sleep(500);
+  await evaluate("[...document.querySelectorAll('tbody tr input[type=checkbox]')].slice(0, 2).forEach((b) => b.click());");
+  await sleep(300);
+  {
+    const d = await evaluate("const vis = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; }; const g = document.querySelector('[data-selected-bar]'); return { pos: getComputedStyle(g).position, shown: [...g.querySelectorAll('button')].filter(vis).map(b => b.getAttribute('aria-label') || b.textContent.trim()) };");
+    check("13 电脑：发送条照旧在表上方、四个键都在条上（Send tour confirmation / Last Minute Order / Send message / Clear），没有 ⋯", d.pos === "static" && JSON.stringify(d.shown) === JSON.stringify(["Send tour confirmation", "Last Minute Order", "Send message", "Clear"]), JSON.stringify(d));
+  }
+  await evaluate("[...document.querySelectorAll('tbody tr input[type=checkbox]')].filter(b => b.checked).forEach((b) => b.click());");
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await sleep(500);
   check("电脑：Columns 照旧在工具条上，没有 ⋯", await evaluate("const vis = (e) => !!e && e.getBoundingClientRect().height > 0; return [...document.querySelectorAll('button')].some(b => b.textContent.trim() === '☰ Columns' && vis(b)) && !vis(document.querySelector('[data-phone-more]'));"));
 
   // ── 置顶 51 B：?row= 标黄、滚到、预勾能发的行、用过去掉；tick=0 只标黄 ──

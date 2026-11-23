@@ -1190,13 +1190,13 @@ export function ManifestsView() {
                 data-selected-bar
                 // 置顶 115 题 8 A：手机上没勾选时不占位；勾了浮在屏幕底部（右边让开 ↑↓）。
                 className={cn(
-                  "mb-3 flex flex-wrap items-center gap-2 rounded-[10px] border border-white/10 bg-white/[.04] px-3 py-2 text-[13px] max-sm:flex-nowrap max-sm:gap-1.5 max-sm:overflow-x-auto max-sm:px-2 max-sm:py-1.5 max-sm:[&>button]:shrink-0 max-sm:[&>button]:whitespace-nowrap",
+                  "mb-3 flex flex-wrap items-center gap-2 rounded-[10px] border border-white/10 bg-white/[.04] px-3 py-2 text-[13px] max-sm:flex-nowrap max-sm:gap-1.5 max-sm:px-2 max-sm:py-1.5 max-sm:[&>button]:shrink-0 max-sm:[&>button]:whitespace-nowrap",
                   selected.size
                     ? "max-sm:fixed max-sm:right-[60px] max-sm:bottom-[calc(12px+env(safe-area-inset-bottom,0px))] max-sm:left-3 max-sm:z-[90] max-sm:mb-0 max-sm:border-white/20 max-sm:bg-[#0b1726] max-sm:shadow-[0_8px_24px_rgba(0,0,0,.5)]"
                     : "max-sm:hidden",
                 )}
               >
-                <span className="mr-auto text-[#cbd5e1] tabular-nums max-sm:shrink-0 max-sm:whitespace-nowrap">
+                <span className="mr-auto text-[#cbd5e1] tabular-nums max-sm:min-w-0 max-sm:truncate">
                   {plural(pickedOrders, "order")} selected · {pickedPax} pax
                   {foldedPicked.orders
                     ? ` (${foldedPicked.orders} in ${foldedPicked.groups === 1 ? "a collapsed group" : "collapsed groups"})`
@@ -1214,37 +1214,40 @@ export function ManifestsView() {
                     {tab === "bus" ? "Send tour confirmation" : "Send reminder"}
                   </button>
                 )}
-                {tab === "bus" && !noConfirm ? (
+                {/* 13（Annie 2026-11-23「13 动手」，手机版规则）：手机上只露几位几人 + 主发送键；其余收进 ⋯（往上开）。原来挤在一行、右边的键被挡在屏幕外。 */}
+                <PhoneMore up label="More send actions">
+                  {tab === "bus" && !noConfirm ? (
+                    <button
+                      type="button"
+                      disabled={!selected.size}
+                      onClick={() => requestSend("lastminute")}
+                      className={LAST_MINUTE_CLASS}
+                    >
+                      Last Minute Order
+                    </button>
+                  ) : null}
+                  {noMessage ? null : (
+                    <button
+                      type="button"
+                      disabled={!selected.size}
+                      onClick={() => requestSend("message")}
+                      className={PRIMARY_ACTION_CLASS}
+                    >
+                      Send message
+                    </button>
+                  )}
                   <button
                     type="button"
                     disabled={!selected.size}
-                    onClick={() => requestSend("lastminute")}
-                    className={LAST_MINUTE_CLASS}
+                    onClick={() => {
+                      setSelected(new Set());
+                      setPendingSend(null);
+                    }}
+                    className={LEGACY_BTN_CLASS}
                   >
-                    Last Minute Order
+                    Clear
                   </button>
-                ) : null}
-                {noMessage ? null : (
-                  <button
-                    type="button"
-                    disabled={!selected.size}
-                    onClick={() => requestSend("message")}
-                    className={PRIMARY_ACTION_CLASS}
-                  >
-                    Send message
-                  </button>
-                )}
-                <button
-                  type="button"
-                  disabled={!selected.size}
-                  onClick={() => {
-                    setSelected(new Set());
-                    setPendingSend(null);
-                  }}
-                  className={LEGACY_BTN_CLASS}
-                >
-                  Clear
-                </button>
+                </PhoneMore>
               </div>
             ) : null}
 
@@ -1324,17 +1327,21 @@ export function ManifestsView() {
 
             {!noConfirm && !seeingHidden && anyMissingWaiver ? (
               <p className="mb-2 text-[12.5px] font-medium text-[#ba7517] night:text-amber-300">
-                Orders without a Cfm # or a waiver link, or with a Cfm # under 6
-                digits, will be stopped when you send. Click the cell to fill
-                one in anytime.
-                {anyMismatch ? ` ${MISMATCH_HINT}` : ""}
+                <PhoneOneLine>
+                  Orders without a Cfm # or a waiver link, or with a Cfm # under
+                  6 digits, will be stopped when you send. Click the cell to
+                  fill one in anytime.
+                  {anyMismatch ? ` ${MISMATCH_HINT}` : ""}
+                </PhoneOneLine>
               </p>
             ) : !noConfirm && !seeingHidden && anyMissingCfm ? (
               <p className="mb-2 text-[12.5px] font-medium text-[#ba7517] night:text-amber-300">
-                Orders without a Cfm #, or with one under 6 digits, will be
-                skipped when you send. Click the Cfm # cell to fill one in
-                anytime.
-                {anyMismatch ? ` ${MISMATCH_HINT}` : ""}
+                <PhoneOneLine>
+                  Orders without a Cfm #, or with one under 6 digits, will be
+                  skipped when you send. Click the Cfm # cell to fill one in
+                  anytime.
+                  {anyMismatch ? ` ${MISMATCH_HINT}` : ""}
+                </PhoneOneLine>
               </p>
             ) : !noConfirm && !seeingHidden && anyMismatch ? (
               // G245：只有号不对的行时，黄字只写这半句。
@@ -1342,7 +1349,7 @@ export function ManifestsView() {
                 data-mismatch-hint
                 className="mb-2 text-[12.5px] font-medium text-[#ba7517] night:text-amber-300"
               >
-                {MISMATCH_HINT}
+                <PhoneOneLine>{MISMATCH_HINT}</PhoneOneLine>
               </p>
             ) : null}
 
