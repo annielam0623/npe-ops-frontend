@@ -48,6 +48,7 @@
 - Annie 对导游页 D 第 4 版（原话）「导游页：我要保留餐更改的那个功能，然后braod只需要点记一下就好了，不要选择，no show单独一个钮，然后TI就标在客人名字旁瓣」⇒ 第 5 版：✎ Change 改餐每行可见；Boarded 一个键点一下标、再点取消（不出选单）；No show 单独一个键；TI 小标签在名字旁，Picked up 格不再写 TI；存法仍先选后存（若认为该马上存则出题问 Annie）。已转后端。非动手。
 - 89 交 146 前端（合同 v1）task/farm-out-photo-upload **845a55fd / ea85f9f8**（未合，等后端 28 上 main + PASS）：MatchPanel（方向下拉、团 / 酒店对照、Remember 默认勾）、rematch、橙格可改、超时 120 s + 读图提示、503 / 502 / 400 原样。fo-settings 179（146 项 32）。2 个问题已转 28（rematch source null 沿用 parse 的；没动对照 apply 只送 parsed）。nav-test 在 Morning Pickup Send 页失败（nav-test.js:215 无 h1）⇒ 派 bb 查 main 上是否也失败。
 - 导游页 D 第 5 版（ab）：每行 ✎ 改餐、Board / No show 两个独立方键点一下标再点取消、TI 蓝标签在名字旁、TI 的 Pick 灰「—」；D4 改问存的时机（后端推荐 B 马上存 = 导游页现状 guide_home.html:339；A 最后 Save）、D7 去掉改餐。已发 Annie。
+- nav-test Morning Pickup Send 失败查明（bb）：检查时序问题，不是页面 bug（nav-test.js:212 只等顶栏标题，:215 就量页内 h1，dev 现编译时还没出来）。main 上 nav 40/40。只改检查加等 h1，上 main 34374a6f；nav 40、mt 329。已告 89。146 后端 28 确认 89 两问，前端不改，后端代码等 Annie 动手。
 
 ## 2026-11-20（周五）前端主窗口 `npe-ops-frontend-5e`[614588]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工：origin/main 9ab99466（主目录 detached 改 PROGRESS）。资源：空闲内存 38.2 / 61.8 GB，node 0、chrome 71。现在没有工作窗口；后端在线 `npe-confirmation-service-bb`[282016]。
