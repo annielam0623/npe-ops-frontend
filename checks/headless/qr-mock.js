@@ -1,4 +1,4 @@
-// 模拟后端：Settings → Driver Quick Replies（G98，后端 d0 task/driver-messages）。控制：POST /__ctl；GET /__log。
+// 模拟后端：Content Studio › Team Messages › Driver Quick Replies（G98，后端 d0 task/driver-messages；7c 搬进 Content Studio）。控制：POST /__ctl；GET /__log。
 const http = require("http");
 const ctl = { fail401: false, staff: false, staleOrder: false, failLoad: false, log403: false };
 const log = [];
@@ -50,6 +50,9 @@ http.createServer(async (req, res) => {
   log.push(entry);
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
   if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.staff ? "staff" : "admin", is_admin: !ctl.staff, is_superadmin: false });
+  // 7c A：快捷回复搬进 Content Studio › Team Messages，页面先读模板（这里不用，回空）和整页 Action Log。
+  if (p === "/api/template-settings") return send(res, 200, []);
+  if (p === "/api/template-settings/action-log") return send(res, 200, { next_cursor: null, entries: [] });
   if (!p.startsWith("/api/driver-quick-replies")) return send(res, 404, { detail: "mock: not found" });
   if (ctl.staff) return send(res, 403, { detail: "Admin access required" });
   if (p === "/api/driver-quick-replies/log") return send(res, 200, { entries, limit: 50 });

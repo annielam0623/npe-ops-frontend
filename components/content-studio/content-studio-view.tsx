@@ -80,11 +80,17 @@ import {
   TextFieldCard,
 } from "./studio-cards";
 import {
+  QUICK_REPLIES_TAB,
+  QUICK_REPLIES_TAB_SLUG,
   TEAM_TABS,
   TeamMessagesPanel,
   TeamMessagesPreview,
   type TeamTab,
 } from "./team-messages";
+import {
+  QUICK_REPLIES_UNSAVED,
+  QuickRepliesPanel,
+} from "@/components/quick-replies/quick-replies-panel";
 import { TcGuestEditor } from "./tc-guest-editor";
 import { TixTourPicker } from "./tix-tour-picker";
 
@@ -173,7 +179,7 @@ const MODULES: {
     icon: "🧑‍✈️",
     title: "Team Messages",
     tag: "SMS / Email",
-    text: "Manage the texts we send to our own team and partners: the driver and guide texts from Dispatch, the lunch update to restaurants, and the schedule emails.",
+    text: "Manage the texts we send to our own team and partners: the driver and guide texts from Dispatch, the lunch update to restaurants, the schedule emails, and the drivers' quick replies to guests.",
     tabs: [...TEAM_TABS],
     accent: "#eab308",
   },
@@ -221,7 +227,24 @@ export function ContentStudioView() {
   });
   const [reloadKey, setReloadKey] = useState(0);
   const [shuttleSel, setShuttleSel] = useState<string | null>(null);
+  /** 快捷回复标签里有没存的排序 / Bus map（切标签、回模块网格前问一句；离开页面由那个标签自己拦）。 */
+  const [qrDirty, setQrDirty] = useState(false);
   const redirectingRef = useRef(false);
+
+  // 网址直接打开某个标签（7c A：旧的 /settings/quick-replies 跳到 ?module=team&tab=driver-quick-replies）。
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (
+      q.get("module") === "team" &&
+      q.get("tab") === QUICK_REPLIES_TAB_SLUG
+    ) {
+      setModule("team");
+      setTab(TEAM_TABS.indexOf(QUICK_REPLIES_TAB));
+    }
+  }, []);
+  /** 快捷回复有没存的改动：问一句，留下 = false。 */
+  const leaveQuickReplies = () =>
+    !qrDirty || window.confirm(QUICK_REPLIES_UNSAVED);
 
   const redirectToLogin = useCallback(() => {
     if (!redirectingRef.current) {
@@ -398,7 +421,11 @@ export function ContentStudioView() {
     <Shell
       dirtyCount={dirtyCount}
       phonePreview={!!mod}
-      wide={module === "tc" && tabName === "Guest Page"}
+      wide={
+        (module === "tc" && tabName === "Guest Page") ||
+        // 快捷回复没有模板预览（What the driver sees 在标签里），不分栏。
+        (module === "team" && tabName === QUICK_REPLIES_TAB)
+      }
       preview={
         module === "team" ? (
           <TeamMessagesPreview tab={tabName as TeamTab} studio={studio} />
@@ -468,7 +495,9 @@ export function ContentStudioView() {
               两个功能不一样，改文字消歧义，位置 / 样式 / 功能都不变。 */}
           <button
             type="button"
-            onClick={() => setModule(null)}
+            onClick={() => {
+              if (leaveQuickReplies()) setModule(null);
+            }}
             className="mb-4 flex cursor-pointer items-center gap-1.5 text-[12px] text-[#888] hover:text-white night:text-white/55"
           >
             ← All modules
@@ -490,6 +519,7 @@ export function ContentStudioView() {
                   role="tab"
                   aria-selected={tab === i}
                   onClick={() => {
+                    if (i !== tab && !leaveQuickReplies()) return;
                     setTab(i);
                     setActive(null);
                   }}
@@ -506,7 +536,12 @@ export function ContentStudioView() {
             </div>
           ) : null}
 
-          {module === "team" ? (
+          {module === "team" && tabName === QUICK_REPLIES_TAB ? (
+            <QuickRepliesPanel
+              onDirtyChange={setQrDirty}
+              onUnauthorized={redirectToLogin}
+            />
+          ) : module === "team" ? (
             <TeamMessagesPanel tab={tabName as TeamTab} studio={studio} />
           ) : null}
           {module !== "bc" && module !== "team" && tabName === "Global" ? (
@@ -1028,4 +1063,5 @@ const HOW_TO_ITEMS = [
   "Tickets Reminder → ✎ Edit tour: tick No Cfm # needed for a tour whose guests don't get a confirmation number (for example the two Hogan Upper Antelope tours). Its orders are sent without a Cfm #, and the reminder email shows the check-in instructions instead. Click Save.",
   "Tour Confirmation → Guest Page: the page is drawn exactly as guests see it. Click Edit, then click any outlined text to change it in the small box and click Apply. Amber outlines are shared by all tours. + Add line adds up to 2 lines to a part (this tour only or all tours); ↑↓ changes the order of the pick-up steps. Click Save once to store every change; Discard throws them away. List view shows the same text as a list.",
   "Team Messages: texts to drivers, guides, restaurants and staff. Driver and guide texts must fit in one SMS with the link filled in, keep exactly one {link}, and use plain characters only. Subjects, the texts and link text can't be empty; the other lines can be left empty to drop them.",
+  "Team Messages › Driver Quick Replies: the one-tap texts drivers can send to a guest. Add, edit, switch off or delete a reply there; drag ⠿ to change the order and press Save order. It has its own How to use and Action Log under the list. It used to be Settings › Driver Quick Replies; the old link opens this tab.",
 ];

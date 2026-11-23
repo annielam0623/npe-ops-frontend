@@ -1,12 +1,9 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { QuickRepliesView } from "@/components/quick-replies/quick-replies-view";
-
-export const metadata: Metadata = {
-  title: "Driver Quick Replies",
-};
-
-// 数据只在客户端组件里请求：session cookie 只有浏览器发起的同源请求才会带上。
+/**
+ * 7c A（Annie 2026-11-20「7c「A」…| 动手」）：Driver Quick Replies 搬进 Content Studio › Team Messages 当一个标签，
+ * 旧页去掉、侧栏不再有这一项；收藏的旧网址照样能用，直接跳到那个标签。
+ */
 export default function QuickRepliesPage() {
-  return <QuickRepliesView />;
+  redirect("/settings/content-studio?module=team&tab=driver-quick-replies");
 }

@@ -29,7 +29,6 @@ const PAGE_TITLES: readonly [prefix: string, title: string][] = [
   ["/settings/test-send", "Test send"],
   ["/settings/pickup-locations", "Pickup Locations"],
   ["/settings/vehicles", "Vehicles"],
-  ["/settings/quick-replies", "Driver Quick Replies"],
   ["/settings/hr", "Human Resource"],
   // dashboard 改版（Annie 2026-10-11）新加的页面，旧后台没有。
   ["/forms", "Forms"],

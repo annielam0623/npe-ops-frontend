@@ -391,7 +391,7 @@ async function run() {
     );
     await evaluate("$open('Team Messages');");
     await waitFor(`!!${card("field_driver_sms")}`);
-    check("三个标签页：Driver & Guide SMS / Restaurant / Schedule Email", JSON.stringify(await evaluate("return [...document.querySelectorAll('[role=tab]')].map(t => t.textContent);")) === JSON.stringify(["Driver & Guide SMS", "Restaurant", "Schedule Email"]));
+    check("四个标签页：Driver & Guide SMS / Restaurant / Schedule Email / Driver Quick Replies（7c A 搬进来的）", JSON.stringify(await evaluate("return [...document.querySelectorAll('[role=tab]')].map(t => t.textContent);")) === JSON.stringify(["Driver & Guide SMS", "Restaurant", "Schedule Email", "Driver Quick Replies"]));
 
     // 23 个键都列出来（三个标签页加起来），每张卡写键名、种子原文
     const ids = [];

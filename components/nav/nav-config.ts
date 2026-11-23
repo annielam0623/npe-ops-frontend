@@ -439,8 +439,6 @@ export const NAV_SETTINGS: { label: string; items: NavItem[] } = {
     { label: "Pickup Locations", href: "/settings/pickup-locations" },
     // Farm out Partners / Timetable 搬进下面的 Supplier 组（G199，Annie 2026-10-27「Supplier preview 动手」）。
     { label: "Vehicles", href: "/settings/vehicles" },
-    // 司机一键发给客人的几句话（G98，Annie 2026-10-28「动手」）：只有 admin 能改，同 Settings 组。
-    { label: "Driver Quick Replies", href: "/settings/quick-replies" },
     { label: "Teams", href: "/settings/teams" },
     // Users 和 Team 并成一页（Annie 2026-10-28「动手」）：admin 也能开，权限 / 删除只给 Super Admin。
     { label: "Team", href: "/settings/team" },
