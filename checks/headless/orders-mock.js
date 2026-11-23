@@ -5,10 +5,11 @@ const staffPerm = require("./staff-perm-mock");
 const staffNotes = require("./staff-notes-mock");
 const ctl = { fail401: false, failExport: false, partner: null, mirror: false };
 // Mirror 占位数据：CHDZZ2 ↔ NPE-ZZ1001；CHDZZ4 对上两张 TripGuru 单。
+// 形状照后端 95 合同（95281e41）：[{order_number, source, matched_by}]，按单号排。
 const MIRROR = {
-  CHDZZ2: [{ order_number: "NPE-ZZ1001", source: "tripguru" }],
-  "NPE-ZZ1001": [{ order_number: "CHDZZ2", source: "rezdy" }],
-  CHDZZ4: [{ order_number: "NPE-ZZ1002", source: "tripguru" }, { order_number: "NPE-ZZ1003", source: "tripguru" }],
+  CHDZZ2: [{ order_number: "NPE-ZZ1001", source: "tripguru", matched_by: ["reseller_ref"] }],
+  "NPE-ZZ1001": [{ order_number: "CHDZZ2", source: "rezdy", matched_by: ["reseller_ref"] }],
+  CHDZZ4: [{ order_number: "NPE-ZZ1002", source: "tripguru", matched_by: ["guest_session"] }, { order_number: "NPE-ZZ1003", source: "tripguru", matched_by: ["guest_session", "reseller_ref"] }],
 };
 const log = [];
 const row = (i, o = {}) => ({ order_number: `CHDZZ${i}`, lane: "legacy", name: `ZZ Guest ${i}`, email: `g${i}@x`, phone: i % 2 ? "—" : `+1555${i}`, product_name: "Upper Antelope Bus Tour With Lunch And More", product_type: i % 3 === 0 ? "ticket" : "bus_tour", tour_date: "10/05/2026", pickup_time: "7:00 AM", pickup_location: "Aria", quantities: "2", agent_name: "Viator", source: "rezdy", created_at: "10/1/2026 9:00 AM", updated_at: "10/2/2026 9:00 AM", status: ["confirmed", "pending", "cancelled", "WEIRD"][i % 4], ...o });

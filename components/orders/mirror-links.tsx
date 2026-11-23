@@ -9,7 +9,8 @@ import type { OrderMirror } from "@/types";
  * Mirror（Rezdy ↔ TripGuru 孪生单，Annie 在后端窗口「动手」；后端 95 做配对）：另一个渠道的单号，一个一行，
  * 每个都能点进那单的 Order details（/orders/<单号>，两个渠道同一个页面）。没有 = 「—」（同别的空格）。
  * 颜色照 Source 列：TripGuru 浅蓝底蓝字、Rezdy 浅灰底黑字。只是显示，不能改。
- * ⚠️ 字段形状是占位（等后端合同）：rows[].mirror = [{order_number, source}]；旧后端没有这个键 ⇒ 页面不出这一列。
+ * 后端 95 合同（95281e41）：records[].mirror / 订单详情顶层 mirror = [{order_number, source, matched_by}]；
+ * 旧后端没有这个键 ⇒ 页面不出这一列。matched_by 写进鼠标悬停提示。
  */
 const TONE: Record<string, { light: string; dark: string }> = {
   tripguru: {
@@ -29,6 +30,19 @@ const SOURCE_NAME: Record<string, string> = {
   rezdy: "Rezdy",
 };
 
+/** matched_by → 悬停提示里的一句。 */
+const MATCHED_BY: Record<string, string> = {
+  reseller_ref: "the Rezdy agent reference has the TripGuru order number",
+  guest_session: "same date, start time, guest name, phone and product",
+};
+
+export function mirrorTitle(m: OrderMirror): string {
+  const how = (m.matched_by ?? [])
+    .map((k) => MATCHED_BY[k] ?? k)
+    .join("; and ");
+  return `${SOURCE_NAME[m.source] ?? m.source} order ${m.order_number} — open its order details${how ? `. Matched: ${how}.` : ""}`;
+}
+
 export function MirrorLinks({
   mirror,
   dark = false,
@@ -43,7 +57,9 @@ export function MirrorLinks({
     return (
       <span
         data-mirror-empty
-        className={dark ? "text-white/40" : "text-[#1a1a1a] night:text-white/35"}
+        className={
+          dark ? "text-white/40" : "text-[#1a1a1a] night:text-white/35"
+        }
       >
         —
       </span>
@@ -57,7 +73,7 @@ export function MirrorLinks({
             key={`${m.source}-${m.order_number}`}
             href={`/orders/${encodeURIComponent(m.order_number)}`}
             data-mirror-link={m.order_number}
-            title={`${SOURCE_NAME[m.source] ?? m.source} order ${m.order_number} — open its order details`}
+            title={mirrorTitle(m)}
             onClick={(e) => e.stopPropagation()}
             className={cn(
               "inline-block w-fit rounded-[10px] px-[7px] py-0.5 text-[11px] font-medium whitespace-nowrap no-underline hover:underline",

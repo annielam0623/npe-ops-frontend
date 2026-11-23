@@ -46,17 +46,19 @@ export interface OrderRow {
   /** 这一行是靠 agent reference 对上的（后端标；没权限的人永远不会是 true）。 */
   matched_agent_ref?: boolean;
   /**
-   * Mirror：另一个渠道的孪生单（Rezdy 行给 TripGuru 单号，TripGuru 行给 Rezdy 单号）；没有 = []。
-   * ⚠️ 占位形状（等后端 95 合同）；旧后端没有这个键 ⇒ Orders 页不出 Mirror 列。
+   * Mirror：另一个渠道的孪生单（Rezdy 行给 TripGuru 单号，TripGuru 行给 Rezdy 单号）；没有 = []，按单号排。
+   * 后端 95（95281e41）：新后端每行都有这个键；旧后端没有 ⇒ Orders 页不出 Mirror 列。缓存 60 秒；查不到 = []。
    */
   mirror?: OrderMirror[];
 }
 
-/** Mirror 里的一单（占位形状，等后端合同）。 */
+/** Mirror 里的一单（后端 95 合同，95281e41）。 */
 export interface OrderMirror {
   order_number: string;
   /** rezdy / tripguru。 */
   source: string;
+  /** 怎么对上的（排好序）："reseller_ref" = Rezdy agent ref 里有 TripGuru 单号；"guest_session" = 同日同时间同客人同电话同产品。可能没有。 */
+  matched_by?: string[];
 }
 
 export interface OrderListPage {
@@ -102,7 +104,7 @@ export interface OrderDetail {
    * 改期后旧团期那段照样给。旧后端没有这个字段 ⇒ 不出卡。⚠️ 字段名以后端合同为准。
    */
   day_of_tour?: DayOfTourLeg[];
-  /** Mirror（占位，等后端合同）：订单详情也带孪生单的话用它；没有就用搜索那一行的。 */
+  /** Mirror（后端 95 合同）：订单详情顶层也带孪生单；没有（旧后端）就用搜索那一行的。 */
   mirror?: OrderMirror[];
   source: string;
   booking_type: string;

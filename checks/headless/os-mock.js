@@ -15,7 +15,8 @@ function tourEnd(mode) {
 }
 const ctl = { unauth: false, mlinks: false, hold: false, noMoney: false, sa: false, lifeVis: null, lifeVisible: false, mirror: false };
 // Mirror 占位数据（等后端 95 合同）：ZZTEST1 对上 TripGuru NPE-4WD4WJ，其余没有。
-const MIRROR = { ZZTEST1: [{ order_number: "NPE-4WD4WJ", source: "tripguru" }] };
+// 形状照后端 95 合同（95281e41）：列表行和订单详情顶层都有 mirror。
+const MIRROR = { ZZTEST1: [{ order_number: "NPE-4WD4WJ", source: "tripguru", matched_by: ["reseller_ref"] }] };
 // 订单生命周期（Annie 2026-11-18 排法 A + 框 1）：sa = 这个人是 Super Admin（没登记开关 ⇒ 默认 super_admin_only 看得到）；
 // lifeVis / lifeVisible = 后端登记了 order_lifecycle（visibility + visible_to_me）。都没设 ⇒ 普通员工、开关没登记 ⇒ 看不到（页面同以前）。
 // 置顶 51 B：mlinks 开着 = 新后端，订单详情带 manifest_links（ZZTEST1 分在两处、ZZTEST2 一处、其余 []）；hold = ZZTEST2 是 On Hold。
@@ -261,6 +262,8 @@ http
       if (on === "ZZFAIL") return send(res, 500, { detail: "mock order failure" });
       if (!ORDERS[on]) return send(res, 404, { detail: "Order not found" });
       let o = { ...ORDERS[on], ...(ctl.hold && on === "ZZTEST2" ? { status: "On Hold" } : {}) };
+      // Mirror：订单详情顶层也带（后端 95 合同）。
+      if (ctl.mirror) o = { ...o, mirror: MIRROR[on] ?? [] };
       // 第 4 件：ctl.lunchCase 改 ZZTEST1 客人选的餐 / Bus 的餐（默认 = 客人 2 Turkey、Bus 1 Turkey 1 Veggie ⇒ 不一样、出橙字）。
       if (on === "ZZTEST1" && ctl.lunchCase && o.confirmations) {
         const c = ctl.lunchCase;
