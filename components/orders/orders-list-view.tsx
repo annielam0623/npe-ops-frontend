@@ -310,9 +310,10 @@ export function OrdersListView() {
               value={search}
               placeholder={
                 // 置顶 75（定 B）：能看 agent 的人才能按 agent reference 搜，才提。
+                // 后端 95 28922a46：q 也搜产品码（Rezdy / 旧单 / TripGuru，不分大小写、部分也行）。
                 perms.canSeeMoney
-                  ? "Search order#, name, email, phone, product, agent ref..."
-                  : "Search order#, name, email, phone, product..."
+                  ? "Search order#, name, email, phone, product, product code, agent ref..."
+                  : "Search order#, name, email, phone, product, product code..."
               }
               onChange={(e) => setSearch(e.target.value)}
               className="h-8 w-72 min-w-[200px] rounded-[7px] border-[0.5px] border-black/15 bg-paper px-2.5 text-[13px] text-[#1a1a1a] focus:outline-none night:border-white/10 night:bg-white/[.04] night:text-white/90 night:placeholder:text-white/35"
@@ -571,7 +572,7 @@ export function OrdersListView() {
           <HowToUse
             title="How to use — Orders"
             items={[
-              "The list shows upcoming tours. Search by order #, name, email, phone or product.",
+              "The list shows upcoming tours. Search by order #, name, email, phone, product or product code (part of a code is enough, like PHSU5Q).",
               "Click 📅 Tour date to change the range (Custom: pick both dates, then Apply).",
               "Use Source to show only Rezdy orders or only TripGuru orders; All shows both. The list, the record count and ⬇ Export all follow it. Clear sets it back to All.",
               "Click an Order # to open the order.",
