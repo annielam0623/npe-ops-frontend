@@ -22,6 +22,10 @@ export const BTN_PLAIN =
 export const CELL_INPUT =
   "h-7 rounded-[6px] border-[0.5px] border-black/30 night:border-white/10 bg-paper night:bg-white/[.04] px-1.5 text-[12px] text-[#1a1a1a] night:text-white/90 focus:border-[#1a1a1a] night:focus:border-white/40 focus:outline-none disabled:opacity-60";
 
+/** 白卡片里的手机 ⋯（PhoneMore 默认是给深色外框的浅色字）：包在外层，换成白底深字、看得见。 */
+export const PAPER_PHONE_MORE =
+  "[&_[data-phone-more]]:h-7 [&_[data-phone-more]]:px-2.5 [&_[data-phone-more]]:border-black/20 [&_[data-phone-more]]:bg-paper [&_[data-phone-more]]:text-[#1a1a1a]";
+
 /** 跳旧后台登录页（401），只跳一次。 */
 export function useRedirectToLogin() {
   const done = useRef(false);
