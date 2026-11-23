@@ -7,7 +7,7 @@
 > **下一个主窗口：先读「2026-11-20 收工交接：5e」，再读 11-20 当天记录，开工照 CLAUDE.md 开工必做第 4 条先列「Annie 提过没做完的」问她。**
 
 ## 2026-11-23 收工交接：前端主窗口 `今天前端主窗口-5e`[54a3a7]（公司电脑，14:30 下班）
-- **今天上 main**：第 8 件 Farm out 每家一页 451d4497；第 13 件 Main manifest 手机收键 8fc13aca；7c–e 快捷回复搬 Content Studio 9a3ae1fc；G363 按车型算导游工资前端 aad89428；Order List 搜索提示加 product code 197616f1；Products How to use 门票设置节 c826f333；nav-test 时序修复 34374a6f。Tracking 不限日期搜索：47 PASS，bb 正在改 404 句子后合（见下方当天记录，未见 SHA 就是没合）。
+- **今天上 main**：第 8 件 Farm out 每家一页 451d4497；第 13 件 Main manifest 手机收键 8fc13aca；7c–e 快捷回复搬 Content Studio 9a3ae1fc；G363 按车型算导游工资前端 aad89428；Order List 搜索提示加 product code 197616f1；Products How to use 门票设置节 c826f333；nav-test 时序修复 34374a6f。✅ Tracking 不限日期搜索 **01f53bc5**（bb，功能 5a85de19 + 404 改中性句「No order X found on any date.」；47 PASS；tt 249、tk 164、nav 40）。📌 Annie 线上试：Tour Tracking 别的日子输 CHDWQLV4Z 按 Enter ⇒ 跳 11-26、Also 列 Admin fee；CHDXQYEQG ⇒ 带到 Tickets Tracking 11-16。
 - **分支等着（未合）**：
   - Mirror task/order-mirror c95da628（9b）：95 PASS，📌 等 Annie 看截图 C:\Users\annzh\Downloads\order-mirror\ 说可以。
   - G374 门票显示名 task/g374-ticket-labels-fe 63f25045（bb）：等 Annie 跑 v183 SQL + 后端 47 上 main + PASS + Annie 看截图 C:\Users\annzh\Downloads\g374-ticket-labels\。
