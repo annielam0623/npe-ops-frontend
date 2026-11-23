@@ -187,6 +187,14 @@ export interface GenerateInput {
    * 每周两天固定休息照给）；true = Leave 算进每周的休息天（目标天数最多 7 − Leave 天数）。
    */
   leaveCountsAsOff?: boolean;
+  /**
+   * G272 ②：这一周要不要报「每 4 周至少 n 天」没达到。按滚动的 4 周算，几周连着排时每一周都会把前 3 周的缺口再报一遍；
+   * 调用方只在每 4 周的最后一周传 true（从这次排的最后一周往前数，同 `generateWeeks`）。不传 = 报（只排一周）。
+   * 打分照旧每周都按滚动 4 周算，只是不重复写进预览。
+   */
+  reportFourWeekMinDays?: boolean;
+  /** G272 ①：要不要写「没在任何 Days per week 规则里的人」那一行（几周连着排时只在一周写）。不传 = 写。 */
+  reportNoDaysRule?: boolean;
 }
 
 export interface GenerateResult {
@@ -754,6 +762,23 @@ export function generateWeek(input: GenerateInput): GenerateResult {
       });
     }
   }
+  // 1d) G272 ①：没在任何 Days per week 规则里的人，引擎不知道这周该上几天，只排点名给他的班（周末轮值），不补满。
+  //     原来不说一声，看起来像「永远排不上」；现在写一行。不进轮值的（Exclude from rotation）和有固定班的不写（本来就按点名排）。
+  if (input.reportNoDaysRule !== false) {
+    const noRule = emps.filter(
+      (e) =>
+        !c.excluded.has(e.id) &&
+        !c.fixed.some((f) => f.employee_id === e.id) &&
+        !c.perWeek.some(
+          (r) => !r.employee_ids || r.employee_ids.includes(e.id),
+        ),
+    );
+    if (noRule.length) {
+      problems.push({
+        message: `Not in any Days per week rule, so Auto-fill does not fill their week (weekend rotation only): ${noRule.map((e) => e.name).join(", ")}. Add them to a Days per week rule if they should work.`,
+      });
+    }
+  }
   /** 这一天这种班还能不能再加一个人（每个班最多几人）。 */
   const roomFor = (day: DayIndex, type: string) => {
     const cap = capFor(c, dateOf(day), day, type);
@@ -1085,6 +1110,8 @@ export function generateWeek(input: GenerateInput): GenerateResult {
     }
   }
   for (const r of c.minDays) {
+    // G272 ②：每 4 周的只在 4 周窗口的最后一周报一次（见 reportFourWeekMinDays）。
+    if (r.per !== "week" && input.reportFourWeekMinDays === false) continue;
     const targets = minDaysTargets(c, r, emps);
     for (const e of targets) {
       const thisWeek = days[e.id].filter(
@@ -1130,6 +1157,22 @@ function collectTypes(c: Compiled, rules: Rule[]): string[] {
   return [...set];
 }
 
+/**
+ * G272：几周连着排时，第 i 周要写哪几种提醒。「每 4 周至少 n 天」只在每个 4 周的最后一周报（从最后一排的一周往前数），
+ * 「没在 Days per week 规则里」只在第一周写；已发布的周（published[k] = true）不排、不算。
+ */
+export function runReportFlags(
+  published: boolean[],
+  i: number,
+): { reportFourWeekMinDays: boolean; reportNoDaysRule: boolean } {
+  const todo = published.flatMap((p, k) => (p ? [] : [k]));
+  const pos = todo.indexOf(i);
+  return {
+    reportFourWeekMinDays: (todo.length - 1 - pos) % 4 === 0,
+    reportNoDaysRule: pos === 0,
+  };
+}
+
 /** 一次排连续几周（每一周接着上一周往下排）。 */
 export function generateWeeks(
   input: Omit<GenerateInput, "weekStart"> & {
@@ -1147,6 +1190,7 @@ export function generateWeeks(
       previous,
       history,
       seed: (input.seed ?? 1) + i,
+      ...runReportFlags(Array(input.weeks).fill(false), i),
     });
     results.push(r);
     if (previous) history.push(previous);
