@@ -93,12 +93,15 @@ export function PhoneMore({
   label = "More actions",
   className,
   badge,
+  up = false,
 }: {
   children: ReactNode;
   label?: string;
   className?: string;
   /** ⋯ 右上角的小标（例如 Tracking 页当天已发群发条数）；只在手机上出现。 */
   badge?: ReactNode;
+  /** 菜单往上开（⋯ 在屏幕底部的浮条里时用，不然菜单掉出屏幕）。 */
+  up?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -136,7 +139,10 @@ export function PhoneMore({
         {open ? (
           <div
             data-phone-more-menu
-            className="absolute right-0 z-40 mt-1 flex min-w-[200px] flex-col items-stretch gap-1.5 rounded-[10px] border border-white/15 bg-[#0f1c2d] p-2 shadow-[0_12px_32px_rgba(0,0,0,.5)]"
+            className={cn(
+              "absolute right-0 z-40 flex min-w-[200px] flex-col items-stretch gap-1.5 rounded-[10px] border border-white/15 bg-[#0f1c2d] p-2 shadow-[0_12px_32px_rgba(0,0,0,.5)]",
+              up ? "bottom-full mb-1" : "mt-1",
+            )}
           >
             {children}
           </div>
