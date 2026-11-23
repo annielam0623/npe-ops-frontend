@@ -12,6 +12,7 @@ import {
   BTN_ADD_GREEN_SMALL_CLASS,
 } from "@/components/pickup-locations/legacy-ui";
 import { BulkImportButton, StandardImport } from "@/components/ui/bulk-import";
+import { usePhoneInfo } from "@/components/ui/phone";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { csvBlob } from "@/lib/csv";
 import {
@@ -68,11 +69,14 @@ export function PartnerDetail({
   partnerId,
   partnerName,
   onUnauthorized,
+  onDirty,
 }: {
   partnerId: number;
   /** 模板文件名用。 */
   partnerName: string;
   onUnauthorized: () => void;
+  /** 有没存的上车点改动：单家页离开时先问（第 8 件，146 preview v2）。 */
+  onDirty?: (dirty: boolean) => void;
 }) {
   const [locations, setLocations] = useState<LocationDraft[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -81,6 +85,10 @@ export function PartnerDetail({
   const [reloadKey, setReloadKey] = useState(0);
   const [saved, setSaved] = useState("");
   const [importOpen, setImportOpen] = useState(false);
+  const info = usePhoneInfo("About pick-up locations");
+  const dirtyNow = locations !== null && snapshot(locations) !== saved;
+  useEffect(() => onDirty?.(dirtyNow), [dirtyNow, onDirty]);
+  useEffect(() => () => onDirty?.(false), [onDirty]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -176,14 +184,20 @@ export function PartnerDetail({
   const dirty = snapshot(locations) !== saved;
 
   return (
-    <div className="grid gap-5 px-4 py-4">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-5 px-4 py-4">
       {/* 上车点 */}
       <section aria-label="Pick-up locations">
         <div className="mb-2 flex flex-wrap items-center gap-3">
           <h3 className="text-[13px] font-semibold text-[#1a1a1a] night:text-white/90">
             Pick-up locations
+            {info.button}
           </h3>
-          <span className="text-[11px] text-[#1a1a1a] night:text-white/50">
+          <span
+            className={cn(
+              "text-[11px] text-[#1a1a1a] night:text-white/50",
+              info.hide,
+            )}
+          >
             This partner&apos;s own hotels. They are not linked to our Pickup
             Locations. Order here is the order in Dispatch.
           </span>
