@@ -69,10 +69,12 @@ import type {
   TrackingMark,
   MorningTrackingRow,
   OrderDetail,
+  OrderMirror,
   OrderRow,
   TicketsTrackingRow,
   TourTrackingRow,
 } from "@/types";
+import { MirrorLinks } from "@/components/orders/mirror-links";
 
 /** 一次搜出来的几张单（按单号 / 姓名 / 电话）。 */
 interface Matches {
@@ -91,7 +93,14 @@ type State =
   /**
    * back：从搜出来的名单点进来的，可以回到名单。agentRef：这单是靠 agent reference 对上的（置顶 75），顶上写一条蓝框。
    */
-  | { kind: "ready"; result: LookupResult; back?: Matches; agentRef?: string };
+  | {
+      kind: "ready";
+      result: LookupResult;
+      back?: Matches;
+      agentRef?: string;
+      /** 搜索那一行带的 Mirror（订单详情没带时用）。 */
+      mirror?: OrderMirror[];
+    };
 
 /** 置顶 75：这一行是靠 agent reference 对上的 ⇒ 号码（后端没给就用输入的）；否则 undefined。 */
 function agentRefOf(o: OrderRow, query: string): string | undefined {
@@ -155,10 +164,11 @@ export function useOrderLookup(onUnauthorized: () => void) {
     signal: AbortSignal,
     back?: Matches,
     agentRef?: string,
+    mirror?: OrderMirror[],
   ): Promise<State> {
     const result = await lookupOrder(orderNumber, signal);
     return result
-      ? { kind: "ready", result, back, agentRef }
+      ? { kind: "ready", result, back, agentRef, mirror }
       : { kind: "not-found", query: orderNumber };
   }
 
@@ -168,13 +178,21 @@ export function useOrderLookup(onUnauthorized: () => void) {
     void run(query, async (signal) => {
       const { orders, more } = await searchOrders(query, signal);
       const exact = orders.find((o) => isSameOrder(o.order_number, query));
-      if (exact) return open(exact.order_number, signal);
+      if (exact)
+        return open(
+          exact.order_number,
+          signal,
+          undefined,
+          undefined,
+          exact.mirror,
+        );
       if (orders.length === 1)
         return open(
           orders[0].order_number,
           signal,
           undefined,
           agentRefOf(orders[0], query),
+          orders[0].mirror,
         );
       // 列表里没有的单号（极少）：照旧按单号直接查一次。
       if (orders.length === 0) return open(query, signal);
@@ -186,7 +204,9 @@ export function useOrderLookup(onUnauthorized: () => void) {
   function pick(orderNumber: string, back: Matches) {
     const row = back.orders.find((o) => o.order_number === orderNumber);
     const ref = row ? agentRefOf(row, back.query) : undefined;
-    void run(orderNumber, (signal) => open(orderNumber, signal, back, ref));
+    void run(orderNumber, (signal) =>
+      open(orderNumber, signal, back, ref, row?.mirror),
+    );
   }
 
   function backTo(matches: Matches) {
@@ -252,7 +272,7 @@ export function LookupBody({
               Found by agent reference: {state.agentRef}
             </p>
           ) : null}
-          <LookupResultView result={state.result} />
+          <LookupResultView result={state.result} rowMirror={state.mirror} />
         </>
       );
   }
@@ -267,6 +287,7 @@ function MatchList({
   onPick: (orderNumber: string, back: Matches) => void;
 }) {
   const { query, orders, more } = matches;
+  const withMirror = orders.some((o) => o.mirror !== undefined);
   return (
     <div data-match-list>
       <p className="mb-2 text-[13px] text-white/70">
@@ -283,6 +304,8 @@ function MatchList({
                 "Product",
                 "Tour date",
                 "Status",
+                // Mirror：另一个渠道的孪生单（后端有这个键才出）。
+                ...(withMirror ? ["Mirror"] : []),
               ].map((h) => (
                 <th key={h} className="px-2 py-1.5 font-semibold">
                   {h}
@@ -329,6 +352,11 @@ function MatchList({
                 >
                   {o.status}
                 </td>
+                {withMirror ? (
+                  <td className="px-2 py-2" data-mirror-cell>
+                    <MirrorLinks mirror={o.mirror} dark />
+                  </td>
+                ) : null}
               </tr>
             ))}
           </tbody>
@@ -360,8 +388,16 @@ function Note({
 
 // ── 结果 ────────────────────────────────────────────────────────────────────
 
-function LookupResultView({ result }: { result: LookupResult }) {
+function LookupResultView({
+  result,
+  rowMirror,
+}: {
+  result: LookupResult;
+  /** 搜索那一行带的 Mirror（订单详情没带时用）。 */
+  rowMirror?: OrderMirror[];
+}) {
   const { order, date } = result;
+  const mirror = order.mirror ?? rowMirror;
   // partner：不看代理商、不碰 Farm out（Annie 2026-10-27）。
   const perms = usePermissions();
   const partner = perms.partnerView;
@@ -466,6 +502,12 @@ function LookupResultView({ result }: { result: LookupResult }) {
           <Field label="Confirmation #">
             {order.ops.confirmation_no || "—"}
           </Field>
+          {/* Mirror：另一个渠道的孪生单（后端有这个键才出）。 */}
+          {mirror !== undefined ? (
+            <Field label="Mirror">
+              <MirrorLinks mirror={mirror} dark />
+            </Field>
+          ) : null}
           {/* partner 不看代理商（Agent & Commission 对 partner 不出，Annie 2026-10-27 N2 B）；没勾 orders.money_view 也不看（题 8）。 */}
           {partner || !perms.canSeeMoney ? null : (
             <Field label="Agent">{order.ops.agent_name || "—"}</Field>

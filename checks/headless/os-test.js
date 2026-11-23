@@ -695,6 +695,35 @@ async function run() {
     check("生命周期 · 订单详情页 · 员工：没有这一块、How to use 不多；没有 Chat history 卡，对话照旧在 Notes 卡里", await evaluate("return !document.querySelector('[data-lifecycle-card]') && !document.body.textContent.includes('Booked is when the order was made in Rezdy') && !document.querySelector('[data-order-chat]') && !!document.querySelector('section[aria-label=\"Notes\"]')?.textContent.includes('Yes, strollers are fine.');"));
   }
 
+  // ── Mirror（Rezdy ↔ TripGuru 孪生单；⚠️ 形状是占位，等后端 95 合同）──
+  {
+    const fs = require("fs");
+    const SHOTS = process.env.SHOT_DIR || "";
+    const shot = async (name) => {
+      if (!SHOTS) return;
+      fs.mkdirSync(SHOTS, { recursive: true });
+      const r = await cdp("Page.captureScreenshot", { format: "png" });
+      fs.writeFileSync(path.join(SHOTS, name), Buffer.from(r.data, "base64"));
+    };
+    await ctl({ mirror: false });
+    await openDashboard();
+    await search("ZZTEST1", "document.querySelector('[data-lookup-order]')");
+    check("Mirror 搜索：后端没给 mirror ⇒ 结果卡没有 Mirror 格（同现在）", !(await evaluate("return [...document.querySelectorAll('[data-lookup-block=\"order\"] dt')].some((d) => d.textContent.trim() === 'Mirror');")));
+    await ctl({ mirror: true });
+    await openDashboard();
+    await search("ZZTEST1", "document.querySelector('[data-lookup-order]') && document.querySelector('[data-lookup-block=\"order\"] [data-mirror-link]')");
+    check("Mirror 搜索：单张结果卡多一格 Mirror，写 TripGuru 单号 NPE-4WD4WJ（能点、去 Order details）", await evaluate("const a = document.querySelector('[data-lookup-block=\"order\"] [data-mirror-link]'); return !!a && a.textContent === 'NPE-4WD4WJ' && a.getAttribute('href') === '/orders/NPE-4WD4WJ';"));
+    await shot("search-result-mirror.png");
+    await openDashboard();
+    await search("ZZ Test", "document.querySelector('[data-match-list] [data-mirror-cell]')");
+    const mh = await evaluate("return [...document.querySelectorAll('[data-match-list] thead th')].map((t) => t.textContent.trim());");
+    check("Mirror 搜索：好几张对得上的名单最后一列 Mirror；ZZTEST1 那行写 NPE-4WD4WJ，别的写 —", mh[mh.length - 1] === "Mirror" && (await evaluate("const r = document.querySelector('[data-match=\"ZZTEST1\"] [data-mirror-cell]'); const o = [...document.querySelectorAll('[data-match]')].find((x) => x.dataset.match !== 'ZZTEST1')?.querySelector('[data-mirror-cell]'); return r?.textContent.trim() === 'NPE-4WD4WJ' && o?.textContent.trim() === '—';")), JSON.stringify(mh));
+    await shot("search-list-mirror.png");
+    await evaluate("document.querySelector('[data-match=\"ZZTEST1\"] [data-mirror-link]').click(); return 1;");
+    check("Mirror 搜索：点名单里的 Mirror 单号直接去那一单的 Order details（不是打开这一行）", await waitFor("location.pathname === '/orders/NPE-4WD4WJ'", 20000));
+    await ctl({ mirror: false });
+  }
+
   // ── 401 跳登录 ──
   await openDashboard();
   await ctl({ unauth: true });

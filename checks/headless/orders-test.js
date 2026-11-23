@@ -115,6 +115,7 @@ async function main() {
     await run();
     await refreshChecks();
     await staffNoteChecks();
+    await mirrorChecks();
   } finally {
     ws.close();
     chrome.kill();
@@ -806,6 +807,53 @@ async function staffNoteChecks() {
   const pCalls = await since(pBefore, (e) => e.path.startsWith("/api/staff-notes"));
   check("★ partner：不调 /api/staff-notes、/api/staff-notes/directory（后端 require_staff 会 403）", pCalls.length === 0, JSON.stringify(pCalls));
   await ctl({ partner: null, sn: false });
+}
+
+// ── Mirror（Rezdy ↔ TripGuru 孪生单，Annie 在后端窗口「动手」；⚠️ 形状是占位，等后端 95 合同）──
+async function mirrorChecks() {
+  const fs = require("fs");
+  const SHOTS = process.env.SHOT_DIR || "";
+  const shot = async (name) => {
+    if (!SHOTS) return;
+    fs.mkdirSync(SHOTS, { recursive: true });
+    const r = await cdp("Page.captureScreenshot", { format: "png" });
+    fs.writeFileSync(path.join(SHOTS, name), Buffer.from(r.data, "base64"));
+  };
+  const heads = "[...document.querySelectorAll('main thead th')].map((t) => t.textContent.trim())";
+  const cellOf = (on) => `[...document.querySelectorAll('main tbody tr')].find((tr) => tr.querySelector('a')?.textContent.trim() === ${JSON.stringify(on)})?.querySelector('[data-mirror-cell]')`;
+  await ctl({ partner: null, tripguru: true, mirror: false });
+  await goto(`${APP}/orders?range=all`);
+  await waitFor("document.querySelectorAll('main tbody tr').length > 10", 60000);
+  await sleep(400);
+  check("Mirror：后端还没给 mirror 键 ⇒ 不出 Mirror 列（同现在）", !(await evaluate(`return ${heads}.includes('Mirror');`)));
+  await ctl({ mirror: true });
+  await goto(`${APP}/orders?range=all`);
+  await waitFor(`${heads}.includes('Mirror')`, 60000);
+  await sleep(400);
+  await helpers();
+  const h = await evaluate(`return ${heads};`);
+  check("Mirror：列紧跟在 Source 后面", h.indexOf("Mirror") === h.indexOf("Source") + 1, JSON.stringify(h));
+  check("Mirror：Rezdy 单 CHDZZ2 写它的 TripGuru 单号 NPE-ZZ1001（TripGuru 蓝底蓝字），点了去 /orders/NPE-ZZ1001", await evaluate(`const c = ${cellOf("CHDZZ2")}; const a = c?.querySelector('[data-mirror-link]'); return !!a && a.textContent === 'NPE-ZZ1001' && a.getAttribute('href') === '/orders/NPE-ZZ1001' && getComputedStyle(a).backgroundColor === 'rgb(230, 241, 251)' && getComputedStyle(a).color === 'rgb(24, 95, 165)';`));
+  check("Mirror：反过来 TripGuru 单 NPE-ZZ1001 写 Rezdy 单号 CHDZZ2（Rezdy 灰底）", await evaluate(`const a = ${cellOf("NPE-ZZ1001")}?.querySelector('[data-mirror-link]'); return !!a && a.textContent === 'CHDZZ2' && a.getAttribute('href') === '/orders/CHDZZ2' && getComputedStyle(a).backgroundColor === 'rgb(241, 239, 232)';`));
+  check("Mirror：对上两张的 CHDZZ4 一行一个、都能点", await evaluate(`const as = [...(${cellOf("CHDZZ4")}?.querySelectorAll('[data-mirror-link]') ?? [])]; return as.length === 2 && as[0].textContent === 'NPE-ZZ1002' && as[1].textContent === 'NPE-ZZ1003' && as[1].getBoundingClientRect().top > as[0].getBoundingClientRect().top;`));
+  check("Mirror：没有孪生单的格子写「—」", await evaluate(`const c = ${cellOf("CHDZZ1")}; return !!c && c.textContent.trim() === '—' && !c.querySelector('a');`));
+  check("Mirror：How to use 多一句（另一个渠道的单号、能点、— = 没有、怎么配对）", await evaluate("return [...document.querySelectorAll('details')].some((d) => d.textContent.includes('Mirror shows the same booking in the other channel') && d.textContent.includes('when the Rezdy agent reference has the TripGuru order number'));"));
+  await evaluate(`${cellOf("CHDZZ2")}.scrollIntoView({ block: 'center', inline: 'center' }); return 1;`);
+  await sleep(200);
+  await shot("orders-list-mirror-1600.png");
+  await evaluate(`${cellOf("CHDZZ2")}.querySelector('[data-mirror-link]').click(); return 1;`);
+  check("Mirror：点单号打开那一单的 Order details", await waitFor("location.pathname === '/orders/NPE-ZZ1001'", 20000));
+  // 手机：表格在卡片里左右滑，整页不晃
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  await goto(`${APP}/orders?range=all`);
+  await waitFor(`${heads}.includes('Mirror')`, 60000);
+  await sleep(400);
+  check("Mirror 手机：整页不左右晃（表格在卡片里横滑）", await evaluate("return document.documentElement.scrollWidth <= innerWidth + 1;"));
+  await evaluate(`${cellOf("CHDZZ2")}.scrollIntoView({ block: 'center', inline: 'center' }); return 1;`);
+  await sleep(200);
+  await shot("orders-list-mirror-phone-390.png");
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await ctl({ tripguru: false, mirror: false });
 }
 
 main().catch((e) => {

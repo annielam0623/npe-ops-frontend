@@ -13,7 +13,9 @@ function tourEnd(mode) {
   if (mode === "none") return { tour_ended_at: null, tour_ended_where: "", last_stop_at: null, last_stop_where: "" };
   return {};
 }
-const ctl = { unauth: false, mlinks: false, hold: false, noMoney: false, sa: false, lifeVis: null, lifeVisible: false };
+const ctl = { unauth: false, mlinks: false, hold: false, noMoney: false, sa: false, lifeVis: null, lifeVisible: false, mirror: false };
+// Mirror 占位数据（等后端 95 合同）：ZZTEST1 对上 TripGuru NPE-4WD4WJ，其余没有。
+const MIRROR = { ZZTEST1: [{ order_number: "NPE-4WD4WJ", source: "tripguru" }] };
 // 订单生命周期（Annie 2026-11-18 排法 A + 框 1）：sa = 这个人是 Super Admin（没登记开关 ⇒ 默认 super_admin_only 看得到）；
 // lifeVis / lifeVisible = 后端登记了 order_lifecycle（visibility + visible_to_me）。都没设 ⇒ 普通员工、开关没登记 ⇒ 看不到（页面同以前）。
 // 置顶 51 B：mlinks 开着 = 新后端，订单详情带 manifest_links（ZZTEST1 分在两处、ZZTEST2 一处、其余 []）；hold = ZZTEST2 是 On Hold。
@@ -246,7 +248,8 @@ http
           const byRef = !!q && !!ref && ref.toLowerCase().includes(q);
           const byCol = !q || r.cols.some((c) => String(c).toLowerCase().includes(q));
           if (!byCol && !byRef) return null;
-          return ctl.noMoney ? r.rec : { ...r.rec, reseller_reference: ref || "—", matched_agent_ref: byRef && !byCol };
+          const rec = ctl.mirror ? { ...r.rec, mirror: MIRROR[r.rec.order_number] ?? [] } : r.rec;
+          return ctl.noMoney ? rec : { ...rec, reseller_reference: ref || "—", matched_agent_ref: byRef && !byCol };
         })
         .filter(Boolean);
       return send(res, 200, { total: hits.length, page: 1, pages: 1, records: hits });

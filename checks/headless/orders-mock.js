@@ -3,7 +3,13 @@
 const http = require("http");
 const staffPerm = require("./staff-perm-mock");
 const staffNotes = require("./staff-notes-mock");
-const ctl = { fail401: false, failExport: false, partner: null };
+const ctl = { fail401: false, failExport: false, partner: null, mirror: false };
+// Mirror 占位数据：CHDZZ2 ↔ NPE-ZZ1001；CHDZZ4 对上两张 TripGuru 单。
+const MIRROR = {
+  CHDZZ2: [{ order_number: "NPE-ZZ1001", source: "tripguru" }],
+  "NPE-ZZ1001": [{ order_number: "CHDZZ2", source: "rezdy" }],
+  CHDZZ4: [{ order_number: "NPE-ZZ1002", source: "tripguru" }, { order_number: "NPE-ZZ1003", source: "tripguru" }],
+};
 const log = [];
 const row = (i, o = {}) => ({ order_number: `CHDZZ${i}`, lane: "legacy", name: `ZZ Guest ${i}`, email: `g${i}@x`, phone: i % 2 ? "—" : `+1555${i}`, product_name: "Upper Antelope Bus Tour With Lunch And More", product_type: i % 3 === 0 ? "ticket" : "bus_tour", tour_date: "10/05/2026", pickup_time: "7:00 AM", pickup_location: "Aria", quantities: "2", agent_name: "Viator", source: "rezdy", created_at: "10/1/2026 9:00 AM", updated_at: "10/2/2026 9:00 AM", status: ["confirmed", "pending", "cancelled", "WEIRD"][i % 4], ...o });
 const all = Array.from({ length: 70 }, (_, i) => row(i + 1));
@@ -133,6 +139,8 @@ http.createServer(async (req, res) => {
     const page = Number(q.get("page") || 1);
     let records = rows.slice((page - 1) * 50, page * 50);
     if (ctl.partner || lacksMoney()) records = records.map((r) => ({ ...r, agent_name: "—" }));
+    // Mirror（占位形状，等后端 95 合同）：ctl.mirror ⇒ 每行带 mirror（另一个渠道的孪生单；没有 = []）。
+    if (ctl.mirror) records = records.map((r) => ({ ...r, mirror: MIRROR[r.order_number] ?? [] }));
     return send(res, 200, { total: rows.length, page, pages: Math.ceil(rows.length / 50), records });
   }
   if (p === "/api/operations/orders/export") {

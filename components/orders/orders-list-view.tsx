@@ -20,6 +20,8 @@ import type {
   OrderSource,
 } from "@/types";
 
+import { MirrorLinks } from "./mirror-links";
+
 type Range = "upcoming" | "today" | "next7" | "month" | "all" | "custom";
 
 const RANGES: readonly { value: Range; label: string }[] = [
@@ -292,6 +294,8 @@ export function OrdersListView() {
         ? state.previous
         : null;
   const total = state.kind === "ready" ? state.data.total : null;
+  // Mirror 列：后端给了 mirror 这个键才出（旧后端没有 ⇒ 不出这一列）。
+  const showMirror = !!data?.records.some((r) => r.mirror !== undefined);
 
   return (
     <main className="text-stone-800 night:text-white/90">
@@ -487,6 +491,8 @@ export function OrdersListView() {
                       // partner / 没勾 orders.money_view 不看代理商（后端给的 agent_name 是「—」）。
                       ...(showAgent ? ["Agent"] : []),
                       "Source",
+                      // Mirror：另一个渠道的孪生单（后端有这个键才出）。
+                      ...(showMirror ? ["Mirror"] : []),
                       "Created",
                       "Updated",
                     ].map((h) => (
@@ -503,7 +509,7 @@ export function OrdersListView() {
                   {!data || data.records.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={showAgent ? 12 : 11}
+                        colSpan={(showAgent ? 12 : 11) + (showMirror ? 1 : 0)}
                         className={cn(
                           "p-6 text-center text-[13px]",
                           state.kind === "error"
@@ -538,6 +544,7 @@ export function OrdersListView() {
                         key={`${r.order_number}-${i}`}
                         row={r}
                         showAgent={showAgent}
+                        showMirror={showMirror}
                       />
                     ))
                   )}
@@ -577,6 +584,11 @@ export function OrdersListView() {
               "Use Source to show only Rezdy orders or only TripGuru orders; All shows both. The list, the record count and ⬇ Export all follow it. Clear sets it back to All.",
               "Click an Order # to open the order.",
               "The Source column shows where an order came from: Rezdy or TripGuru. TripGuru orders open read-only. Pickup time, pickup location and agent are blank for TripGuru orders for now.",
+              ...(showMirror
+                ? [
+                    "Mirror shows the same booking in the other channel: on a Rezdy order, its TripGuru order number; on a TripGuru order, its Rezdy order number. Click one to open that order. A dash means none was found. Orders are paired when the Rezdy agent reference has the TripGuru order number, or when the date, start time, guest name, phone and product are the same.",
+                  ]
+                : []),
               ...(perms.canSeeMoney
                 ? [
                     "If you can see prices, agent & commission, you can also search by the agent reference — here and in the order search box at the top of every page.",
@@ -641,9 +653,11 @@ function Tag({
 function OrderTableRow({
   row: r,
   showAgent,
+  showMirror,
 }: {
   row: OrderRow;
   showAgent: boolean;
+  showMirror: boolean;
 }) {
   return (
     <tr className="border-b-[0.5px] border-black/5 text-[#1a1a1a] last:border-b-0 hover:bg-[#fafaf8] night:border-white/10 night:text-white/75 night:hover:bg-white/[.03]">
@@ -706,6 +720,11 @@ function OrderTableRow({
           raw={r.source}
         />
       </td>
+      {showMirror ? (
+        <td className="px-2.5 py-[7px]" data-mirror-cell>
+          <MirrorLinks mirror={r.mirror} />
+        </td>
+      ) : null}
       <td className="px-2.5 py-[7px] text-[11px] whitespace-nowrap">
         {r.created_at}
       </td>

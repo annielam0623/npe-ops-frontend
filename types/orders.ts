@@ -45,6 +45,18 @@ export interface OrderRow {
   reseller_reference?: string;
   /** 这一行是靠 agent reference 对上的（后端标；没权限的人永远不会是 true）。 */
   matched_agent_ref?: boolean;
+  /**
+   * Mirror：另一个渠道的孪生单（Rezdy 行给 TripGuru 单号，TripGuru 行给 Rezdy 单号）；没有 = []。
+   * ⚠️ 占位形状（等后端 95 合同）；旧后端没有这个键 ⇒ Orders 页不出 Mirror 列。
+   */
+  mirror?: OrderMirror[];
+}
+
+/** Mirror 里的一单（占位形状，等后端合同）。 */
+export interface OrderMirror {
+  order_number: string;
+  /** rezdy / tripguru。 */
+  source: string;
 }
 
 export interface OrderListPage {
@@ -90,6 +102,8 @@ export interface OrderDetail {
    * 改期后旧团期那段照样给。旧后端没有这个字段 ⇒ 不出卡。⚠️ 字段名以后端合同为准。
    */
   day_of_tour?: DayOfTourLeg[];
+  /** Mirror（占位，等后端合同）：订单详情也带孪生单的话用它；没有就用搜索那一行的。 */
+  mirror?: OrderMirror[];
   source: string;
   booking_type: string;
   /** false：订单在新的 Rezdy 表里，暂时只读。 */
