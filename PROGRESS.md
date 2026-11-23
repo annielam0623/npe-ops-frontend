@@ -10,6 +10,8 @@
 - 开工：origin/main 463cc257，主目录 detached 干净。资源：空闲内存 49.4 GB，node 0、chrome 0。工作窗口：bb [01f67c]、2c [721148]、9b [532018]（都空）。后端主窗口-bb [384f3c]。
 - 开工必做第 4 条（只读子任务核 PROGRESS 9–565 行）已列给 Annie，等她选今天做哪几件：等 Annie：146 上传 7 题 + G363 3 题（Excel Annie_待答题_2026-11-22_146_G363.xlsx）、导游页手机版 A / B / C（回后端）、David H 账号（Team 页开）、★ Notes 验收后旧路径下线；动手没做：第 8 件 Farm out 每家一页、7c–e 快捷回复搬 Content Studio；等后端：7a / 7b 快捷回复 6 句 + 号码、第 9 件 G320 变量标出、第 11 件导游必填、G361 DOR No show、页面慢（Morning Tracking）；拿不准：150 题 8 Main manifest 手机收键、G318 第二部分、7a / 7b / 9 / 页面慢后端进度没记。
 - ✅ Annie（原话）「6和7今天做完」⇒ 今天必须做完：第 8 件 Farm out 每家一页 → 派 2c（预览 9eCQCXvHoEDaEDgsU3uYks v2，Q1–Q4 / Q6 A、Q5 每家一页、Q7–Q11 A；参考 ops-wt-146 未提交工作；不碰 timetable 上传）；第 7c–e 快捷回复管理搬 Content Studio → 派 bb（预览 Q5YprnniHcacr6pskveXP，旧网址跳、拖拽暂存 Save order、Action Log 放标签下；7a / 7b 不在内，等后端）。9b 待命。
+- 窗口重启：本窗口现 [54a3a7]；bb / 2c / 9b 都不在了，只有 npe-ops-frontend-a2 [be8556]、后端主窗口-bb [80a1b1]。第 8 件改派 a2；7c–e 和第 13 件等 Annie 再开 2 个窗口。
+- ✅ Annie（原话）「13 动手」⇒ 第 13 件 Main manifest 手机把不必要的键合并 / 藏起来（11-16 原话「手机的话需要把一些不必要的键合并或者隐藏起来」），照全站手机规则（PhoneMore ⋯ 等）做，先核是否已部分上 main。
 
 ## 2026-11-20（周五）前端主窗口 `npe-ops-frontend-5e`[614588]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工：origin/main 9ab99466（主目录 detached 改 PROGRESS）。资源：空闲内存 38.2 / 61.8 GB，node 0、chrome 71。现在没有工作窗口；后端在线 `npe-confirmation-service-bb`[282016]。
