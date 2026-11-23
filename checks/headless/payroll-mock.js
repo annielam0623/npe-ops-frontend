@@ -12,6 +12,25 @@ const ctl = {
   /** PUT /api/payroll/runs/{id} 对这一趟回 400（后端原句）。 */
   runFail: null,
   periodFail: false,
+  /** G363 车型补贴（合同 guide-pay-vehicle-extra-2026-11-22.md）：true ⇒ 趟带 van / vehicle_model / vehicle_extra…、rates 带 vehicle_rates。 */
+  g363: false,
+  /** PUT /api/payroll/vehicle-rates 回 400（后端原句）。 */
+  vehicleFail: false,
+};
+// G363：车型补贴价目（v180 起始行 + 一行锁之后的 SUV）；那天的车号 / 车型按趟号。
+const VRATES = [
+  { id: 1, model: "Sprinter", manifest_id: 3, tour: "Antelope Canyon", mode: "add", amount: "50.00", from: "2026-11-01", to: null, active: true },
+  { id: 2, model: "Mini Van", manifest_id: 5, tour: "Bryce & Zion", mode: "total", amount: "320.00", from: "2026-11-01", to: null, active: true },
+  { id: 3, model: "SUV", manifest_id: 3, tour: "Antelope Canyon", mode: "total", amount: "350.00", from: "2026-12-01", to: null, active: true },
+];
+const VEHMAP = {
+  811: { van: "2622", model: "" },
+  812: { van: "2041", model: "Sprinter" },
+  818: { van: "2622B", model: "Mini Van" },
+  819: { van: "2041", model: "Sprinter" },
+  820: { van: "2041", model: "Sprinter" },
+  821: { van: "2622", model: "" },
+  822: { van: "2700", model: "Mini  Van" },
 };
 const log = [];
 
@@ -48,9 +67,30 @@ function mk(o) {
 }
 function finish(r) {
   const fee = r.fee_override !== null ? Number(r.fee_override) : Number(r.rate_fee ?? 0);
-  const ex = r.extras.reduce((a, x) => a + Number(x.amount), 0);
+  // 同后端 extras_total：只算这天能勾的（extras_allowed 里有的）；小费只算 Private Tour（:215）。
+  const ex = r.extras.filter((x) => r.extras_allowed.some((a) => a.code === x.code)).reduce((a, x) => a + Number(x.amount), 0);
+  const tipsN = r.shift === "private_tour" ? Number(r.tips ?? 0) : 0;
   const status = !r.guide_name ? "no_guide" : r.shift !== "private_tour" && r.rate_fee === null && r.fee_override === null ? "no_rate" : "paid";
-  return { ...r, fee: m2(fee), extras_total: m2(ex), total: m2(fee + ex + Number(r.tips ?? 0)), status, locked: locks.some((l) => r.date >= l.from && r.date <= l.to) };
+  const out = { ...r, fee: m2(fee), extras_total: m2(ex), total: m2(fee + ex + tipsN), status, locked: locks.some((l) => r.date >= l.from && r.date <= l.to) };
+  if (!ctl.g363) return out;
+  // 同后端规则：司机导游、Bus tour、有价格、没手改 Fee、那天的车型在补贴表里 ⇒ add 加上去 / total 补到总价（不低于 0）。
+  const vm = VEHMAP[r.assignment_id] ?? { van: "", model: "" };
+  let vx = null;
+  if (r.role === "driver_guide" && r.shift === "bus_tour" && r.rate_fee !== null && r.fee_override === null && vm.model) {
+    // 同后端 vehicle_rate_key：只去头尾空格 + 小写，中间空格不并（「Mini  Van」≠「Mini Van」）。
+    const vr = VRATES.find((x) => x.active && x.model.trim().toLowerCase() === vm.model.trim().toLowerCase() && x.manifest_id === r.manifest_id && x.from <= r.date && (!x.to || x.to >= r.date));
+    if (vr) {
+      const amt = vr.mode === "add" ? Number(vr.amount) : Math.max(0, Number(vr.amount) - Number(r.rate_fee));
+      vx = { rate_id: vr.id, model: vr.model, mode: vr.mode, rate_amount: vr.amount, amount: m2(amt) };
+    }
+  }
+  const vxAmt = vx ? Number(vx.amount) : 0;
+  return {
+    ...out, van: vm.van, vehicle_model: vm.model,
+    guide_position: r.guide_hr_id === 201 ? "both" : r.guide_in_hr && r.guide_name ? "guide" : "",
+    vehicle_extra: vx, vehicle_extra_amount: m2(vxAmt), personal_and_vehicle: !!vx && r.assignment_id === 812,
+    total: m2(Number(out.total) + vxAmt),
+  };
 }
 
 const KEVIN = { guide_hr_id: 201, guide_name: "Kevin Tran", guide_in_hr: true };
@@ -64,6 +104,15 @@ const runsNov = [
   mk({ guide_hr_id: null, guide_name: "Jake ", guide_in_hr: false, date: "2026-11-05", assignment_id: null, tour: "Bryce & Zion", manifest_id: 5, rate_id: 4, rate_fee: "250.00" }),
   mk({ guide_hr_id: 202, guide_name: "Lisa Park", guide_in_hr: true, date: "2026-11-09", assignment_id: 816, tour: "Zion Typed Tour", manifest_id: null }),
   mk({ date: "2026-11-07", assignment_id: 817, shift: "private_tour", manifest_id: null, tour: "Private Tour" }),
+  // G363 才有的两趟：Bryce & Zion 开 Mini Van（Total 320 − 价格 275 = 补 45）；Antelope 开 Sprinter 但 Fee 手改了（没有补贴）。
+  mk({ ...KEVIN, g363only: true, date: "2026-11-04", assignment_id: 818, role: "driver_guide", driver_hr_id: 201, driver_name: "Kevin Tran", tour: "Bryce & Zion", manifest_id: 5, rate_id: 4, rate_fee: "275.00" }),
+  mk({ ...KEVIN, g363only: true, date: "2026-11-10", assignment_id: 819, role: "driver_guide", driver_hr_id: 201, driver_name: "Kevin Tran", rate_id: 2, rate_fee: "280.00", fee_override: "300.00" }),
+  // 后端核对 2b48ccc8 第 3 条：South Rim 开 Sprinter、Fee 手改了——South Rim 没有 Sprinter 补贴，点 Use the price 不该写 after Save。
+  mk({ ...KEVIN, g363only: true, date: "2026-11-09", assignment_id: 820, role: "driver_guide", driver_hr_id: 201, driver_name: "Kevin Tran", tour: "Grand Canyon South Rim", manifest_id: 4, rate_id: 3, rate_fee: "270.00", fee_override: "290.00" }),
+  // 后端核对条件 A / 1：Bus tour 存着小费 25（不算）、勾着一个这天不能勾的 Long day（不算）。
+  mk({ ...KEVIN, g363only: true, date: "2026-11-07", assignment_id: 821, rate_id: 1, rate_fee: "230.00", tips: "25.00", extras_allowed: [], extras: [LONG] }),
+  // 条件 B：车型打成「Mini  Van」（两个空格）、Fee 手改——对不上 Mini Van 补贴，点 Use the price 不写 after Save。
+  mk({ ...KEVIN, g363only: true, date: "2026-11-05", assignment_id: 822, role: "driver_guide", driver_hr_id: 201, driver_name: "Kevin Tran", tour: "Bryce & Zion", manifest_id: 5, rate_id: 4, rate_fee: "275.00", fee_override: "280.00" }),
 ];
 const runsOct = [mk({ ...KEVIN, date: "2026-10-20", assignment_id: 701, rate_id: 1, rate_fee: "230.00" })];
 
@@ -80,7 +129,7 @@ function periodOf(date) {
 }
 function period(date) {
   const { from, to } = periodOf(date);
-  const src = from === "2026-11-01" ? runsNov : from === "2026-10-16" ? runsOct : null;
+  const src = from === "2026-11-01" ? runsNov.filter((r) => ctl.g363 || !r.g363only) : from === "2026-10-16" ? runsOct : null;
   const through = from === "2026-11-01" ? "2026-11-10" : from === "2026-10-16" ? to : from < "2026-11-01" ? to : null;
   const runs = (src ?? []).map(finish).sort((a, b) => a.date.localeCompare(b.date));
   const paid = runs.filter((r) => r.status === "paid");
@@ -156,8 +205,16 @@ http.createServer(async (req, res) => {
     return send(res, 200, { rates, extra_rates: [...extraRates, ...extra3].filter((x) => !gone.has(x.code)), locks,
       ...(ctl.noCatalog ? {} : { extras: codes.map(([code, name]) => ({ code, name, active: !gone.has(code) })) }),
       // guides = HR 里 Guide / Driver + Guide 所有人（合同 d8a4f4b5）；ZZ Test Lan 本期没出车。ctl.noGuides = 旧后端没有这个键。
-      ...(ctl.noGuides ? {} : { guides: [{ hr_id: 201, name: "Kevin Tran" }, { hr_id: 305, name: "ZZ Test Lan" }] }) });
+      ...(ctl.noGuides ? {} : { guides: [{ hr_id: 201, name: "Kevin Tran" }, { hr_id: 305, name: "ZZ Test Lan" }] }),
+      ...(ctl.g363 ? { vehicle_rates: VRATES.filter((x) => x.active), vehicle_models: ["Mini Van", "SUV", "Sprinter"] } : {}) });
   }
+  if (p === "/api/payroll/vehicle-rates" && req.method === "PUT") {
+    entry.body = await readBody(req);
+    if (ctl.vehicleFail) return send(res, 400, { detail: "Sprinter on South Rim already has an extra starting 2026-12-01. Change that one instead." });
+    const old = VRATES.find((x) => x.id === entry.body.id);
+    return send(res, 200, { changed: true, vehicle_rate: { ...(old ?? { id: 99, active: true }), ...entry.body } });
+  }
+  if (/^\/api\/payroll\/vehicle-rates\/\d+$/.test(p) && req.method === "DELETE") return send(res, 200, { changed: true, vehicle_rate: VRATES.find((x) => `/api/payroll/vehicle-rates/${x.id}` === p) ?? null });
   if (p === "/api/payroll/rates" && req.method === "PUT") { entry.body = await readBody(req); return send(res, 200, { changed: true, rate: { ...rates[0], ...entry.body } }); }
   if (p === "/api/payroll/extra-rates" && req.method === "PUT") { entry.body = await readBody(req); return send(res, 200, { changed: true, extra_rate: { ...extraRates[0], ...entry.body } }); }
   if (/^\/api\/payroll\/(rates|extra-rates)\/\d+$/.test(p) && req.method === "DELETE") return send(res, 200, { changed: true });

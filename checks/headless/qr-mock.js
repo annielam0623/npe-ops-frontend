@@ -1,4 +1,4 @@
-// 模拟后端：Settings → Driver Quick Replies（G98，后端 d0 task/driver-messages）。控制：POST /__ctl；GET /__log。
+// 模拟后端：Content Studio › Team Messages › Driver Quick Replies（G98，后端 d0 task/driver-messages；7c 搬进 Content Studio）。控制：POST /__ctl；GET /__log。
 const http = require("http");
 const ctl = { fail401: false, staff: false, staleOrder: false, failLoad: false, log403: false };
 const log = [];
@@ -50,6 +50,9 @@ http.createServer(async (req, res) => {
   log.push(entry);
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
   if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.staff ? "staff" : "admin", is_admin: !ctl.staff, is_superadmin: false });
+  // 7c A：快捷回复搬进 Content Studio › Team Messages，页面先读模板（这里不用，回空）和整页 Action Log。
+  if (p === "/api/template-settings") return send(res, 200, []);
+  if (p === "/api/template-settings/action-log") return send(res, 200, { next_cursor: null, entries: [] });
   if (!p.startsWith("/api/driver-quick-replies")) return send(res, 404, { detail: "mock: not found" });
   if (ctl.staff) return send(res, 403, { detail: "Admin access required" });
   if (p === "/api/driver-quick-replies/log") return send(res, 200, { entries, limit: 50 });
@@ -66,10 +69,12 @@ http.createServer(async (req, res) => {
     const b = await readBody(req); entry.body = b;
     const why = problem(b.body);
     if (why) return send(res, 400, { detail: why });
-    const reply = { id: nextId++, body: b.body.trim(), sort_order: Math.max(0, ...replies.map((r) => r.sort_order)) + 1, active: true, add_bus_map: false, updated_at: new Date().toISOString() };
+    const reply = { id: nextId++, body: b.body.trim(), sort_order: Math.max(0, ...replies.map((r) => r.sort_order)) + 1, active: true, add_bus_map: false, updated_at: null };
     replies.push(reply);
+    // 同后端（G369 核对 2026-11-23）：POST 回包没有 updated_at，只有 id / body / sort_order / active / add_bus_map。
+    const { updated_at: _u, ...out } = reply;
     addLog("create", reply.body, null, { body: reply.body, active: true, sort_order: reply.sort_order });
-    return send(res, 200, { ok: true, reply });
+    return send(res, 200, { ok: true, reply: out });
   }
   if (p === "/api/driver-quick-replies/order" && req.method === "PUT") {
     const b = await readBody(req); entry.body = b;

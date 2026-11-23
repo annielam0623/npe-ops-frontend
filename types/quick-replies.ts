@@ -9,6 +9,6 @@ export interface QuickReply {
   active: boolean;
   /** G349：勾了 ⇒ 司机发这条时文字末尾自动加大巴位置链接（客人 90 分钟内能开）。新建一律 false。 */
   add_bus_map: boolean;
-  /** ISO；没改过为 null。 */
-  updated_at: string | null;
+  /** ISO；没改过为 null。POST 新加的回包里没有这个键（后端 G369 核对 2026-11-23），页面也不读它。 */
+  updated_at?: string | null;
 }

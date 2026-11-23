@@ -27,7 +27,13 @@ export const TEAM_TABS = [
   "Driver & Guide SMS",
   "Restaurant",
   "Schedule Email",
+  // 7c–e（Annie 2026-11-20「7c「A」7d「A」7e「A」| 动手」）：原 Settings › Driver Quick Replies 搬进来当第四个标签；
+  // 内容是 components/quick-replies/quick-replies-panel.tsx（自己的接口，不走 template-settings），content-studio-view 直接放它。
+  "Driver Quick Replies",
 ] as const;
+/** 快捷回复标签（网址 ?module=team&tab=driver-quick-replies 打开它，旧的 /settings/quick-replies 跳过来）。 */
+export const QUICK_REPLIES_TAB: TeamTab = "Driver Quick Replies";
+export const QUICK_REPLIES_TAB_SLUG = "driver-quick-replies";
 export type TeamTab = (typeof TEAM_TABS)[number];
 
 const PREFIX = "tmpl__global__";
@@ -462,6 +468,8 @@ const TAB_HINT: Record<TeamTab, string> = {
     "Sent to the restaurant after a guide changes the lunch order. The same text goes out as an SMS and as the email body. Sandwich names, counts and line order come from the system and are not edited here.",
   "Schedule Email":
     "Emails sent from Schedule. The list of shifts and the link address come from the system. Here you edit the subject and the sentences around them.",
+  "Driver Quick Replies":
+    "One-tap texts relay and tour drivers can send to a guest.",
 };
 
 /** 左边：这个标签页的卡片。 */
@@ -595,6 +603,9 @@ export function TeamMessagesPreview({
         </p>
       </div>
     );
+  } else if (tab === QUICK_REPLIES_TAB) {
+    // 快捷回复没有模板预览：「What the driver sees」就在标签里，右边的 Preview 不放（content-studio-view 用 wide）。
+    return null;
   } else {
     const greet = v("sched_greeting");
     body = (
