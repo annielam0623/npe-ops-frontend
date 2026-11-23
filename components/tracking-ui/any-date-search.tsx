@@ -215,7 +215,7 @@ export function useAnyDateSearch<Row extends { order_number: string }>({
         setNote(
           nameOrPhone(q)
             ? { kind: "nomatch", q }
-            : { kind: "error", text: `No order ${q} on any date (checked the Order List).` },
+            : { kind: "error", text: `No order ${q} found on any date.` },
         );
         return;
       }

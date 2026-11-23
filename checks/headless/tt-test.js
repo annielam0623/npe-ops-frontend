@@ -1272,7 +1272,7 @@ async function run() {
     await type("CHD9999");
     await enter();
     await waitFor("document.querySelector('[data-anydate-note=error]')", 15000);
-    check("不限日期：哪天都没有：红字「No order CHD9999 on any date (checked the Order List).」", (await note()) === "No order CHD9999 on any date (checked the Order List).", await note());
+    check("不限日期：哪天都没有：红字「No order CHD9999 found on any date.」（中性，partner 看不到的单也是 404）", (await note()) === "No order CHD9999 found on any date.", await note());
 
     // Q2 A：名字这一天没有 ⇒ Search all dates →，点了列出所有日子对得上的单，点一个跳过去
     await type("ZZ Two");
