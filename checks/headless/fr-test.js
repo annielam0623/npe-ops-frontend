@@ -1,6 +1,7 @@
 // 用 Chrome DevTools 协议驱动 headless Chrome，检查 /farm-out-report。
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
+const { halfScreenChecks } = require("./half-screen-checks");
 const path = require("path");
 const { SELECT_HELPERS } = require("./select-menu-helper");
 
@@ -113,6 +114,7 @@ async function main() {
 
   try {
     await run();
+    await halfScreenChecks({ cdp, evaluate, openPage, check, sleep, url: `${APP}/farm-out-report`, sel: "table", label: "Farm out Report", fitAt: [1920, 950, 760], scrollAt: [640] });
   } finally {
     ws.close();
     chrome.kill();

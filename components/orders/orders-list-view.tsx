@@ -467,7 +467,8 @@ export function OrdersListView() {
             <div className="overflow-x-auto">
               <table
                 className={cn(
-                  "w-full min-w-[900px] border-collapse text-[12px]",
+                  // 半屏适配（Annie 2026-11-23）：640–1279px 宽时最窄 650px、格子边距收一点、时间可以换行；全屏和手机照旧。
+                  "w-full min-w-[900px] border-collapse text-[12px] sm:min-w-[650px] sm:max-xl:[&_td]:px-1.5 sm:max-xl:[&_th]:px-1.5",
                   state.kind === "loading" && data && "opacity-60",
                 )}
               >
@@ -491,7 +492,7 @@ export function OrdersListView() {
                     ].map((h) => (
                       <th
                         key={h}
-                        className="bg-paper px-2.5 py-2 text-[11px] font-semibold whitespace-nowrap text-[#1a1a1a] night:bg-white/[.03] night:text-white/35"
+                        className="bg-paper px-2.5 py-2 text-[11px] font-semibold whitespace-nowrap text-[#1a1a1a] sm:whitespace-normal night:bg-white/[.03] night:text-white/35"
                       >
                         {h}
                       </th>
@@ -673,7 +674,7 @@ function OrderTableRow({
         </span>
       </td>
       <td
-        className="max-w-[180px] truncate px-2.5 py-[7px]"
+        className="max-w-[180px] truncate px-2.5 py-[7px] sm:max-xl:max-w-[90px]"
         title={r.product_name}
       >
         {r.product_name}
@@ -705,10 +706,10 @@ function OrderTableRow({
           raw={r.source}
         />
       </td>
-      <td className="px-2.5 py-[7px] text-[11px] whitespace-nowrap">
+      <td className="px-2.5 py-[7px] text-[11px] whitespace-nowrap sm:max-xl:whitespace-normal">
         {r.created_at}
       </td>
-      <td className="px-2.5 py-[7px] text-[11px] whitespace-nowrap">
+      <td className="px-2.5 py-[7px] text-[11px] whitespace-nowrap sm:max-xl:whitespace-normal">
         {r.updated_at}
       </td>
     </tr>

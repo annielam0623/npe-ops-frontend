@@ -323,7 +323,7 @@ const BAND_LINK =
   "inline-flex h-7 items-center gap-1.5 rounded-[7px] border border-black/25 bg-paper px-3 text-[12px] font-bold text-[#111] no-underline";
 /** .mf-card th / td。客人表的字号 / 粗细照纸本（G198 Q1：正文 16.5px 粗体、人数 19px），每格由 `cellText()` 给。 */
 const TH =
-  "border border-[#9aa] bg-[#e6eaee] px-1.5 py-1 text-left text-[9.5px] font-bold whitespace-nowrap";
+  "border border-[#9aa] bg-[#e6eaee] px-1.5 py-1 text-left text-[9.5px] font-bold whitespace-nowrap [@media_screen_and_(min-width:640px)]:whitespace-normal";
 const TD =
   "border border-[#c8ced2] px-[7px] py-[3px] align-middle whitespace-nowrap";
 /** 名字、酒店、票型：太长就在格里换行，不截断（定 8）；单号、时间、电话、人数、餐不折行。 */
@@ -1621,7 +1621,7 @@ function GoneCard({ gone }: { gone: ManifestGoneGuest[] }) {
         </span>
       </div>
       <div className="overflow-x-auto">
-        <table className="mt-1.5 w-full min-w-[980px] border-collapse">
+        <table className="mt-1.5 w-full min-w-[980px] border-collapse [@media_screen_and_(min-width:640px)]:min-w-[650px]">
           <thead>
             <tr>
               {[
@@ -2222,7 +2222,10 @@ function GuestTable({
         className={cn(
           "mt-1.5 w-full border-collapse",
           // 手机上格子左右边距缩小（7 ⇒ 3 px），表才放得进一屏。
-          fit ? "[&_td]:px-[3px] [&_th]:px-[3px]" : "min-w-[980px]",
+          // 半屏适配（Annie 2026-11-23）：屏幕 ≥ 640px 时最窄 650px（表头可以换行；单号、时间、电话、人数、餐照定 8 不折行）；打印照旧 980px。
+          fit
+            ? "[&_td]:px-[3px] [&_th]:px-[3px]"
+            : "min-w-[980px] [@media_screen_and_(min-width:640px)]:min-w-[650px]",
           edit &&
             isPicked(edit.picks, "page") &&
             "outline-2 outline-offset-2 outline-[#2563eb]",
