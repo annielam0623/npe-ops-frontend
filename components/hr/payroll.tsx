@@ -146,6 +146,7 @@ function vehicleRateFor(
   run: PayrollRun,
   vrates: readonly PayrollVehicleRate[],
 ): PayrollVehicleRate | undefined {
+  // 只去头尾空格、不分大小写；中间的空格不并（同后端 name_key，Annie 的规矩：「Mini  Van」对不上「Mini Van」）。
   const model = run.vehicle_model?.trim().toLowerCase() ?? "";
   if (
     run.shift === "private_tour" ||
@@ -189,13 +190,16 @@ function shownOf(
   const allowed = new Map(run.extras_allowed.map((x) => [x.code, x]));
   let extrasTotal = 0;
   for (const code of ticked) {
-    // 勾了但这天已不能勾（价格改了）：用后端给的已勾金额。
-    const x = allowed.get(code) ?? run.extras.find((e) => e.code === code);
+    // 同后端 extras_total（guide_payroll.py:203-214）：只算这趟这天能勾的（extras_allowed，含 ANT relay 只在价格行勾了的团）；
+    // 勾着但这天已没有金额的不算钱（G363 后端核对条件 1）。
+    const x = allowed.get(code);
     if (x) extrasTotal += Number(x.amount);
   }
   const tips = d?.tips !== undefined ? d.tips : run.tips;
   const t = numOrNull(tips);
-  const tipsNum = t !== null && Number.isFinite(t) ? t : 0;
+  // 同后端（:215）：小费只算 Private Tour 的趟；Bus tour 就算存着小费也不算（G363 后端核对条件 A）。
+  const tipsNum =
+    run.shift === "private_tour" && t !== null && Number.isFinite(t) ? t : 0;
   // G363：存着手填 Fee、页面上点了 Use the price（存好后就没有手填了）：有对得上的启用补贴才写「after Save」；
   // 金额要存了才知道（Total 方式价格不低于总价时是 0），所以只写 after Save、不写数。
   const vxPending =

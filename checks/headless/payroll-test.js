@@ -621,6 +621,12 @@ async function g363Checks() {
   check("G363：手填的 819 点 Use the price ⇒ 写 Vehicle extra after Save（Antelope 有启用的 Sprinter 补贴），Total 先只算价格 $280.00", (await evaluate(`return ${run_(819)}.querySelector('[data-payroll-vx-pending]')?.textContent === 'Vehicle extra after Save';`)) && (await cell(819, 7)) === "$280.00", await cell(819, 7));
   await evaluate(`${q("[data-payroll-discard]")}.click();`);
   await sleep(150);
+  check("G363 后端核对条件 A / 1：Bus tour 821 存着小费 25、勾着这天不能勾的 Long day ⇒ 都不算，Total $230.00（同后端 total）", (await cell(821, 7)) === "$230.00" && (await cell(821, 6)) === "—", `${await cell(821, 5)} | ${await cell(821, 6)} | ${await cell(821, 7)}`);
+  await evaluate(`${run_(822)}.querySelector('[data-payroll-use-price]').click();`);
+  await sleep(200);
+  check("G363 后端核对条件 B：822 车型「Mini  Van」（两个空格）对不上 Mini Van 补贴 ⇒ Use the price 后不写 after Save", (await evaluate(`return !${run_(822)}.querySelector('[data-payroll-vx-pending]') && !${run_(822)}.querySelector('[data-payroll-vx]');`)) && (await cell(822, 7)) === "$275.00", await cell(822, 7));
+  await evaluate(`${q("[data-payroll-discard]")}.click();`);
+  await sleep(150);
   await evaluate(`${run_(820)}.querySelector('[data-payroll-use-price]').click();`);
   await sleep(200);
   check("G363 后端核对 3：手填的 820（South Rim 开 Sprinter，South Rim 没有 Sprinter 补贴）点 Use the price ⇒ 不写 after Save，Total $270.00", (await evaluate(`return !${run_(820)}.querySelector('[data-payroll-vx-pending]') && !${run_(820)}.querySelector('[data-payroll-vx]');`)) && (await cell(820, 7)) === "$270.00", await cell(820, 7));

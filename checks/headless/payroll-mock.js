@@ -29,6 +29,8 @@ const VEHMAP = {
   818: { van: "2622B", model: "Mini Van" },
   819: { van: "2041", model: "Sprinter" },
   820: { van: "2041", model: "Sprinter" },
+  821: { van: "2622", model: "" },
+  822: { van: "2700", model: "Mini  Van" },
 };
 const log = [];
 
@@ -65,15 +67,18 @@ function mk(o) {
 }
 function finish(r) {
   const fee = r.fee_override !== null ? Number(r.fee_override) : Number(r.rate_fee ?? 0);
-  const ex = r.extras.reduce((a, x) => a + Number(x.amount), 0);
+  // 同后端 extras_total：只算这天能勾的（extras_allowed 里有的）；小费只算 Private Tour（:215）。
+  const ex = r.extras.filter((x) => r.extras_allowed.some((a) => a.code === x.code)).reduce((a, x) => a + Number(x.amount), 0);
+  const tipsN = r.shift === "private_tour" ? Number(r.tips ?? 0) : 0;
   const status = !r.guide_name ? "no_guide" : r.shift !== "private_tour" && r.rate_fee === null && r.fee_override === null ? "no_rate" : "paid";
-  const out = { ...r, fee: m2(fee), extras_total: m2(ex), total: m2(fee + ex + Number(r.tips ?? 0)), status, locked: locks.some((l) => r.date >= l.from && r.date <= l.to) };
+  const out = { ...r, fee: m2(fee), extras_total: m2(ex), total: m2(fee + ex + tipsN), status, locked: locks.some((l) => r.date >= l.from && r.date <= l.to) };
   if (!ctl.g363) return out;
   // 同后端规则：司机导游、Bus tour、有价格、没手改 Fee、那天的车型在补贴表里 ⇒ add 加上去 / total 补到总价（不低于 0）。
   const vm = VEHMAP[r.assignment_id] ?? { van: "", model: "" };
   let vx = null;
   if (r.role === "driver_guide" && r.shift === "bus_tour" && r.rate_fee !== null && r.fee_override === null && vm.model) {
-    const vr = VRATES.find((x) => x.active && x.model.toLowerCase() === vm.model.toLowerCase() && x.manifest_id === r.manifest_id && x.from <= r.date && (!x.to || x.to >= r.date));
+    // 同后端 vehicle_rate_key：只去头尾空格 + 小写，中间空格不并（「Mini  Van」≠「Mini Van」）。
+    const vr = VRATES.find((x) => x.active && x.model.trim().toLowerCase() === vm.model.trim().toLowerCase() && x.manifest_id === r.manifest_id && x.from <= r.date && (!x.to || x.to >= r.date));
     if (vr) {
       const amt = vr.mode === "add" ? Number(vr.amount) : Math.max(0, Number(vr.amount) - Number(r.rate_fee));
       vx = { rate_id: vr.id, model: vr.model, mode: vr.mode, rate_amount: vr.amount, amount: m2(amt) };
@@ -104,6 +109,10 @@ const runsNov = [
   mk({ ...KEVIN, g363only: true, date: "2026-11-10", assignment_id: 819, role: "driver_guide", driver_hr_id: 201, driver_name: "Kevin Tran", rate_id: 2, rate_fee: "280.00", fee_override: "300.00" }),
   // 后端核对 2b48ccc8 第 3 条：South Rim 开 Sprinter、Fee 手改了——South Rim 没有 Sprinter 补贴，点 Use the price 不该写 after Save。
   mk({ ...KEVIN, g363only: true, date: "2026-11-09", assignment_id: 820, role: "driver_guide", driver_hr_id: 201, driver_name: "Kevin Tran", tour: "Grand Canyon South Rim", manifest_id: 4, rate_id: 3, rate_fee: "270.00", fee_override: "290.00" }),
+  // 后端核对条件 A / 1：Bus tour 存着小费 25（不算）、勾着一个这天不能勾的 Long day（不算）。
+  mk({ ...KEVIN, g363only: true, date: "2026-11-07", assignment_id: 821, rate_id: 1, rate_fee: "230.00", tips: "25.00", extras_allowed: [], extras: [LONG] }),
+  // 条件 B：车型打成「Mini  Van」（两个空格）、Fee 手改——对不上 Mini Van 补贴，点 Use the price 不写 after Save。
+  mk({ ...KEVIN, g363only: true, date: "2026-11-05", assignment_id: 822, role: "driver_guide", driver_hr_id: 201, driver_name: "Kevin Tran", tour: "Bryce & Zion", manifest_id: 5, rate_id: 4, rate_fee: "275.00", fee_override: "280.00" }),
 ];
 const runsOct = [mk({ ...KEVIN, date: "2026-10-20", assignment_id: 701, rate_id: 1, rate_fee: "230.00" })];
 
