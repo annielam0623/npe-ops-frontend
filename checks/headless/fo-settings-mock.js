@@ -10,7 +10,7 @@ const TOURS = [
   { manifest_id: 10, tour_name: "West Rim" },
   { manifest_id: 11, tour_name: "Zion" },
 ];
-let partners, rates, locations, cells, tourMeta, nextPartnerId, nextLocId, nextItemId;
+let partners, rates, locations, cells, tourMeta, nextPartnerId, nextLocId, nextItemId, formats;
 
 /** 后端 farm_out_common.product_display_name：「<团> <产品> - <合作公司>」。 */
 function withNames(pid, list) {
@@ -53,8 +53,49 @@ function reset() {
   nextPartnerId = 50;
   nextLocId = 500;
   nextItemId = 900;
+  formats = {};
 }
 reset();
+
+/**
+ * 146 合同 v1：按对照把原样表格换成我们的表（parsed + diff）。
+ * tours_down ⇒ 行是团、列是酒店；hotels_down 反过来。新酒店 id null、key new<序号>_<团>；看不清的格子进 parsed.unclear。
+ */
+function buildFromGrid(pid, grid, format) {
+  const base = timetableOf(pid);
+  const hotels = [...base.hotels];
+  const hotelKeyOf = format.hotels.map((h) => {
+    if (!h.match || h.match.skip) return null;
+    if (h.match.new) {
+      hotels.push({ id: null, hotel_name: h.name });
+      return `new${hotels.length - 1}`;
+    }
+    return String(h.match.location_id);
+  });
+  const cellsOut = {};
+  const unclear = [];
+  grid.rows.forEach((_, r) =>
+    grid.cols.forEach((_, c) => {
+      const [ti, hi] = format.orientation === "tours_down" ? [r, c] : [c, r];
+      const t = format.tours[ti]?.match;
+      const hk = hotelKeyOf[hi];
+      if (!t || t.skip || hk == null || !grid.cells[r][c]) return;
+      const key = `${hk}_${t.manifest_id}`;
+      cellsOut[key] = grid.cells[r][c];
+      if (grid.unclear[r][c]) unclear.push(key);
+    }),
+  );
+  const nameOf = (k) => hotels[k.startsWith("new") ? Number(k.slice(3)) : hotels.findIndex((h) => String(h.id) === k)]?.hotel_name;
+  const changed = [];
+  for (const [k, v] of Object.entries(cellsOut)) {
+    const [hk, mid] = k.split("_");
+    if (!hk.startsWith("new") && base.cells[k] !== v) changed.push({ hotel: nameOf(hk), tour: TOURS.find((t) => String(t.manifest_id) === mid).tour_name, from: base.cells[k] ?? null, to: v });
+  }
+  return {
+    diff: { changed, new_hotels: hotels.filter((h) => h.id == null).map((h) => h.hotel_name), unmatched_tours: [] },
+    parsed: { hotels, tours: TOURS, cells: cellsOut, unclear },
+  };
+}
 
 function send(res, status, body) {
   res.statusCode = status;
@@ -220,7 +261,7 @@ http
       locations[pid].push({ id: nextLocId++, hotel_name: "ZZ Test Import Hotel", spot: "Lobby", address: "2 Test St", map_link: "", sort_order: locations[pid].length });
       return send(res, 200, { created: 1, updated: 1, unchanged: 1, skipped: 1 });
     }
-    m = sub.match(/^\/partners\/(\d+)\/(rates|locations|timetable(?:\/parse|\/apply|\/export\.csv)?)$/);
+    m = sub.match(/^\/partners\/(\d+)\/(rates|locations|timetable(?:\/parse|\/rematch|\/apply|\/export\.csv)?)$/);
     if (m) {
       const pid = Number(m[1]);
       const what = m[2];
@@ -290,11 +331,56 @@ http
         res.setHeader("Content-Type", "text/csv");
         return res.end("Hotel,Spot,West Rim,Zion\n");
       }
+      if (what === "timetable/rematch") {
+        // 146 合同 v1：按 staff 选的对照重算，不写库；选过的 status = chosen；还有 null ⇒ needs_match 仍 true。
+        const { grid, format } = entry.body;
+        const chosen = (list) => list.map((n) => ({ ...n, status: n.match == null ? "none" : "chosen" }));
+        const f = { orientation: format.orientation, orientation_status: "chosen", tours: chosen(format.tours), hotels: chosen(format.hotels) };
+        if ([...f.tours, ...f.hotels].some((n) => n.match == null)) return send(res, 200, { source: null, grid, format: f, needs_match: true, diff: null, parsed: null });
+        return send(res, 200, { source: null, grid, format: f, needs_match: false, ...buildFromGrid(pid, grid, f) });
+      }
       if (what === "timetable/parse") {
+        const fname = (entry.rawText || "").match(/filename="([^"]+)"/)?.[1] || "";
+        if (ctl.parseError) return send(res, ctl.parseError.status, { detail: ctl.parseError.detail });
+        if (/\.(png|jpe?g|heic|heif|pdf)$/i.test(fname)) {
+          if (ctl.parseDelay) await new Promise((r) => setTimeout(r, ctl.parseDelay));
+          // 146：照片固定读成「团在左、酒店在上」；第二张（文件名带 jan）多一行 BRYCE-ZION。
+          const rows = ["GCW-DLX", "ZION AM", "SEDONA", ...(/jan/i.test(fname) ? ["BRYCE-ZION"] : [])];
+          const cols = ["Bellagio S. Lobby", "Venetian", "Linq Hotel"];
+          const grid = {
+            rows,
+            cols,
+            cells: rows.map((_, r) => cols.map((_, c) => (r === 2 ? "08:00" : `0${6 + r}:${String(40 + c * 5).padStart(2, "0")}`))),
+            unclear: rows.map((_, r) => cols.map((_, c) => r === 0 && c === 1)),
+          };
+          const saved = formats[pid];
+          const fromSaved = (list, name) => list?.find((n) => n.name === name);
+          let format;
+          if (saved) {
+            const pick = (kind, name) => { const s = fromSaved(saved[kind], name); return s ? { name, match: s.match, status: "saved" } : { name, match: null, status: "none" }; };
+            format = { orientation: saved.orientation, orientation_status: "saved", tours: rows.map((n) => pick("tours", n)), hotels: cols.map((n) => pick("hotels", n)) };
+          } else {
+            const GUESS_T = { "GCW-DLX": { manifest_id: 10 }, "ZION AM": { manifest_id: 11 } };
+            const GUESS_H = { "Bellagio S. Lobby": { location_id: 101 } };
+            format = {
+              orientation: "tours_down",
+              orientation_status: "guess",
+              tours: rows.map((name) => (GUESS_T[name] ? { name, match: GUESS_T[name], status: "guess" } : { name, match: null, status: "none" })),
+              hotels: cols.map((name) => (name === "Venetian" ? { name, match: { location_id: 102 }, status: "exact" } : GUESS_H[name] ? { name, match: GUESS_H[name], status: "guess" } : { name, match: null, status: "none" })),
+            };
+          }
+          const needs = !saved || [...format.tours, ...format.hotels].some((n) => n.status === "none" || n.status === "guess");
+          if (needs) return send(res, 200, { source: "image", grid, format, needs_match: true, diff: null, parsed: null });
+          return send(res, 200, { source: "image", grid, format, needs_match: false, ...buildFromGrid(pid, grid, format) });
+        }
         // 固定的解析结果：Bellagio / West Rim 06:50→06:45，新酒店 Wynn，一个对不上的团名。
         const wynn = { id: null, hotel_name: "Wynn" };
         const base = timetableOf(pid);
         return send(res, 200, {
+          source: "table",
+          grid: { rows: ["Bellagio"], cols: ["West Rim", "Zion"], cells: [["06:45", "06:20"]], unclear: [[false, false]] },
+          format: { orientation: "hotels_down", orientation_status: "saved", tours: [{ name: "West Rim", match: { manifest_id: 10 }, status: "exact" }, { name: "Zion", match: { manifest_id: 11 }, status: "exact" }], hotels: [{ name: "Bellagio", match: { location_id: 101 }, status: "exact" }] },
+          needs_match: false,
           diff: {
             changed: [{ hotel: "Bellagio", tour: "West Rim", from: "06:50", to: "06:45" }],
             new_hotels: ["Wynn"],
@@ -324,6 +410,13 @@ http
           next[mm ? `${idAt[Number(mm[1])]}_${mm[2]}` : k] = v;
         }
         cells[pid] = next;
+        // 146：remember + format ⇒ 跟时刻表一起记住这家的格式；新酒店换成刚建的 id。
+        if (entry.body.remember && entry.body.format) {
+          const f = entry.body.format;
+          const newIds = Object.values(idAt);
+          let k = 0;
+          formats[pid] = { orientation: f.orientation, tours: f.tours, hotels: f.hotels.map((h) => (h.match && h.match.new ? { name: h.name, match: { location_id: newIds[k++] } } : h)) };
+        }
         return send(res, 200, { ok: true, timetable: timetableOf(pid) });
       }
     }

@@ -26,6 +26,8 @@ import {
   fetchTourMeta,
   parsePartnerTimetable,
   partnerTimetableCsvUrl,
+  rematchPartnerTimetable,
+  TIMETABLE_PARSE_TIMEOUT_MS,
   savePartnerTimetable,
   saveTourMeta,
 } from "@/lib/farm-out-api";
@@ -33,7 +35,6 @@ import { cn } from "@/lib/utils";
 import type {
   FarmOutPartner,
   FarmOutTimetable,
-  FarmOutTimetableDiff,
   FarmOutTourMeta,
 } from "@/types/farm-out";
 
@@ -48,7 +49,14 @@ import {
   TIMETABLE_UPLOAD_ACCEPT,
   uploadFileKind,
 } from "./timetable-upload/file-kind";
-import { PhotoPane } from "./timetable-upload/photo-pane";
+import {
+  hasMissingMatch,
+  MATCH_MISSING,
+  UploadBox,
+  uploadFromParse,
+  uploadFromRematch,
+  type UploadState,
+} from "./timetable-upload/upload-box";
 import {
   BTN_BLUE,
   BTN_PLAIN,
@@ -59,13 +67,6 @@ import {
 } from "./ui";
 
 type Result = { tone: "ok" | "error"; text: string } | null;
-interface Upload {
-  fileName: string;
-  /** 146：留着本地文件只为黄框里显示照片（Q7 不存原件）。 */
-  file: File;
-  diff: FarmOutTimetableDiff;
-  parsed: FarmOutTimetable;
-}
 interface MetaDraft {
   estimated_return_time: string;
   please_note: string;
@@ -95,8 +96,11 @@ export function TimetableView({ partnerId: fixedId }: { partnerId: number }) {
   const [tableError, setTableError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveResult, setSaveResult] = useState<Result>(null);
-  const [upload, setUpload] = useState<Upload | null>(null);
+  const [upload, setUpload] = useState<UploadState | null>(null);
   const [uploading, setUploading] = useState(false);
+  /** 照片 / PDF 读得慢：上传时显示「Reading the photo…」。 */
+  const [readingSlow, setReadingSlow] = useState(false);
+  const [rematching, setRematching] = useState(false);
   const [applying, setApplying] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [metaRows, setMetaRows] = useState<FarmOutTourMeta[]>([]);
@@ -233,31 +237,84 @@ export function TimetableView({ partnerId: fixedId }: { partnerId: number }) {
       return;
     }
     setUploading(true);
+    setReadingSlow(uploadFileKind(file) !== "sheet");
     setUploadError(null);
     setUpload(null);
     try {
-      const res = await parsePartnerTimetable(partnerId, file);
-      setUpload({
-        fileName: file.name,
+      // 照片 / 扫描 PDF 后端读图要 10–60 秒（合同 v1），等 120 秒。
+      const res = await parsePartnerTimetable(
+        partnerId,
         file,
-        diff: res.diff,
-        parsed: res.parsed,
-      });
+        AbortSignal.timeout(TIMETABLE_PARSE_TIMEOUT_MS),
+      );
+      setUpload(uploadFromParse(file, res));
     } catch (error) {
       if (isStatus(error, 401)) redirectToLogin();
+      else if (
+        error instanceof DOMException &&
+        (error.name === "TimeoutError" || error.name === "AbortError")
+      )
+        setUploadError(
+          "Reading took too long. Try again in a minute, or upload Excel or CSV.",
+        );
       else setUploadError(describeError(error));
     } finally {
       setUploading(false);
+      setReadingSlow(false);
       if (fileRef.current) fileRef.current.value = "";
     }
   }
 
+  /** 146：按对照重新换算（不重读照片、不收费）。还有没选的名字先在面板里报，不发请求。 */
+  async function rematchUpload() {
+    if (!upload || partnerId == null || rematching) return;
+    if (hasMissingMatch(upload.format)) {
+      setUpload({ ...upload, matchError: MATCH_MISSING });
+      return;
+    }
+    setRematching(true);
+    setUploadError(null);
+    try {
+      const res = await rematchPartnerTimetable(
+        partnerId,
+        upload.grid,
+        upload.format,
+      );
+      setUpload((u) => (u ? uploadFromRematch(u, res) : u));
+    } catch (error) {
+      if (isStatus(error, 401)) redirectToLogin();
+      else
+        setUpload((u) => (u ? { ...u, matchError: describeError(error) } : u));
+    } finally {
+      setRematching(false);
+    }
+  }
+
   async function applyUpload() {
-    if (!upload || partnerId == null || applying) return;
+    if (!upload?.parsed || partnerId == null || applying) return;
+    // 橙色格子里改的字换成 HH:MM 写回 cells（合同 v1：改 parsed.cells 整份送回，后端再全部校验）。
+    const cells = { ...upload.parsed.cells };
+    for (const [key, typed] of Object.entries(upload.edits)) {
+      const t = parseTimeInput(typed);
+      if (t === null) {
+        setUploadError(
+          `"${typed}" is not a time. Use something like 6:50 AM, or leave the cell empty.`,
+        );
+        return;
+      }
+      if (t) cells[key] = t;
+      else delete cells[key];
+    }
     setApplying(true);
     setUploadError(null);
     try {
-      const saved = await applyPartnerTimetable(partnerId, upload.parsed);
+      const saved = await applyPartnerTimetable(
+        partnerId,
+        { ...upload.parsed, cells },
+        upload.rematched
+          ? { format: upload.format, remember: upload.remember }
+          : undefined,
+      );
       setTable(saved);
       setDraft(draftFrom(saved));
       setUpload(null);
@@ -393,11 +450,24 @@ export function TimetableView({ partnerId: fixedId }: { partnerId: number }) {
               </div>
             ) : null}
 
-            {upload && partner ? (
+            {uploading && readingSlow ? (
+              <div
+                data-reading-photo
+                className="border-b border-[#f0d080] bg-[#fff8e1] px-4 py-2 text-[12px] text-[#7C4A00]"
+              >
+                Reading the photo… this can take up to a minute.
+              </div>
+            ) : null}
+
+            {upload && partner && table ? (
               <UploadBox
                 upload={upload}
                 partnerName={partner.name}
+                ours={table}
                 applying={applying}
+                rematching={rematching}
+                onChange={setUpload}
+                onRematch={() => void rematchUpload()}
                 onApply={() => void applyUpload()}
                 onDiscard={() => {
                   setUpload(null);
@@ -561,145 +631,6 @@ export function TimetableView({ partnerId: fixedId }: { partnerId: number }) {
         </>
       ) : null}
     </main>
-  );
-}
-
-/** 上传解析出来、还没存的结果：黄框，列出跟现在比的变化，点 Apply 才替换这家公司的整张表。 */
-function UploadBox({
-  upload,
-  partnerName,
-  applying,
-  onApply,
-  onDiscard,
-}: {
-  upload: Upload;
-  partnerName: string;
-  applying: boolean;
-  onApply: () => void;
-  onDiscard: () => void;
-}) {
-  const { diff, parsed } = upload;
-  const changedFor = (hotel: { hotel_name: string }, tour: string) =>
-    diff.changed.find((c) => c.tour === tour && c.hotel === hotel.hotel_name);
-  const isNew = (hotelName: string) => diff.new_hotels.includes(hotelName);
-  const isPhoto = uploadFileKind(upload.file) === "photo";
-
-  return (
-    <div
-      data-upload-box
-      className="border-b border-[#f0d080] bg-[#fff8e1] px-4 py-3 text-[#7C4A00]"
-    >
-      <div className="text-[13px] font-bold">
-        Uploaded “{upload.fileName}” — not saved yet
-      </div>
-      <div className="mt-0.5 text-[12px]">
-        {diff.changed.length}{" "}
-        {diff.changed.length === 1 ? "time changes" : "times change"}
-        {" · "}
-        {diff.new_hotels.length} new{" "}
-        {diff.new_hotels.length === 1 ? "hotel" : "hotels"}
-        {" · "}
-        {diff.unmatched_tours.length} tour{" "}
-        {diff.unmatched_tours.length === 1 ? "name" : "names"} not found. Check,
-        then Apply to replace {partnerName}&apos;s whole table.
-      </div>
-      {diff.unmatched_tours.length > 0 ? (
-        <div className="mt-1 text-[12px] text-[#A32D2D]">
-          Ignored (not a tour on Products):{" "}
-          {diff.unmatched_tours.map((t) => `“${t}”`).join(", ")}
-        </div>
-      ) : null}
-      <div
-        className={cn("mt-2", isPhoto && "grid gap-3 min-[640px]:grid-cols-2")}
-      >
-        {isPhoto ? <PhotoPane file={upload.file} /> : null}
-        <div className="min-w-0 overflow-x-auto">
-          <table
-            className={cn(
-              "w-full border-collapse text-[12px] tabular-nums",
-              isPhoto ? "min-w-0" : "min-w-[640px]",
-            )}
-          >
-            <thead>
-              <tr className="text-left">
-                <th className="border-b border-[#e5d9b5] px-2 py-1">Hotel</th>
-                {parsed.tours.map((t) => (
-                  <th
-                    key={t.manifest_id}
-                    className="border-b border-[#e5d9b5] px-2 py-1"
-                  >
-                    {t.tour_name}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {parsed.hotels.map((h, hi) => (
-                <tr key={h.id ?? `new${hi}`}>
-                  <td className="px-2 py-1">
-                    <b>{h.hotel_name}</b>
-                    {isNew(h.hotel_name) ? (
-                      <span className="ml-1 font-bold text-[#15803d]">
-                        new hotel
-                      </span>
-                    ) : null}
-                  </td>
-                  {parsed.tours.map((t) => {
-                    // 新酒店（id 为 null）的格子 key 是 new<序号>_<团>。
-                    const now = formatTime(
-                      parsed.cells[
-                        h.id != null
-                          ? cellKey(h.id, t.manifest_id)
-                          : `new${hi}_${t.manifest_id}`
-                      ],
-                    );
-                    const ch = changedFor(h, t.tour_name);
-                    return (
-                      <td key={t.manifest_id} className="px-2 py-1">
-                        {ch ? (
-                          <>
-                            {ch.from ? (
-                              <s className="text-[#999]">
-                                {formatTime(ch.from)}
-                              </s>
-                            ) : null}{" "}
-                            <b className="text-[#1d4ed8]">
-                              {formatTime(ch.to) || "—"}
-                            </b>
-                          </>
-                        ) : isNew(h.hotel_name) ? (
-                          <span className="text-[#15803d]">{now}</span>
-                        ) : (
-                          now
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <div className="mt-2 flex gap-2">
-        <button
-          type="button"
-          className={BTN_BLUE}
-          disabled={applying}
-          onClick={onApply}
-        >
-          {applying ? "Applying…" : `Apply to ${partnerName}`}
-        </button>
-        <button
-          type="button"
-          className={BTN_PLAIN}
-          disabled={applying}
-          onClick={onDiscard}
-        >
-          Discard
-        </button>
-      </div>
-    </div>
   );
 }
 

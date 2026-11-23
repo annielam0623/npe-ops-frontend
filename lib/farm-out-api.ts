@@ -9,8 +9,10 @@ import type {
   FarmOutRatePut,
   FarmOutReport,
   FarmOutTimetable,
+  FarmOutTimetableGrid,
   FarmOutTimetableParse,
   FarmOutTourMeta,
+  FarmOutUploadFormat,
 } from "@/types/farm-out";
 
 /**
@@ -104,10 +106,19 @@ export async function savePartnerTimetable(
   return r.timetable;
 }
 
-/** 只解析不存库：返回跟现在比的变化 + 解析出来的整张表。 */
+/**
+ * 照片 / 扫描 PDF 后端要送去读图，10–60 秒（146 合同 v1：前端至少等 90 秒）。这里等 120 秒。
+ */
+export const TIMETABLE_PARSE_TIMEOUT_MS = 120_000;
+
+/**
+ * 只解析不存库（146 合同 v1）：收 Excel / CSV / 照片 / PDF，按这家记住的格式读。
+ * needs_match = true 时先对名字（rematch），否则带 diff + parsed。
+ */
 export function parsePartnerTimetable(
   id: number,
   file: File,
+  signal?: AbortSignal,
 ): Promise<FarmOutTimetableParse> {
   const form = new FormData();
   form.append("file", file);
@@ -116,18 +127,64 @@ export function parsePartnerTimetable(
     {
       method: "POST",
       body: form,
+      signal,
     },
   );
 }
 
-/** Apply：用 parse 返回的 `parsed` 整表替换。 */
+/** 146：按 staff 选的对照重新换算（不传文件、不收费、不写库）；grid 原样送回 parse 给的那份。 */
+export function rematchPartnerTimetable(
+  id: number,
+  grid: FarmOutTimetableGrid,
+  format: FarmOutUploadFormat,
+): Promise<FarmOutTimetableParse> {
+  return apiFetch<FarmOutTimetableParse>(
+    `${API}/partners/${id}/timetable/rematch`,
+    {
+      method: "POST",
+      body: {
+        grid,
+        format: {
+          orientation: format.orientation,
+          tours: format.tours.map(({ name, match }) => ({ name, match })),
+          hotels: format.hotels.map(({ name, match }) => ({ name, match })),
+        },
+      },
+    },
+  );
+}
+
+/**
+ * Apply：用 parse / rematch 返回的 `parsed`（页面上改过的格子直接改在 cells 里）整表替换。
+ * 146：remember = true 带 format ⇒ 后端跟时刻表同一个事务记住这家的格式（Apply 失败 / Discard 不记）。
+ */
 export async function applyPartnerTimetable(
   id: number,
   parsed: FarmOutTimetable,
+  remember?: { format: FarmOutUploadFormat; remember: boolean },
 ): Promise<FarmOutTimetable> {
   const r = await apiFetch<{ timetable: FarmOutTimetable }>(
     `${API}/partners/${id}/timetable/apply`,
-    { method: "POST", body: { parsed } },
+    {
+      method: "POST",
+      body: remember
+        ? {
+            parsed,
+            format: {
+              orientation: remember.format.orientation,
+              tours: remember.format.tours.map(({ name, match }) => ({
+                name,
+                match,
+              })),
+              hotels: remember.format.hotels.map(({ name, match }) => ({
+                name,
+                match,
+              })),
+            },
+            remember: remember.remember,
+          }
+        : { parsed },
+    },
   );
   return r.timetable;
 }

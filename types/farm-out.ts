@@ -121,6 +121,47 @@ export interface FarmOutTimetable {
    * `new<它在 hotels 里的序号>_<manifest_id>`。
    */
   cells: Record<string, string>;
+  /** 146：parse / rematch 返回里看不清的格子（key 同 cells）；apply 时后端忽略，可以原样带回。 */
+  unclear?: string[];
+}
+
+/** 146 合同 v1：上传文件读出来的原样表格（rematch 时原样送回，不改）。 */
+export interface FarmOutTimetableGrid {
+  /** 第一列的标签。 */
+  rows: string[];
+  /** 表头那一行。 */
+  cols: string[];
+  /** cells[r][c] = "HH:MM" 或 ""。 */
+  cells: string[][];
+  unclear: boolean[][];
+}
+
+/** 对方的名字对到我们的什么：团 = manifest_id；酒店 = location_id 或 new；都可以 skip；null = 还没选。 */
+export type FarmOutFormatMatch =
+  | { manifest_id: number }
+  | { location_id: number }
+  | { new: true }
+  | { skip: true }
+  | null;
+
+/** saved = 这家记住的；exact = 跟我们的一样；guess = 最像的（已预选）；none = 没猜到；chosen = staff 这次选的。 */
+export type FarmOutFormatStatus =
+  "saved" | "exact" | "guess" | "none" | "chosen";
+
+export interface FarmOutFormatName {
+  name: string;
+  match: FarmOutFormatMatch;
+  status?: FarmOutFormatStatus;
+}
+
+/** hotels_down = 酒店在左、团在上（我们的方向）；tours_down = 反过来。 */
+export type FarmOutOrientation = "hotels_down" | "tours_down";
+
+export interface FarmOutUploadFormat {
+  orientation: FarmOutOrientation;
+  orientation_status?: "saved" | "guess" | "chosen";
+  tours: FarmOutFormatName[];
+  hotels: FarmOutFormatName[];
 }
 
 export interface FarmOutTimetableDiff {
@@ -135,9 +176,17 @@ export interface FarmOutTimetableDiff {
   unmatched_tours: string[];
 }
 
+/**
+ * parse / rematch 的返回（146 合同 v1）。needs_match = true 时 diff / parsed 是 null，
+ * 先在黄框里对名字（rematch）。rematch 的 source 是 null。
+ */
 export interface FarmOutTimetableParse {
-  diff: FarmOutTimetableDiff;
-  parsed: FarmOutTimetable;
+  source: "table" | "pdf_text" | "image" | null;
+  grid: FarmOutTimetableGrid;
+  format: FarmOutUploadFormat;
+  needs_match: boolean;
+  diff: FarmOutTimetableDiff | null;
+  parsed: FarmOutTimetable | null;
 }
 
 /** 按团共用的预计返回时间 / PLEASE NOTE；空串 = 不显示。 */

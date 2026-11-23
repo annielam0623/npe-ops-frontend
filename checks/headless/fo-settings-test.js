@@ -590,6 +590,78 @@ async function timetableChecks() {
   const applyBody = (await lastCall("POST", /timetable\/apply$/))?.body;
   check("apply 请求带 parse 返回的整张 parsed", Object.entries(applyBody?.parsed?.cells ?? {}).some(([k, v]) => /^new\d+_10$/.test(k) && v === "06:55") && applyBody.parsed.hotels.some((h) => h.hotel_name === "Wynn" && h.id === null));
   check("格子换成 apply 之后的表（含新酒店 Wynn）", await evaluate("return !!$byLabel('Wynn West Rim departure') && $byLabel('Wynn West Rim departure').value === '6:55 AM' && $byLabel('Bellagio West Rim departure').value === '6:45 AM';"));
+  check("146 CSV 的 apply 照旧只带 parsed（没在面板里对过名字 ⇒ 不带 format / remember）", applyBody && !("format" in applyBody) && !("remember" in applyBody));
+
+  // ── 146 合同 v1：照片第一次上传 ⇒ 对照面板 → rematch → 核对（橙格可改）→ Apply 带 format + remember ──
+  await ctl({ parseDelay: 1500, parseError: null });
+  const decPng = path.join(os.tmpdir(), "fo-settings-test-ctour-dec.png");
+  fs.copyFileSync(pngFile, decPng);
+  await uploadFile(decPng);
+  check("146 照片读的时候：「Reading the photo… this can take up to a minute.」", await waitFor("$txt().includes('Reading the photo… this can take up to a minute.')"));
+  await ctl({ parseDelay: 0 });
+  check("146 第一次（没记住格式）⇒ 黄框是对照面板：标题 match the columns first、说明、照片在左、没有 Apply", (await waitFor("document.querySelector('[data-match-panel]')")) && (await evaluate("const b = document.querySelector('[data-upload-box]'); const t = b.textContent; return t.includes('Uploaded “fo-settings-test-ctour-dec.png” — match the columns first') && t.includes(\"next time Partner A's files are read the same way\") && !!b.querySelector('[data-photo-pane] img') && !$btn('Apply to Partner A', b) && !document.querySelector('[data-reading-photo]');")));
+  check("146 方向：系统猜「Tours down the side」+ our guess — check + we turn it for you", await evaluate("return $selValue($byLabel('Layout')) === 'tours_down' && $txt().includes('our guess — check') && $txt().includes('we turn it for you');"));
+  check("146 每个名字一行：行 / 列标对；猜的预选好标 closest name — check，一样的 ✓ same name，没猜到 Choose one（红）", await evaluate("const r = (k) => document.querySelector('[data-match-row=\"' + k + '\"]'); return r('tours:GCW-DLX').textContent.includes('Row “GCW-DLX”') && $selValue($byLabel('Match for tour GCW-DLX')) === 't10' && r('tours:GCW-DLX').textContent.includes('closest name — check') && r('hotels:Venetian').textContent.includes('Column “Venetian”') && r('hotels:Venetian').textContent.includes('✓ same name') && r('tours:SEDONA').textContent.includes('Choose one') && r('hotels:Linq Hotel').textContent.includes('Choose one');"));
+  check("146 团的选项 = 我们的团 + Skip；酒店的选项 = 这家的上车点 + New hotel “名字” + Skip", await evaluate("const t = (await $selOptions($byLabel('Match for tour SEDONA'))).map(o => o.label); const h = (await $selOptions($byLabel('Match for hotel Linq Hotel'))).map(o => o.label); return t.includes('West Rim') && t.includes('Zion') && t.includes(\"— Skip (we don't farm this out)\") && h.includes('Bellagio') && h.includes('Wynn') && h.includes('+ New hotel “Linq Hotel”') && h.includes('— Skip');"));
+  check("146 Remember 默认勾上；Read with these matches / Discard 都不是蓝色", await evaluate("const b = document.querySelector('[data-upload-box]'); const cb = [...b.querySelectorAll('input[type=checkbox]')].find(i => i.parentElement.textContent.includes('Remember this for Partner A')); return !!cb && cb.checked && $bg($btn('Read with these matches', b)) !== 'rgb(59, 130, 246)' && $bg($btn('Discard', b)) !== 'rgb(59, 130, 246)';"));
+  const rematchBefore = (await calls("POST", /timetable\/rematch$/)).length;
+  await evaluate("$btn('Read with these matches').click(); return 1;");
+  check("146 还有没选的：红字 Choose a match for every tour and hotel name, or Skip it.，没发 rematch", (await waitFor("$txt().includes('Choose a match for every tour and hotel name, or Skip it.')")) && (await calls("POST", /timetable\/rematch$/)).length === rematchBefore);
+  await evaluate("await $sel($byLabel('Match for tour SEDONA'), 'skip'); await $sel($byLabel('Match for hotel Linq Hotel'), 'new'); return 1;");
+  check("146 选了以后红字消失", await waitFor("!$txt().includes('Choose a match for every tour')"));
+  await evaluate("$btn('Read with these matches').click(); return 1;");
+  check("146 rematch 后变成核对表（照片还在左边）", await waitFor("document.querySelector('[data-check-grid]') && document.querySelector('[data-upload-box] [data-photo-pane] img')"));
+  const rm = (await lastCall("POST", /timetable\/rematch$/))?.body;
+  check("146 rematch 请求：grid 原样（rows / cols / cells / unclear）+ format 只有 orientation 和 name / match（不带 status）", rm && JSON.stringify(rm.grid.rows) === JSON.stringify(["GCW-DLX", "ZION AM", "SEDONA"]) && rm.grid.cells[0][1] === "06:45" && rm.grid.unclear[0][1] === true && rm.format.orientation === "tours_down" && rm.format.tours[2].match.skip === true && rm.format.hotels[2].match.new === true && [...rm.format.tours, ...rm.format.hotels].every((n) => Object.keys(n).sort().join() === "match,name"), JSON.stringify(rm));
+  check("146 核对表：标题 Read from photo、照片说明、对照行 · Change matches、新酒店 Linq Hotel", await evaluate("const t = document.querySelector('[data-upload-box]').textContent; return t.includes('Read from photo “fo-settings-test-ctour-dec.png” — not saved yet') && t.includes('Times were read from a picture.') && document.querySelector('[data-format-line]').textContent.includes('Read with the matches you chose (tours down the side, 5 names matched)') && !!$btn('Change matches') && t.includes('Linq Hotel') && t.includes('new hotel');"));
+  check("146 看不清的格子标橙、能改（Venetian / West Rim = 6:45 AM ?）+ 橙色说明", await evaluate("const td = document.querySelector('[data-unclear=\"102_10\"]'); return !!td && getComputedStyle(td).backgroundColor === 'rgb(255, 226, 184)' && td.querySelector('input').value === '6:45 AM' && $txt().includes('Orange = hard to read in the photo.');"));
+  const applyBefore2 = (await calls("POST", /timetable\/apply$/)).length;
+  await evaluate("await $set(document.querySelector('[data-unclear=\"102_10\"] input'), '7:4x'); return 1;");
+  await evaluate("$btn('Apply to Partner A').click(); return 1;");
+  check("146 橙格写错：红字 is not a time，没发 apply", (await waitFor("$txt().includes('\"7:4x\" is not a time.')")) && (await calls("POST", /timetable\/apply$/)).length === applyBefore2);
+  await evaluate("await $set(document.querySelector('[data-unclear=\"102_10\"] input'), '7:40'); return 1;");
+  await evaluate("$btn('Apply to Partner A').click(); return 1;");
+  check("146 Apply：黄框消失、✓ Applied", await waitFor("!document.querySelector('[data-upload-box]') && $txt().includes('✓ Applied')"));
+  const ap = (await lastCall("POST", /timetable\/apply$/))?.body;
+  check("146 apply 请求：改过的橙格写进 parsed.cells（07:40）+ format（不带 status）+ remember true", ap && ap.parsed.cells["102_10"] === "07:40" && ap.remember === true && ap.format.orientation === "tours_down" && ap.format.hotels[2].match.new === true && ap.format.tours[2].match.skip === true && [...ap.format.tours, ...ap.format.hotels].every((n) => !("status" in n)), JSON.stringify(ap));
+  check("146 Apply 后表里多了 Linq Hotel、Venetian West Rim = 7:40 AM", await waitFor("$byLabel('Linq Hotel West Rim departure') && $byLabel('Venetian West Rim departure').value === '7:40 AM'"));
+
+  // 下次：记住的格式 + 文件里多了一个新名字 ⇒ 只问那一个
+  const janPng = path.join(os.tmpdir(), "fo-settings-test-ctour-jan.png");
+  fs.copyFileSync(pngFile, janPng);
+  await uploadFile(janPng);
+  check("146 记住格式后再传：只问新名字「1 new name in the file: “BRYCE-ZION” — match it below.」，其他 ✓ saved", (await waitFor("document.querySelector('[data-match-panel]')")) && (await evaluate("const r = (k) => document.querySelector('[data-match-row=\"' + k + '\"]'); return $txt().includes('1 new name in the file: “BRYCE-ZION” — match it below.') && r('tours:GCW-DLX').textContent.includes('✓ saved') && r('hotels:Linq Hotel').textContent.includes('✓ saved') && r('tours:BRYCE-ZION').textContent.includes('Choose one');")));
+  await evaluate("await $sel($byLabel('Match for tour BRYCE-ZION'), 'skip'); return 1;");
+  await evaluate("const cb = [...document.querySelectorAll('[data-upload-box] input[type=checkbox]')][0]; cb.click(); return 1;");
+  await evaluate("$btn('Read with these matches').click(); return 1;");
+  await waitFor("document.querySelector('[data-check-grid]')");
+  await evaluate("$btn('Change matches').click(); return 1;");
+  check("146 Change matches：回到对照面板，刚才选的还在（BRYCE-ZION = Skip）、Remember 仍是没勾", (await waitFor("document.querySelector('[data-match-panel]')")) && (await evaluate("return $selValue($byLabel('Match for tour BRYCE-ZION')) === 'skip' && ![...document.querySelectorAll('[data-upload-box] input[type=checkbox]')][0].checked;")));
+  await evaluate("$btn('Read with these matches').click(); return 1;");
+  await waitFor("document.querySelector('[data-check-grid]')");
+  await evaluate("$btn('Apply to Partner A').click(); return 1;");
+  await waitFor("!document.querySelector('[data-upload-box]')");
+  check("146 Remember 取消勾 ⇒ apply 带 remember false", (await lastCall("POST", /timetable\/apply$/))?.body?.remember === false);
+
+  // 记住的格式、没有新名字 ⇒ 直接核对表；Change matches 里换方向 ⇒ 名字换边、要重选
+  await uploadFile(decPng);
+  check("146 全部认得（saved）⇒ 不出面板，直接核对表：Read with Partner A's saved format", (await waitFor("document.querySelector('[data-check-grid]')")) && (await evaluate("return document.querySelector('[data-format-line]').textContent.includes(\"Read with Partner A's saved format (tours down the side\") && !document.querySelector('[data-match-panel]');")));
+  await evaluate("$btn('Change matches').click(); return 1;");
+  await waitFor("document.querySelector('[data-match-panel]')");
+  await evaluate("await $sel($byLabel('Layout'), 'hotels_down'); return 1;");
+  check("146 换方向：团改成表头那一行（Column “Bellagio S. Lobby”…）、酒店改成第一列，都要重选；没有 we turn it", await evaluate("const r = (k) => document.querySelector('[data-match-row=\"' + k + '\"]'); return !!r('tours:Bellagio S. Lobby') && r('tours:Bellagio S. Lobby').textContent.includes('Column “Bellagio S. Lobby”') && r('tours:Bellagio S. Lobby').textContent.includes('Choose one') && r('hotels:GCW-DLX').textContent.includes('Row “GCW-DLX”') && !$txt().includes('we turn it for you');"));
+  const applyBefore3 = (await calls("POST", /timetable\/apply$/)).length;
+  await evaluate("$btn('Discard').click(); return 1;");
+  check("146 Discard：黄框消失、没 apply（没记住）", (await waitFor("!document.querySelector('[data-upload-box]')")) && (await calls("POST", /timetable\/apply$/)).length === applyBefore3);
+
+  // 后端报错原样显示（合同 v1 英文原文）
+  await ctl({ parseError: { status: 503, detail: "Reading photos is not set up yet. Upload Excel or CSV for now." } });
+  await uploadFile(decPng);
+  check("146 503 没配读图：红框原样显示后端原文，不出黄框", (await waitFor("$txt().includes('Reading photos is not set up yet. Upload Excel or CSV for now.')")) && !(await evaluate("return !!document.querySelector('[data-upload-box]');")));
+  await ctl({ parseError: { status: 400, detail: "No timetable was found in this file. Check that the times are in it and try again." } });
+  await uploadFile(decPng);
+  check("146 400 原文显示（No timetable was found…）", await waitFor("$txt().includes('No timetable was found in this file.') && !$txt().includes('Reading photos is not set up yet')"));
+  await ctl({ parseError: null });
 
   // 换公司
   await open(URL_B, "document.querySelector('[data-timetable]')");
