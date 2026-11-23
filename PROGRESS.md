@@ -111,6 +111,7 @@
 - Lankun 后端上 main bb898936（打印 / Excel 用同一 lunch_sheet，删 .rest / This bus 块；restaurant_block 对 Lankun 照发供 TOTAL SANDWICH 读 totals）⇒ 已转 bb：前端只不画 RestaurantBlock，照读 totals。
 - 2026-11-22 Annie 对 151 Excel 没逐题填，直接回「动手」⇒ 按推荐：① C 自动横竖屏 + Full screen；② A 竖屏 6 列；③（没推荐）照她 114 原话「不要隐藏」定 B 手机上 Text size 卡一直打开；④ A 只改 ops 编辑页；David H A 另开 staff 账号只勾 Dispatch Read only（不用写代码，要 Annie / 管理员在 Team 页开）。151 排给 bb（Lankun 之后，task/151-edit-phone，今晚必须上线）；146 改排给先空出来的窗口。资源：空闲内存 32 / 62 GB。
 - 2026-11-22 Annie「我想改一下导游页面」「导游页的手机版也一起改」⇒ 151 ④ 改 B：后端导游页手机版照 ① ② ③ 一起改（电脑不变），已转后端主窗口-bb；导游页跟 ops 对不上的地方后端先列出来问 Annie。前端 bb 做完把 6 列 + 截图转后端对齐。
+- 2026-11-22 ✅ 排班 Rules 两个 bug（G272）上 main **40f09e0d**（2c，功能 06956916）：a 没进任何 Days per week 规则的人 targetDays = null 只排周末轮值（原设计、但不吭声）⇒ 排法不变，Auto-fill 预览第一周黄框列一行「Not in any Days per week rule, so Auto-fill does not fill their week (weekend rotation only): Jessica, Anita. Add them to a Days per week rule if they should work.」（Exclude / 固定班不列）；b「每 4 周至少 n 天」每周重复报 ⇒ 只在每个 4 周窗口最后一周报（已发布周不算），打分不变。新 runReportFlags 共用。tsc / eslint / build 过，schedule-engine-test 43/43（+5），sch 534/534。后端不用改。若 Annie 要没规则的人默认补满 N 天 = 改排法，另出 preview。146 改派 2c（bb 只做 Lankun）。
 - 答后端：95 G371 旧发送入口盘点（三个 tracking 已切 ops；utilities / test-orders ops 没页面没入口；ops 直接调 /booking-notes/multi/reply、不调 /resend）；bb 7a 8 句原文 + 号码 grep（ops 代码没写死旧号码）。
 ## 📌 2026-11-20 17:15 Annie 新提：staff 备注几个入口打通（记录，未动手）
 
