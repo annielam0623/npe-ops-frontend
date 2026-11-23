@@ -56,6 +56,7 @@
 - 📌 未发新单提醒 preview（bb，未写代码）https://claude.ai/artifact/8YtCoE8VWFXjV6iCt3pZTk ：页面一次只读一天一团 ⇒ 要后端汇总接口；手机没勾选时勾选条藏 ⇒ 提醒单独一行；红气泡照 Dashboard CountPill #dc3545。8 题 Excel C:\Users\annzh\Downloads\Annie_待答题_2026-11-23_未发新单提醒.xlsx（推荐 Q1 A 今明后三天、Q2 A 所有团、Q3 A 同 NEW、Q4 A 单号 · 团期 · 团可跳、Q5 A Show、Q6 A 一单一张自动消、Q7 A Res team × 当班（问 team 名）、Q8 A Notice 开关默认关红框不加）。要后端：汇总接口、Notice kind、开关、Res team。
 - 后端转 Annie（原话）「写进 Products 页面的 How to use 吧」⇒ Settings › Products How to use 加折叠节「Setting up a ticket product」6 条（产品码设 Ticket + 组、Ticket tour type、Cfm # 字段、Brenda waiver、TripGuru 码、Content Studio › Tickets 管类型）。派 9b task/products-howto-tickets：照真实标签名、先截图给 Annie，她 OK 再合。
 - ✅ Annie（原话）「可以，动手」⇒ Products How to use「Setting up a ticket product」（9b af1e719a，照真实标签：Category / Group / Tour type、TIX_TOURS 短名、Content Studio › Tickets Reminder › Guest Page 的 + New tour / ✎ Edit tour）合 main。
+- Annie 新要求（原话）「我要在现在的tour和ticket tracking 页面上的搜索功能加不限日期搜索，就是在搜索框里输入任何一个日期的订单号都可以定位到实际页面的那个产品上去」⇒ 记录，非动手；派 bb 出 preview（现状、用哪个接口查订单 → 日期 + 产品、多产品 / 找不到 / 取消、只认完整单号还是名字电话也跨日期、要后端的）。
 
 ## 2026-11-20（周五）前端主窗口 `npe-ops-frontend-5e`[614588]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工：origin/main 9ab99466（主目录 detached 改 PROGRESS）。资源：空闲内存 38.2 / 61.8 GB，node 0、chrome 71。现在没有工作窗口；后端在线 `npe-confirmation-service-bb`[282016]。
