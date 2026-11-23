@@ -34,6 +34,7 @@
 - 9b 交 G363 前端 task/g363-vehicle-extra **2b48ccc8**（未合，等后端 PASS）：Vehicles 按 is_model 找 Model 列 + datalist 提示、不送 model_from、无 History / 导入列；Payroll Vehicle 列（Date | Tour | Role | Fee | Vehicle | Extras | Tips | Total | Status）、「+$50.00」/「+$45.00 · total $320.00」、人员表 Vehicle extras 列、personal_and_vehicle 提示、guide_position 灰字；Pay rates 加 Vehicle extras 节（灰绿 Add + 蓝 Save rates、锁 🔒、重复预检）。veh 59（+6）、payroll 146（+24）、hr 138、nav 40、pl 129，tsc / eslint 0 error / build。截图 C:\Users\annzh\Downloads\g363-vehicle-extra\。已交后端核对。
 - G363 后端 NOT PASS（后端主窗口核 guide_payroll.py）：① 后端 total 已含 vehicle_extra_amount（gp:245 / 270 / 273），前端若再加 = 重复算；② 没有 rule_id，车型价 id 是 vehicle_extra.rate_id；③「Vehicle extra after Save」条件要加：没手填 Fee、GET /rates 有匹配的 active 车型价，total 方式可能为 0。已转 9b 改。
 - Annie 答半屏题（原话）「Staff Schedule 除了Q4选B，其他都按推荐」⇒ Q1 B（排班 + Bus Manifest 编辑页、Order List、Farm out Report、Order Log、Sales Report）、Q2 A（650px 以下才滑）、Q3 A（手机照旧滑，只修名字）、Q4 B（时间一行写完、字号缩小）、Q5 A（标签挪名字下）。非动手，已问是否现在动手。导游页 A / B / C 仍等。
+- ✅ Annie（原话）「动手」⇒ 半屏适配开工，派 2c task/schedule-half-screen（Q1 B 六页、Q2 A 650、Q3 A、Q4 B 时间一行缩字、Q5 A；1920 不变，151 手机版不能坏；检查过直接合 main）。
 
 ## 2026-11-20（周五）前端主窗口 `npe-ops-frontend-5e`[614588]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工：origin/main 9ab99466（主目录 detached 改 PROGRESS）。资源：空闲内存 38.2 / 61.8 GB，node 0、chrome 71。现在没有工作窗口；后端在线 `npe-confirmation-service-bb`[282016]。
