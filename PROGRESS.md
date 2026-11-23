@@ -15,6 +15,7 @@
 - 后端主窗口-bb [80a1b1]：以后合同 / SHA / 前端要求只发 5e。G369 拆：7a 后端放 8 句（6 + 2 句带号码，「I can't find you. I will call you now.」取代 call me，SQL 先给 Annie 看）；7b 电话 702-948-4190、短信 / WhatsApp 统一 725-777-1698（入口和模板 key 先给 Annie 看）；7c–e 前端：Driver Quick Replies 管理页搬进 Content Studio › Team Messages 当一个标签，预计沿用现有接口，G369 后端窗口会先确认接口形状再开工。G373 / G361+G372 / G374 / G320 合同等 Annie 确认方案后发。
 - 2c [4debba] 回来 ⇒ 派第 13 件 Main manifest 手机收键（task/manifest-phone-keys；照全站手机规则，桌面不变、表格不动，先核现状，拿不准的键按规则定写进交接不出题）。7c–e 等 G369 后端确认接口形状 + 新窗口。
 - bb [782471] 回来 ⇒ 派 7c–e 快捷回复管理搬 Content Studio › Team Messages 标签（task/quick-replies-content-studio；沿用现有接口先写，合 main 前等 G369 后端确认接口形状）。已请后端确认。现在：a2 第 8 件、2c 第 13 件、bb 7c–e。
+- ✅ Annie（原话）「1同意推荐，动手」⇒ 146 Farm out 时刻表上传 Q1–Q7 全 A（只改 Timetable；照片系统读 + 黄框核对；收 Excel / CSV / jpg / png / heic / PDF，照片 10 MB；每家记团名 / 酒店对照 + Remember；两种方向；酒店对到已有上车点；不存原件）。要后端：收图片 / PDF、读图服务（API Key 按次收费，跟 Annie 确认）、每家存格式（可能迁移）、未识别名字回前端。已全文发后端主窗口-bb 要合同；前端 2c 做完第 13 件后照合同 mock 写，后端上 main + PASS 才合。没说今天必须完成。
 
 ## 2026-11-20（周五）前端主窗口 `npe-ops-frontend-5e`[614588]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工：origin/main 9ab99466（主目录 detached 改 PROGRESS）。资源：空闲内存 38.2 / 61.8 GB，node 0、chrome 71。现在没有工作窗口；后端在线 `npe-confirmation-service-bb`[282016]。
