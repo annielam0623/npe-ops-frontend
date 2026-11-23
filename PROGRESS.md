@@ -102,6 +102,8 @@
 - Annie（原话）「P-Q1 选A，动手」⇒ Tickets 标签的产品胶囊 / 组标题圆点 / 左边条不用团色，胶囊回 10-14 前白色（git 历史照原样）；Bus / Admin fee 不动。派 2c，过检查直接合 main。排班 Rules 两张 Trello 卡（G272）后端说 Annie 还没答要不要查，不派。
 - ✅ G302 配套上 main ab25c399（bb，功能 e0682eb3）：Content Studio › Farm out Notice › Email 藏 Email subject，换「Subject is set automatically: tour name, date, order number.」，右侧预览 Subject 行同改；旧 tmpl__farmout__*__email_subject 不清不写；cs 242/242、tsc / eslint / build。SHA 已回后端。别处仍可手填 subject（不在 G302）：Team Messages 7 个、Tickets Staff email subject。bb 顺看到（main 原有，未修、非 Annie 提）：Farm out Email 页 Variables 表白天字太暗、深色下 Insert 那排看不清。
 - ✅ P-Q1 Tickets 胶囊回白上 main 189b3afb（2c，功能 6545fa37）：照 4892e9f9（10-14 加团色）之前原样（选中 #dedcd3→#d3d0c6 边 #8f8c82；未选 paper→#e8e6de 边 #b5b2a8）；Tickets 无团色条 / 圆点；夜间 night:bg-none 深底白字；Bus / Admin fee 照旧团色；组头 / NEW / ALL-unsent 未动。tsc / eslint / build、man 557/557（+3）、tk 157/157。截图 C:\Users\annzh\Downloads\tickets-white-pill\。后端确认 G302 只改客人邮件标题，Team Messages / Tickets Staff email subject 照旧读，不改。
+- 2026-11-22 5e 派工：① Annie「修一下 Farm out 那两处看不清的字」⇒ 2c task/farmout-variables-contrast（日间 Variables 表字太深、夜间 Insert 键看不清；InsertBar 在 studio-cards.tsx 各页共用，一起修，只改对比度，不出题直接上线）。② Annie「羚羊谷导游的餐单呢，怎么现在也不见了」⇒ bb 查原因（G275 藏 Lunch 列 / Supplier 餐厅没设 / 前端近期改动 / 后端），前端回归就直接修上线，后端或资料问题先报。
+- 2026-11-22 Annie 新要求（只记录，未动手）：「稍等一下，lankun又不想放bus manifest了，要单独一张餐单」⇒ 改 11 月定的 Q6（Lankun 不另印午餐单、餐厅信息放 manifest 下方），Lankun 版式也要单独印一张餐单。待 Annie 说完 + 定样子和是否动手。
 - 答后端：95 G371 旧发送入口盘点（三个 tracking 已切 ops；utilities / test-orders ops 没页面没入口；ops 直接调 /booking-notes/multi/reply、不调 /resend）；bb 7a 8 句原文 + 号码 grep（ops 代码没写死旧号码）。
 ## 📌 2026-11-20 17:15 Annie 新提：staff 备注几个入口打通（记录，未动手）
 
