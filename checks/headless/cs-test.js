@@ -532,6 +532,13 @@ async function run() {
   await sleep(200);
   check("预览：Subject 一行写自动生成的说明（不显示旧标题），变量换成样例（West Rim / Bellagio）", await evaluate("const t = document.querySelector('aside').textContent; return t.includes('Subject: set automatically: tour name, date, order number') && !t.includes('pick-up on') && t.includes('Grand Canyon West Rim on Thursday, October 16') && t.includes('https://goo.gl/maps/SpW2EnpwM55Hvr637') && !t.includes('{tour_name}');"));
   check("Variables 说明表：11 行、含含义和样例", await evaluate("const t = document.querySelector('[data-fo-variables]'); return !!t && t.querySelectorAll('tbody tr').length === 11 && t.textContent.includes('Per-tour notice') && t.textContent.includes('Bellagio South Tour Lobby');"));
+  // Annie 2026-11-22「修一下 Farm out 那两处看不清的字」：白天 Variables 表是白卡片（原来透明，深字压在深色外框上）；夜间 Insert 键浅色字（原来深蓝 #1a3a5c 压在深底上）。
+  {
+    const day = await evaluate("const t = document.querySelector('[data-fo-variables]'); return { bg: getComputedStyle(t).backgroundColor, td: getComputedStyle(t.querySelector('tbody td:nth-child(2)')).color };");
+    check("白天：Variables 表是白卡片底（paper #f4f3ee），正文深字 #1a1a1a", day.bg === "rgb(244, 243, 238)" && day.td === "rgb(26, 26, 26)", JSON.stringify(day));
+    const night = await evaluate("const h = document.documentElement; const old = h.getAttribute('data-theme'); h.setAttribute('data-theme', 'night'); const b = [...$card('Email body').querySelectorAll('button')].find(x => x.textContent.startsWith('+ ')); const s = getComputedStyle(b); const r = { color: s.color, border: s.borderTopColor, bg: s.backgroundColor, varBg: getComputedStyle(document.querySelector('[data-fo-variables]')).backgroundColor }; if (old == null) h.removeAttribute('data-theme'); else h.setAttribute('data-theme', old); return r;");
+    check("夜间：Insert 键浅色字（sky-300，不是深蓝 #1a3a5c）、边不是浅蓝 #cfe1f6、不是蓝色实心；Variables 表淡白底", night.color !== "rgb(26, 58, 92)" && night.color.startsWith("lab(80") && night.border !== "rgb(207, 225, 246)" && !night.bg.includes("59, 130, 246") && night.varBg !== "rgba(0, 0, 0, 0)", JSON.stringify(night));
+  }
   check("预览：该团有 PLEASE NOTE 时写出注意事项", await evaluate("return document.querySelector('aside').textContent.includes('PLEASE NOTE:') && document.querySelector('aside').textContent.includes('backpacks');"));
   await evaluate("document.querySelector('aside input[type=checkbox]').click();");
   await sleep(150);

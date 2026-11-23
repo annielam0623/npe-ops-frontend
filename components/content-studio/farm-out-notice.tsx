@@ -291,7 +291,7 @@ function VariablesTable() {
     <details
       open
       data-fo-variables
-      className="mb-2.5 rounded-[7px] border border-[#e5e7eb] px-3 py-2 night:border-white/10"
+      className="mb-2.5 rounded-[7px] border border-black/10 bg-paper px-3 py-2 night:border-white/10 night:bg-white/[.04]"
     >
       <summary className="cursor-pointer text-[12px] font-semibold text-[#1a1a1a] night:text-white/90">
         Variables
