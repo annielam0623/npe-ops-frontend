@@ -28,6 +28,8 @@
 - 9b（原 a2，[be8556]）接 G363 前端 task/g363-vehicle-extra。G374 加 400「name to show cannot start with =」已转 bb。
 - Annie 截图 Staff Schedule 半屏（约 950 宽，只看到 SUN–THU、要横滑；Anita 名字一字一行），原话「有个页面交互的问题，像这样半屏的显示，页面上的小窗也应该调整比例来适配，而不是显示需要移动滑条来看」⇒ 记录，不是动手。派 2c 出 preview：核现状（列宽 / min-width）、列全站同类宽表、Staff Schedule 全屏 / 半屏 / 手机改前改后、题（范围 A 只排班 / B 全站宽表、多窄才允许横滑、手机照旧否）；名字被挤一并当 bug 修。
 - Annie 改 G363 Q1（原话）「不需要这么复杂，车型是不会变的，不会就那天是mini bus后天就变van的，这个日期没有必要」⇒ Vehicles 不放 Model from 日期框、导入模板不加该列、不做 Model history 链接；Q2 B / Q3 B 不变。已转 9b；已问后端：不送 model_from 时以前日子的趟拿不拿得到补贴（要不要车型对所有日子生效）。
+- 📌 Staff Schedule 半屏 preview（2c，未写代码）https://claude.ai/artifact/HooJmeBRYNVLEQJSr4Q4zs ：现状 week-grid.tsx:117 列宽写死、:321 min-w-[960px]、:995 时间不换行、:648 名字跟标签同行被挤。5 题（Q1 范围 B 排班 + 差一点的 5 页 / Q2 A 650px 以下才滑 / Q3 A 手机照旧滑 / Q4 A 时间换两行 / Q5 A 标签挪名字下）+ 导游页手机版 A / B / C（后端 ab 样稿 https://claude.ai/artifact/DxjrvjBDt7NqzrwXZEAmQP ，推荐 A）= 6 题 Excel C:\Users\annzh\Downloads\Annie_待答题_2026-11-23_半屏和导游页.xlsx。
+- G363 后端定：不送 model_from = 车型对所有日子生效（b5 今天必做完后改）；v180 已给有车型的车补 11-01 起始，空车型都是 48–54 座大巴无补贴。前端照旧不送 model_from。
 
 ## 2026-11-20（周五）前端主窗口 `npe-ops-frontend-5e`[614588]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工：origin/main 9ab99466（主目录 detached 改 PROGRESS）。资源：空闲内存 38.2 / 61.8 GB，node 0、chrome 71。现在没有工作窗口；后端在线 `npe-confirmation-service-bb`[282016]。
