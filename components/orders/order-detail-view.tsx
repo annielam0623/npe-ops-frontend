@@ -262,8 +262,9 @@ function OrderBody({
     bodyVis.visible("order_lifecycle") &&
     bodyPerms.canMessages("messages.view");
   // ★ Note 打通（Annie 2026-11-21 动手，Q5 B）：后端给了 staff_notes ⇒ 出「★ Notes」卡，
-  // Notes 卡 / Chat history 只放客人对话（staff_note 挪到 ★ Notes 卡）；旧后端没有 ⇒ 照旧混着显示。partner 不出。
-  const staffNotes = partner ? null : (o.staff_notes ?? null);
+  // Notes 卡 / Chat history 只放客人对话（staff_note 挪到 ★ Notes 卡）；旧后端没有 ⇒ 照旧混着显示。
+  // partner 只读（Annie 2026-11-22「partner 都能看」，后端 c76644da 给 partner 也回 staff_notes）：卡照出，没有输入框、没有 @。
+  const staffNotes = o.staff_notes ?? null;
   const chatNotes = staffNotes
     ? o.booking_notes.filter((n) => n.direction !== "staff_note")
     : o.booking_notes;
@@ -485,6 +486,7 @@ function OrderBody({
           <OrderStaffNotesCard
             order={o}
             notes={staffNotes}
+            readOnly={bodyPerms.isPartner}
             onUnauthorized={onUnauthorized}
           />
         ) : null}

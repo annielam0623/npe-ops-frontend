@@ -61,9 +61,10 @@ const SN_BOOKING_NOTES = [
 ];
 detail.CHDSN1 = { ...detail.CHDTESTORDER1, order_number: "CHDSN1", editable: false, product: { ...detail.CHDTESTORDER1.product, code: "GCW01", name: "Grand Canyon West Bus", item_count: 2 }, booking_notes: SN_BOOKING_NOTES };
 detail.CHDSN2 = { ...detail.CHDTESTORDER1, order_number: "CHDSN2", editable: false, product: { ...detail.CHDTESTORDER1.product, item_count: 1 }, booking_notes: SN_BOOKING_NOTES };
+// 后端 c76644da（orders.py:935）：新后端每单都带 staff_notes（没有 = []）；partner 也带（只读，Annie 2026-11-22「partner 都能看」）。
 function withStaffNotes(id, body) {
-  if (!ctl.sn || ctl.partner || !staffNotes.SN_ORDERS[id]) return body;
-  return { ...body, staff_notes: staffNotes.SN_ORDERS[id].notes };
+  if (!ctl.sn) return body;
+  return { ...body, staff_notes: staffNotes.SN_ORDERS[id]?.notes ?? [] };
 }
 
 function send(res, status, body) {

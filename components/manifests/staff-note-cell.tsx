@@ -12,8 +12,11 @@ import {
 } from "@/components/staff-notes/staff-notes";
 import { useViewOnly } from "@/components/ui/view-only";
 import { newestFirst, type StaffNote } from "@/lib/staff-notes-api";
+import { usePermissions } from "@/lib/staff-permissions";
 import { cn } from "@/lib/utils";
 import type { ManifestRow } from "@/types";
+
+import { oldManifestNote } from "./config";
 
 /**
  * ★ Note 打通（Annie 2026-11-21 动手，preview 9BLMZq2ShCAZeVpbQ1j21A v3 第 1 节）：Main manifest Notes 格。
@@ -35,8 +38,12 @@ export function StaffNoteCell({
   onUnauthorized: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const viewOnly = useViewOnly();
-  const sorted = newestFirst(notes);
+  // partner 只读（Annie 2026-11-22「partner 都能看」）：看得到 ★ Note，没有 Add、没有输入框、没有 @。
+  const isPartner = usePermissions().isPartner;
+  const viewOnly = useViewOnly() || isPartner;
+  // 旧 Notes 框写的还没搬过来（见 oldManifestNote）⇒ 当成最旧的一条照样显示。
+  const old = oldManifestNote(row);
+  const sorted = newestFirst(old ? [...notes, old] : notes);
   const latest = sorted[0];
   const rowKey = row.row_key;
   const dirtyFor = useCallback(
@@ -70,6 +77,16 @@ export function StaffNoteCell({
             className="cursor-pointer text-[11px] font-semibold text-[#1d4ed8] night:text-[#93c5fd]"
           >
             +{sorted.length - 1} more
+          </button>
+        ) : sorted.length === 1 && viewOnly ? (
+          // 只读的人看不到 Add：只有一条时给个 View 打开看全文（格子里是一行截断）。
+          <button
+            type="button"
+            data-staff-note-view
+            onClick={() => setOpen(true)}
+            className="cursor-pointer text-[11px] text-[#6b6f76] underline decoration-dotted night:text-white/50"
+          >
+            View
           </button>
         ) : null}
         {sorted.length > 1 && !viewOnly ? (
@@ -119,7 +136,7 @@ function NotePopover({
   onUnauthorized: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const directory = useMentionDirectory();
+  const directory = useMentionDirectory(!viewOnly);
   const [typing, setTyping] = useState(false);
   const typingRef = useRef(false);
   const dirty = useCallback(

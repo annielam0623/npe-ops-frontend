@@ -2586,7 +2586,7 @@ async function notesChecks() {
   check("Notes：没有 manifests.edit ⇒ 只读、看得到内容、没有 Add note", await evaluate(`const i = ${note("CHD1001")}; return i.readOnly && i.value === 'Sits front row' && i.placeholder === '';`));
   await ctl({ staffPerms: null });
 
-  check("Notes：How to use 加了 Notes 那一句（原文）", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return [...d.querySelectorAll('li')].some(l => l.textContent.replace(/\\s+/g, ' ').trim() === 'Notes (Bus Tour and Tickets): a note for staff, one per row. It isn’t printed and isn’t sent to guests. Type the note, then click Save next to it (or press Enter). Press Esc to undo before saving.');"));
+  check("Notes：How to use 加了 Notes 那一句（原文）", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return [...d.querySelectorAll('li')].some(l => l.textContent.replace(/\\s+/g, ' ').trim() === 'Notes (Bus Tour and Tickets): ★ Notes for staff about this order and product. The cell shows the newest one; click +N more to see them all, or Add to write a new one. Type @ to mention a teammate or a team; they get a Notice. Notes are only added, never changed. They aren’t printed and aren’t sent to guests. Partners can read them but can’t add notes or be mentioned. The same notes show in Order details and in the Tracking chat window.');"));
   await ctl({ notes: false, noteTwin: false });
 }
 
@@ -2854,7 +2854,7 @@ async function waiverChecks() {
 async function staffNoteManifestChecks() {
   const row = (o) => `document.querySelector('tr[data-row^="${o}|"]:not([data-row$="|return"])')`;
   const pop = "document.querySelector('[data-staff-note-popover]')";
-  await ctl({ sections: false, notes: true, noteTwin: false, sn: true, snFail: null, prefs: { bus: null, tickets: null } });
+  await ctl({ sections: false, notes: true, noteTwin: false, sn: true, clearNotes: true, oldNote: null, snFail: null, prefs: { bus: null, tickets: null } });
   await openPage(`${APP}/manifests?date=${today}&tab=bus`);
   await waitFor(`${row("CHD1001")}?.querySelector('[data-staff-note-latest]')`, 20000);
   check("★ 有 staff_notes ⇒ Notes 列用 ★ Note，不再出旧的单行框", await evaluate("const h = $heads(); return h[h.length - 1] === 'Notes' && !document.querySelector('input[data-note]');"), await evaluate("return $heads().join('|');"));
@@ -2891,6 +2891,49 @@ async function staffNoteManifestChecks() {
     const r1 = lines.find((l) => l.includes("CHD1001"));
     check("★ Export CSV：Notes 格是全部 ★ Note「名字 时间: 内容 | …」最新在前", !!r1 && /ZZ Test Staff [A-Z][a-z]{2} \d+ \d+:\d\d [AP]M: ZZ Test from manifest \| ZZ Test Lily .*: @ZZ Test Max guest will be 10 min late, please wait \| ZZ Test Max .*Guest asked for vegetarian lunch\. \| ZZ Test Annie .*Pickup at main lobby\./.test(r1), r1);
   }
+
+  // 旧 Notes 框写的（manifest_notes）还没搬进 ★ Note（Annie 还没跑搬家 SQL，生产 0 行）：后端 c76644da 照样回 note，每行也带 staff_notes ⇒ 旧的照样显示、CSV 也有。
+  // CHD1001 的旧备注跟已经搬过来的那条（source migrated）一样 ⇒ 不再另出一条。
+  await ctl({ oldNote: { order: "CHD1002", code: "ANT01", note: "ZZ Test old box note", updated_by: "ZZ Test Old", updated_at: "2026-11-15T18:00:00+00:00" } });
+  const moreBefore = await evaluate(`return ${row("CHD1001")}.querySelector('[data-staff-note-more]')?.textContent ?? '';`);
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor(`${row("CHD1002")}?.querySelector('[data-staff-note-latest]')`, 20000);
+  check("★ 旧 Notes 框写的还没搬：格子里照样显示（当最旧的一条）", await evaluate(`return ${row("CHD1002")}.querySelector('[data-staff-note-latest]').textContent.includes('ZZ Test old box note') && ${row("CHD1002")}.querySelector('[data-staff-note-open]')?.textContent === 'Add';`));
+  await evaluate(`${row("CHD1002")}.querySelector('[data-staff-note-open]').click();`);
+  await waitFor(pop, 5000);
+  const oldItems = await evaluate(`return [...${pop}.querySelectorAll('[data-staff-note]')].map(e => e.textContent.replace(/\\s+/g, ' ').trim());`);
+  check("★ 旧备注在小窗里：写谁 · 几点，不标从哪写的", oldItems.length === 1 && oldItems[0].includes("ZZ Test Old") && oldItems[0].includes("11/15/2026") && oldItems[0].includes("ZZ Test old box note") && !/Moved from old Notes|Main manifest|Tracking/.test(oldItems[0]), JSON.stringify(oldItems));
+  await evaluate(`${pop}.querySelector('[data-staff-note-close]').click();`);
+  await ctl({ oldNote: { order: "CHD1001", code: "ANT01", note: "Pickup at main lobby.", updated_by: "ZZ Test Annie", updated_at: "2026-11-18T18:30:00+00:00" } });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor(`${row("CHD1001")}?.querySelector('[data-staff-note-more]')`, 20000);
+  check("★ 旧备注已经搬进 ★ Note（migrated、正文一样）⇒ 不出两次", (await evaluate(`return ${row("CHD1001")}.querySelector('[data-staff-note-more]').textContent;`)) === moreBefore, `${moreBefore} → ${await evaluate(`return ${row("CHD1001")}.querySelector('[data-staff-note-more]').textContent;`)}`);
+  await ctl({ oldNote: { order: "CHD1002", code: "ANT01", note: "ZZ Test old box note", updated_by: "ZZ Test Old", updated_at: "2026-11-15T18:00:00+00:00" } });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor(`${row("CHD1002")}?.querySelector('[data-staff-note-latest]')`, 20000);
+  await evaluate("window.__blob = null; const orig2 = URL.createObjectURL; URL.createObjectURL = (b) => { window.__blob = b; return orig2(b); }; HTMLAnchorElement.prototype.click = function () {};");
+  if (await evaluate("return !!$btn('↓ Export CSV');")) {
+    await evaluate("$btn('↓ Export CSV').click();");
+    await waitFor("window.__blob");
+    const l2 = (await evaluate("return await window.__blob.text();")).replace(/^﻿/, "").split("\r\n").find((l) => l.includes("CHD1002"));
+    check("★ Export CSV：旧备注也在 Notes 格「ZZ Test Old Nov 15 10:00 AM: ZZ Test old box note」", !!l2 && l2.includes("ZZ Test Old Nov 15 10:00 AM: ZZ Test old box note"), l2);
+  }
+
+  // partner 只读（Annie 2026-11-22「partner 都能看」；后端 c76644da 给 partner 的行也带 staff_notes）：看得到，没有 Add、没有输入框、没有 @，不调 /api/staff-notes*。
+  await ctl({ partner: true, partnerCodes: ["manifests.view"] });
+  const pBefore = (await mockLog()).length;
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor(`${row("CHD1001")}?.querySelector('[data-staff-note-latest]')`, 20000);
+  check("★ partner：Notes 格照出 ★ Note（最新一条 + more）", await evaluate(`return ${row("CHD1001")}.querySelector('[data-staff-note-latest]').textContent.trim().length > 1 && !!${row("CHD1001")}.querySelector('[data-staff-note-more]');`));
+  check("★ partner：没有 Add / Add note", await evaluate(`return !document.querySelector('[data-staff-note-open]');`));
+  check("★ partner：只有一条（旧备注）⇒ 出 View 看全文", await evaluate(`return ${row("CHD1002")}.querySelector('[data-staff-note-view]')?.textContent === 'View';`));
+  await evaluate(`${row("CHD1001")}.querySelector('[data-staff-note-more]').click();`);
+  await waitFor(pop, 5000);
+  check("★ partner：小窗里看得到全部，没有输入框、没有 @ 下拉", await evaluate(`return ${pop}.querySelectorAll('[data-staff-note]').length >= 3 && !${pop}.querySelector('[data-staff-note-composer]') && !${pop}.querySelector('textarea') && !document.querySelector('[data-mention-list]');`));
+  await evaluate(`${pop}.querySelector('[data-staff-note-close]').click();`);
+  const pCalls = await since(pBefore, (e) => e.path.startsWith("/api/staff-notes"));
+  check("★ partner：不调 /api/staff-notes*（后端 require_staff 会 403）", pCalls.length === 0, JSON.stringify(pCalls));
+  await ctl({ partner: false, partnerCodes: null, oldNote: null });
 
   // 手机：小窗是从底部升起的面板，整页不左右晃。
   await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });

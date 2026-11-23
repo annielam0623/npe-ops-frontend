@@ -23,6 +23,7 @@ import { StaffNoteComposer, StaffNoteList } from "./staff-notes";
 export function useOrderNoteProducts(
   orderNumber: string,
   onUnauthorized: () => void,
+  enabled = true,
 ): StaffNoteProduct[] | null {
   const [products, setProducts] = useState<StaffNoteProduct[] | null>(null);
   // 调用方每次渲染给的可能是新函数：只在单号变了时重读。
@@ -31,6 +32,8 @@ export function useOrderNoteProducts(
     unauthorized.current = onUnauthorized;
   });
   useEffect(() => {
+    // 只读（partner）不写，不用产品表；GET /api/staff-notes 是 require_staff，partner 会 403。
+    if (!enabled) return;
     const ac = new AbortController();
     setProducts(null);
     fetchOrderStaffNotes(orderNumber, ac.signal).then(
@@ -42,26 +45,33 @@ export function useOrderNoteProducts(
       },
     );
     return () => ac.abort();
-  }, [orderNumber]);
+  }, [orderNumber, enabled]);
   return products;
 }
 
 /**
  * Order details 的「★ Notes」卡（Annie Q4 A 能写；Q5 B 卡里只放 ★ Note，Chat history 只放客人对话）：
- * 第 3 件的输入框 + 这单全部 ★ Note（最新在上、每条带产品标签；整单的写「Order note」）。partner 不出（调用方挡）。
+ * 第 3 件的输入框 + 这单全部 ★ Note（最新在上、每条带产品标签；整单的写「Order note」）。
+ * readOnly（partner，Annie 2026-11-22「partner 都能看」）：只看，不出输入框、不读 @ 名单和产品表。
  */
 export function OrderStaffNotesCard({
   order,
   notes: initial,
+  readOnly = false,
   onUnauthorized,
 }: {
   order: OrderDetail;
   notes: readonly StaffNote[];
+  readOnly?: boolean;
   onUnauthorized: () => void;
 }) {
-  const directory = useMentionDirectory();
+  const directory = useMentionDirectory(!readOnly);
   const info = usePhoneInfo("About ★ Notes");
-  const products = useOrderNoteProducts(order.order_number, onUnauthorized);
+  const products = useOrderNoteProducts(
+    order.order_number,
+    onUnauthorized,
+    !readOnly,
+  );
   const [added, setAdded] = useState<StaffNote[]>([]);
   const [dirty, setDirty] = useState(false);
   const notes = useMemo(() => {
@@ -86,25 +96,29 @@ export function OrderStaffNotesCard({
       <p
         className={`mb-1.5 text-[11px] text-[#6b6f76] night:text-white/45 ${info.hide}`}
       >
-        Internal only. Guests and partners can&apos;t see these.
+        {readOnly
+          ? "Notes from the operations team. Read only."
+          : "Internal only: guests never see these. Partners can read them but can’t add notes or be mentioned."}
       </p>
-      <StaffNoteComposer
-        orderNumber={order.order_number}
-        products={products ?? []}
-        source="order_details"
-        directory={directory}
-        onAdded={(n) => setAdded((a) => [n, ...a])}
-        onDirty={onDirty}
-        onUnauthorized={onUnauthorized}
-      />
+      {readOnly ? null : (
+        <StaffNoteComposer
+          orderNumber={order.order_number}
+          products={products ?? []}
+          source="order_details"
+          directory={directory}
+          onAdded={(n) => setAdded((a) => [n, ...a])}
+          onDirty={onDirty}
+          onUnauthorized={onUnauthorized}
+        />
+      )}
       {notes.length ? (
-        <div className="mt-2.5">
+        <div className={readOnly ? "" : "mt-2.5"}>
           <StaffNoteList notes={notes} showProduct />
         </div>
       ) : (
         <div
           data-staff-notes-empty
-          className="mt-2.5 text-[12px] text-[#6b6f76] night:text-white/45"
+          className={`${readOnly ? "" : "mt-2.5 "}text-[12px] text-[#6b6f76] night:text-white/45`}
         >
           No ★ Notes yet.
         </div>

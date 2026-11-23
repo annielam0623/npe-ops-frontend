@@ -128,7 +128,7 @@ export interface ManifestRow {
   note_updated_at?: string | null;
   /**
    * ★ Note 打通（Annie 2026-11-21 动手；后端合同 v1 第 5 点）：这一行产品的 ★ Note + 整单的（product_code null），最新在前。
-   * 有这个键 ⇒ Notes 列改用 ★ Note（只加不改）；旧的 note / PUT /api/manifests/notes 过渡期还在，Annie 验收后后端删。partner 不回。
+   * 有这个键 ⇒ Notes 列改用 ★ Note（只加不改）；旧的 note / PUT /api/manifests/notes 过渡期还在，Annie 验收后后端删。partner 也回（只读）。
    */
   staff_notes?: StaffNote[];
   /** Export CSV 的 Notes 格：「name time: text | …」，最新在前（Q4 A），后端拼好。 */

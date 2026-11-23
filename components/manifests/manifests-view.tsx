@@ -2807,10 +2807,13 @@ function ManifestsHowToUse() {
           ticket page. The tag goes away once it is sent.
         </>,
         <>
-          <b>Notes</b> (Bus Tour and Tickets): a note for staff, one per row.
-          It isn’t printed and isn’t sent to guests. Type the note, then click{" "}
-          <b>Save</b> next to it (or press Enter). Press Esc to undo before
-          saving.
+          <b>Notes</b> (Bus Tour and Tickets): ★ Notes for staff about this
+          order and product. The cell shows the newest one; click{" "}
+          <b>+N more</b> to see them all, or <b>Add</b> to write a new one.
+          Type @ to mention a teammate or a team; they get a Notice. Notes are
+          only added, never changed. They aren’t printed and aren’t sent to
+          guests. Partners can read them but can’t add notes or be mentioned.
+          The same notes show in Order details and in the Tracking chat window.
         </>,
         <>
           <b>Tickets</b> are grouped by session (start time). Each group shows

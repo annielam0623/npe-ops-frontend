@@ -794,11 +794,17 @@ async function staffNoteChecks() {
   check("★ 手机：说明收进「i」，整页不左右晃", await evaluate(`return !!${CARD}.querySelector('[data-phone-info]') && document.documentElement.scrollWidth <= window.innerWidth + 1;`));
   await cdp("Emulation.clearDeviceMetricsOverride");
 
-  // partner：不出。
+  // partner：只读（Annie 2026-11-22「partner 都能看」；后端 c76644da 给 partner 也回 staff_notes）。看得到全部 ★ Note，没有输入框、没有 @，不去调 require_staff 的 /api/staff-notes*。
   await ctl({ partner: ["orders.view"] });
+  const pBefore = (await mockLog()).length;
   await openSn("CHDSN1");
+  await waitFor(`${CARD}?.querySelector('[data-staff-note-list]')`, 8000);
   await sleep(600);
-  check("★ partner：不出 ★ Notes 卡", await evaluate(`return !${CARD};`));
+  check("★ partner：★ Notes 卡照出，全部 ★ Note 都看得到", await evaluate(`return !!${CARD} && ${CARD}.querySelectorAll('[data-staff-note-list] > li').length >= 3 && ${CARD}.textContent.includes('Bus 3 is full') && ${CARD}.textContent.includes('Pickup at main lobby');`), await evaluate(`return ${CARD} ? ${CARD}.textContent.slice(0, 300) : 'no card';`));
+  check("★ partner：没有输入框、没有 Add、没有 @ 下拉", await evaluate(`return !${CARD}.querySelector('[data-staff-note-composer]') && !${CARD}.querySelector('textarea') && !${CARD}.querySelector('[data-staff-note-add]') && !document.querySelector('[data-mention-list]');`));
+  check("★ partner：说明写「Read only」", await evaluate(`return ${CARD}.textContent.includes('Notes from the operations team. Read only.');`));
+  const pCalls = await since(pBefore, (e) => e.path.startsWith("/api/staff-notes"));
+  check("★ partner：不调 /api/staff-notes、/api/staff-notes/directory（后端 require_staff 会 403）", pCalls.length === 0, JSON.stringify(pCalls));
   await ctl({ partner: null, sn: false });
 }
 

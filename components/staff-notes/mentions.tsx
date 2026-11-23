@@ -28,9 +28,13 @@ export type PickedMention =
  * @ 名单：一个页面只读一次（几个输入框共用）。读不到（旧后端没有这个接口 / 断网）⇒ null，@ 只是普通文字、不出下拉。
  */
 let directoryPromise: Promise<MentionDirectory | null> | null = null;
-export function useMentionDirectory(): MentionDirectory | null {
+export function useMentionDirectory(
+  enabled = true,
+): MentionDirectory | null {
   const [dir, setDir] = useState<MentionDirectory | null>(null);
   useEffect(() => {
+    // partner 只读（Annie 2026-11-22「partner 都能看」）：不出 @ 名单，也不去读（后端 require_staff 会 403）。
+    if (!enabled) return;
     let alive = true;
     directoryPromise ??= fetchMentionDirectory().then(
       (d) => d,
@@ -46,7 +50,7 @@ export function useMentionDirectory(): MentionDirectory | null {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [enabled]);
   return dir;
 }
 

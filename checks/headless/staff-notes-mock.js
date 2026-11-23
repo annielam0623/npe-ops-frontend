@@ -52,6 +52,12 @@ module.exports = async function staffNotes(ctl, req, url, res, send, readBody, l
     send(res, 404, { detail: "Not Found" });
     return true;
   }
+  // 后端 c76644da：/api/staff-notes* 是 require_staff ⇒ partner 一律 403（partner 只在 Order details / Manifest 里读）。
+  if (ctl.partner) {
+    if (log) log.push({ method: req.method, path: p, partner403: true });
+    send(res, 403, { detail: "Access denied" });
+    return true;
+  }
   if (p === "/api/staff-notes/directory") {
     send(res, 200, DIRECTORY);
     return true;
@@ -60,7 +66,7 @@ module.exports = async function staffNotes(ctl, req, url, res, send, readBody, l
     const on = url.searchParams.get("order_number");
     const o = SN_ORDERS[on];
     if (!o) {
-      send(res, 404, { detail: "Order not found in Order List." });
+      send(res, 404, { detail: "That order is not in the Order List." });
       return true;
     }
     const pc = url.searchParams.get("product_code");
@@ -72,12 +78,12 @@ module.exports = async function staffNotes(ctl, req, url, res, send, readBody, l
     const body = await readBody(req);
     if (log && log.length) log[log.length - 1].body = body;
     if (ctl.snFail === 404) {
-      send(res, 404, { detail: "Order not found in Order List." });
+      send(res, 404, { detail: "That order is not in the Order List." });
       return true;
     }
     const o = SN_ORDERS[body.order_number];
     if (!o) {
-      send(res, 404, { detail: "Order not found in Order List." });
+      send(res, 404, { detail: "That order is not in the Order List." });
       return true;
     }
     if (ctl.snFail === 400 || (o.products.length > 1 && !body.product_code)) {

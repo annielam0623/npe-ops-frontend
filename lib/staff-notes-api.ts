@@ -4,7 +4,7 @@ import { apiFetch } from "@/lib/api-client";
  * ★ Note 打通 + @（Annie 2026-11-21「其他问题全部同意推荐，动手」，preview https://claude.ai/artifact/9BLMZq2ShCAZeVpbQ1j21A v3）。
  * 一套存储：booking_notes direction = staff_note。三处写（Tracking 对话框 Save note / Main manifest Notes 格 / Order details ★ Notes 卡），
  * 三处读；按产品分开（Q2 B），整单的（product_code null，含旧的 19 条）每个产品行都出、标「Order note」；
- * 能打开页面的 staff 都能写（Q3），partner 三处都不回。
+ * 能打开页面的 staff 都能写（Q3）；partner 只读（Annie 2026-11-22「partner 都能看」）：Order details、Main manifest 照回，不能写、不能被 @。
  * 形状照后端合同 v1（ab，2026-11-21，经 5e 转；后端还没上 main，migrate v181）。
  */
 

@@ -1,4 +1,5 @@
 import { LA_TIME_ZONE } from "@/lib/la-date";
+import { formatCsvNoteTime, type StaffNote } from "@/lib/staff-notes-api";
 import type {
   ManifestField,
   ManifestHidden,
@@ -200,13 +201,53 @@ export function withNotes(page: ManifestPage): ManifestPage {
     rows: page.rows.map((r) => ({
       ...r,
       // ★ Note（后端合同 v1）：CSV 用后端拼好的 staff_notes_csv；旧后端照旧那一条 note。
+      // 旧 Notes 框写的（manifest_notes，还没搬）接在最后（它比 ★ Note 旧）。
       values: {
         ...r.values,
         [NOTE_KEY]: Array.isArray(r.staff_notes)
-          ? (r.staff_notes_csv ?? "")
+          ? csvWithOldNote(r)
           : (r.note ?? ""),
       },
     })),
+  };
+}
+
+function csvWithOldNote(r: ManifestRow): string {
+  const star = r.staff_notes_csv ?? "";
+  const old = oldManifestNote(r);
+  if (!old) return star;
+  const when = old.created_at ? ` ${formatCsvNoteTime(old.created_at)}` : "";
+  const line =
+    `${old.author?.display_name ?? ""}${when}: ${old.body.replace(/\s+/g, " ")}`.trim();
+  return star ? `${star} | ${line}` : line;
+}
+
+/**
+ * 旧 Notes 框（PUT /api/manifests/notes → manifest_notes）写的那一条，在 ★ Notes 格里照样显示（只读）。
+ * 后端 c76644da 每行都给 staff_notes（没有 = []），旧的 note 另外照给；Annie 还没跑 manifest_notes 搬家 SQL（2026-11-22 生产 0 行），
+ * 不加这条旧备注就看不到了。搬过来以后（★ Note 里有 source = migrated、正文一样的）⇒ 不再另出，免得一条出两次。
+ * id 用负数（不会跟真的 ★ Note 撞）；source null（不是从哪个入口写的 ★ Note）。
+ */
+export function oldManifestNote(r: ManifestRow): StaffNote | null {
+  const body = (r.note ?? "").trim();
+  if (!body || !Array.isArray(r.staff_notes)) return null;
+  if (
+    r.staff_notes.some(
+      (n) => n.source === "migrated" && n.body.trim() === body,
+    )
+  )
+    return null;
+  const by = (r.note_updated_by ?? "").trim();
+  return {
+    id: -1,
+    order_number: r.order_number,
+    product_code: r.product_code ?? null,
+    body,
+    source: null,
+    author: by ? { username: by, display_name: by } : null,
+    created_at: r.note_updated_at ?? "",
+    mentions: [],
+    mention_teams: [],
   };
 }
 

@@ -69,10 +69,11 @@ const snTime = (iso) => new Intl.DateTimeFormat("en-US", { timeZone: "America/Lo
 function snOf(o, code) {
   if (!ctl.sn) return {};
   const list = (staffNotes.SN_ORDERS[o]?.notes ?? []).filter((n) => n.product_code === code || n.product_code === null);
-  return { staff_notes: list, staff_notes_csv: list.map((n) => `${snAuthor(n)} ${snTime(n.created_at)}: ${n.body}`).join(" | ") };
+  return { staff_notes: list, staff_notes_csv: list.map((n) => `${snAuthor(n)} ${snTime(n.created_at)}: ${n.body.split(/\s+/).filter(Boolean).join(" ")}`.trim()).join(" | ") };
 }
 const noteOf = (o, code, date) => {
-  const n = notes.get(`${o}|${code}|${date}`);
+  // ctl.oldNote = {order, code, note, updated_by, updated_at}：旧 Notes 框写过、还没搬进 ★ Note 的一条（生产 2026-11-22 就是这样）。
+  const n = notes.get(`${o}|${code}|${date}`) ?? (ctl.oldNote && ctl.oldNote.order === o && ctl.oldNote.code === code ? ctl.oldNote : null);
   return { ...(ctl.notes ? { note: n?.note ?? "", note_updated_by: n?.updated_by ?? "", note_updated_at: n?.updated_at ?? null } : {}), ...snOf(o, code) };
 };
 // G245（置顶 82）：ctl.mismatch = 这几单 Rezdy 的 Cfm # 跟产品不符（staff 填了 Cfm # 就不算）；ctl.mismatchLate = 页面上没标、发的那一刻后端才挡。
@@ -565,6 +566,11 @@ http
       if (body.seedWaiver) {
         seedWaiver();
         delete body.seedWaiver;
+      }
+      // clearNotes：清掉旧 Notes 框（manifest_notes）存过的，★ Note 那段检查从干净的开始。
+      if (body.clearNotes) {
+        notes.clear();
+        delete body.clearNotes;
       }
       if (body.seedCfm) {
         cfm.set(rowKey(ROWS[4], today), { confirmation_no: "AC-55120", updated_by: "zztest", updated_at: "2026-10-07T18:05:00+00:00" });
