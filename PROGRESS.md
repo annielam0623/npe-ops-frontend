@@ -30,6 +30,7 @@
 - Annie 改 G363 Q1（原话）「不需要这么复杂，车型是不会变的，不会就那天是mini bus后天就变van的，这个日期没有必要」⇒ Vehicles 不放 Model from 日期框、导入模板不加该列、不做 Model history 链接；Q2 B / Q3 B 不变。已转 9b；已问后端：不送 model_from 时以前日子的趟拿不拿得到补贴（要不要车型对所有日子生效）。
 - 📌 Staff Schedule 半屏 preview（2c，未写代码）https://claude.ai/artifact/HooJmeBRYNVLEQJSr4Q4zs ：现状 week-grid.tsx:117 列宽写死、:321 min-w-[960px]、:995 时间不换行、:648 名字跟标签同行被挤。5 题（Q1 范围 B 排班 + 差一点的 5 页 / Q2 A 650px 以下才滑 / Q3 A 手机照旧滑 / Q4 A 时间换两行 / Q5 A 标签挪名字下）+ 导游页手机版 A / B / C（后端 ab 样稿 https://claude.ai/artifact/DxjrvjBDt7NqzrwXZEAmQP ，推荐 A）= 6 题 Excel C:\Users\annzh\Downloads\Annie_待答题_2026-11-23_半屏和导游页.xlsx。
 - G363 后端定：不送 model_from = 车型对所有日子生效（b5 今天必做完后改）；v180 已给有车型的车补 11-01 起始，空车型都是 48–54 座大巴无补贴。前端照旧不送 model_from。
+- bb 交 G374 前端 origin/task/g374-ticket-labels-fe **63f25045**（未合）：Bus Manifest setup 每团 Sections 下子项「Ticket names on the Bus Manifest」（Extras 后），表 Original text | Name to show | ↑ ↓ Remove + 空行自动补；只暂存、Save 整表 PUT；参加 10 分钟自动存 + 离开拦；400 / 500 原话；admin 才看得到（接口 require_admin）；How to use 放 Bus Manifest setup 自己的框。products 270、nav 40，tsc / eslint 0 error / build。截图 C:\Users\annzh\Downloads\g374-ticket-labels\，📌 给 Annie 看样子；合前还要后端 47 上 main + PASS。
 
 ## 2026-11-20（周五）前端主窗口 `npe-ops-frontend-5e`[614588]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工：origin/main 9ab99466（主目录 detached 改 PROGRESS）。资源：空闲内存 38.2 / 61.8 GB，node 0、chrome 71。现在没有工作窗口；后端在线 `npe-confirmation-service-bb`[282016]。
