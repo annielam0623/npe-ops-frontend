@@ -44,6 +44,7 @@
 - 导游页 D 第 2 版（同链接 CuAT4qXq…，深色卡片样式；D5 加合计放哪 A 表上蓝框 / B 表尾 / C 照餐单）。Annie 意见（原话）「导游：第一，竖屏的时候按钮肯定要小正方形啊，名字单独一行，第二行是餐和按钮，餐就写nT/nB/nV就好-」⇒ 竖屏按钮小正方形、每人两行（名字 / 餐 + 按钮）、餐写 nT / nB / nV；已请后端出第 3 版。非动手。
 - Annie 补（原话）「Notes放名字后面，0份的不写」⇒ 导游页 D 第 3 版：Notes 紧跟名字，餐 0 份不写；已转后端。
 - 导游页 D 第 3 版（ab，同链接）跟 Annie「Notes放名字后面，0份的不写」错开（0 份变淡仍写、Notes 在餐后、pax 在第一行）⇒ 已请出第 4 版：第一行名字 + Notes、第二行 pax · 餐（只写有份数的）+ 两个 40×40 方键，横屏同规则；D1 记为已答（B + Notes 放名字后）。
+- 146 后端合同 v1（后端 28，草案：Annie 还没确认后端方案，形状不变）：parse 收 xlsx / csv 1 MB、照片 / PDF 10 MB ≤5 页，读图 10–60 秒（前端超时 ≥90 s）；回 grid + format（orientation、tours / hotels 的 match + status）+ needs_match，needs_match=false 时 parsed / diff 同现在；新 rematch（不花钱）；apply 加 format + remember（同一事务记住）；GET / PUT format；英文报错 8 条 + 503 / 502。已全文转 89。导游页 D 第 4 版（Notes 跟名字、0 份不写、人数在第二行；后端自加「No lunch」淡字），D2–D8 待 Annie。
 
 ## 2026-11-20（周五）前端主窗口 `npe-ops-frontend-5e`[614588]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工：origin/main 9ab99466（主目录 detached 改 PROGRESS）。资源：空闲内存 38.2 / 61.8 GB，node 0、chrome 71。现在没有工作窗口；后端在线 `npe-confirmation-service-bb`[282016]。
