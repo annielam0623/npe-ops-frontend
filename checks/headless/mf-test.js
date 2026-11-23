@@ -1742,9 +1742,9 @@ async function runPhoneFit() {
   await shot("portrait-390x844.png");
 
   await evaluate("document.querySelector('[data-mf-fullscreen]').click(); return 1;");
-  await waitFor("document.querySelector('[data-mf-full]')", 3000);
+  await waitFor("document.querySelector('div[data-mf-full]')", 3000);
   await sleep(300);
-  const fsv = await evaluate(`${vis} return { full: vis(document.querySelector('[data-mf-full]')), page: vis(document.querySelector('[data-mf-page] header')), topbar: getComputedStyle(document.querySelector('[data-app-topbar]')).display, back: vis(document.querySelector('nav[aria-label=Back]')), buses: [...document.querySelectorAll('[data-mf-full-bus]')].map((b) => b.textContent + ':' + b.getAttribute('aria-pressed')), title: document.querySelector('[data-mf-full-title]').textContent, heads: [...document.querySelector('[data-mf-full] table thead tr').children].map((t) => t.textContent.trim()), sw: document.documentElement.scrollWidth, vw: innerWidth, float: vis(document.querySelector('button[title=Top]')), ts: !!document.querySelector('[data-mf-full] [data-text-size-toolbar]') };`);
+  const fsv = await evaluate(`${vis} return { full: vis(document.querySelector('div[data-mf-full]')), page: vis(document.querySelector('[data-mf-page] header')), topbar: getComputedStyle(document.querySelector('[data-app-topbar]')).display, back: vis(document.querySelector('nav[aria-label=Back]')), buses: [...document.querySelectorAll('[data-mf-full-bus]')].map((b) => b.textContent + ':' + b.getAttribute('aria-pressed')), title: document.querySelector('[data-mf-full-title]').textContent, heads: [...document.querySelector('div[data-mf-full] table thead tr').children].map((t) => t.textContent.trim()), sw: document.documentElement.scrollWidth, vw: innerWidth, float: vis(document.querySelector('button[title=Top]')), ts: !!document.querySelector('div[data-mf-full] [data-text-size-toolbar]') };`);
   check("151 Full screen：只剩细栏 + 客人表（顶栏、Back、页头都藏）、右下角 ↑↓ 还在、不左右晃",
     fsv.full && !fsv.page && fsv.topbar === "none" && !fsv.back && fsv.float && fsv.sw <= fsv.vw + 1 && !fsv.ts, JSON.stringify(fsv));
   check("151 Full screen：细栏有 A / B 换车，先看 A；竖屏同样 6 列", JSON.stringify(fsv.buses) === '["A:true","B:false"]' && fsv.title.includes("Antelope Canyon") && JSON.stringify(fsv.heads) === SIX, JSON.stringify(fsv));
@@ -1754,12 +1754,12 @@ async function runPhoneFit() {
   check("151 Full screen：点 B 换到 B 车", await evaluate("return document.querySelector('[data-mf-full-bus=B]').getAttribute('aria-pressed') === 'true' && document.querySelector('[data-mf-full-bus=A]').getAttribute('aria-pressed') === 'false';"));
   await evaluate("document.querySelector('[data-mf-full-close]').click(); return 1;");
   await sleep(300);
-  check("151 Full screen：✕ 回到页面（页头、顶栏都回来）", await evaluate(`${vis} return !document.querySelector('[data-mf-full]') && vis(document.querySelector('[data-mf-page] header')) && getComputedStyle(document.querySelector('[data-app-topbar]')).display !== 'none' && !document.documentElement.dataset.mfFull;`));
+  check("151 Full screen：✕ 回到页面（页头、顶栏都回来）", await evaluate(`${vis} return !document.querySelector('div[data-mf-full]') && vis(document.querySelector('[data-mf-page] header')) && getComputedStyle(document.querySelector('[data-app-topbar]')).display !== 'none' && !document.documentElement.dataset.mfFull;`));
   await evaluate("document.querySelector('[data-mf-fullscreen]').click(); return 1;");
-  await waitFor("document.querySelector('[data-mf-full]')", 3000);
+  await waitFor("document.querySelector('div[data-mf-full]')", 3000);
   await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); return 1;");
   await sleep(300);
-  check("151 Full screen：Esc 也退出", await evaluate("return !document.querySelector('[data-mf-full]');"));
+  check("151 Full screen：Esc 也退出", await evaluate("return !document.querySelector('div[data-mf-full]');"));
 
   // 横屏 844×390
   await cdp("Emulation.setDeviceMetricsOverride", { width: 844, height: 390, deviceScaleFactor: 2, mobile: true, screenOrientation: { type: "landscapePrimary", angle: 90 } });
@@ -1771,9 +1771,9 @@ async function runPhoneFit() {
   check("151 横屏：shortcut 条藏、顶栏 48px、有 Full screen、Text size 卡照旧打开", !lan.sc && lan.bar === 48 && lan.fs && lan.ts.length >= 2 && lan.ts.every(Boolean), JSON.stringify(lan));
   await shot("landscape-844x390.png");
   await evaluate("document.querySelector('[data-mf-fullscreen]').click(); return 1;");
-  await waitFor("document.querySelector('[data-mf-full]')", 3000);
+  await waitFor("document.querySelector('div[data-mf-full]')", 3000);
   await sleep(300);
-  check("151 横屏 Full screen：全部列、不晃", await evaluate(`return [...document.querySelector('[data-mf-full] table thead tr').children].length === ${desk.heads.length} && document.documentElement.scrollWidth <= innerWidth + 1;`));
+  check("151 横屏 Full screen：全部列、不晃", await evaluate(`return [...document.querySelector('div[data-mf-full] table thead tr').children].length === ${desk.heads.length} && document.documentElement.scrollWidth <= innerWidth + 1;`));
   await shot("landscape-fullscreen-844x390.png");
   await evaluate("document.querySelector('[data-mf-full-close]').click(); return 1;");
   await cdp("Emulation.clearDeviceMetricsOverride");
