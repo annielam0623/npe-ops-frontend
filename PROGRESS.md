@@ -57,6 +57,7 @@
 - 后端转 Annie（原话）「写进 Products 页面的 How to use 吧」⇒ Settings › Products How to use 加折叠节「Setting up a ticket product」6 条（产品码设 Ticket + 组、Ticket tour type、Cfm # 字段、Brenda waiver、TripGuru 码、Content Studio › Tickets 管类型）。派 9b task/products-howto-tickets：照真实标签名、先截图给 Annie，她 OK 再合。
 - ✅ Annie（原话）「可以，动手」⇒ Products How to use「Setting up a ticket product」（9b af1e719a，照真实标签：Category / Group / Tour type、TIX_TOURS 短名、Content Studio › Tickets Reminder › Guest Page 的 + New tour / ✎ Edit tour）合 main。
 - Annie 新要求（原话）「我要在现在的tour和ticket tracking 页面上的搜索功能加不限日期搜索，就是在搜索框里输入任何一个日期的订单号都可以定位到实际页面的那个产品上去」⇒ 记录，非动手；派 bb 出 preview（现状、用哪个接口查订单 → 日期 + 产品、多产品 / 找不到 / 取消、只认完整单号还是名字电话也跨日期、要后端的）。
+- ✅ Products How to use「Setting up a ticket product」上 main c826f333（9b，功能 af1e719a）。products 253、nav 40，tsc / eslint 0 error / build。
 
 ## 2026-11-20（周五）前端主窗口 `npe-ops-frontend-5e`[614588]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工：origin/main 9ab99466（主目录 detached 改 PROGRESS）。资源：空闲内存 38.2 / 61.8 GB，node 0、chrome 71。现在没有工作窗口；后端在线 `npe-confirmation-service-bb`[282016]。
