@@ -6,6 +6,16 @@
 
 > **下一个主窗口：先读「2026-11-20 收工交接：5e」，再读 11-20 当天记录，开工照 CLAUDE.md 开工必做第 4 条先列「Annie 提过没做完的」问她。**
 
+## 2026-11-23 收工交接：前端主窗口 `今天前端主窗口-5e`[54a3a7]（公司电脑，14:30 下班）
+- **今天上 main**：第 8 件 Farm out 每家一页 451d4497；第 13 件 Main manifest 手机收键 8fc13aca；7c–e 快捷回复搬 Content Studio 9a3ae1fc；G363 按车型算导游工资前端 aad89428；Order List 搜索提示加 product code 197616f1；Products How to use 门票设置节 c826f333；nav-test 时序修复 34374a6f。Tracking 不限日期搜索：47 PASS，bb 正在改 404 句子后合（见下方当天记录，未见 SHA 就是没合）。
+- **分支等着（未合）**：
+  - Mirror task/order-mirror c95da628（9b）：95 PASS，📌 等 Annie 看截图 C:\Users\annzh\Downloads\order-mirror\ 说可以。
+  - G374 门票显示名 task/g374-ticket-labels-fe 63f25045（bb）：等 Annie 跑 v183 SQL + 后端 47 上 main + PASS + Annie 看截图 C:\Users\annzh\Downloads\g374-ticket-labels\。
+  - 146 Farm out 上传 task/farm-out-photo-upload ea85f9f8（89）：合同 v1 对齐，等 Annie 对后端方案说动手 + 后端 28 上 main + PASS。
+  - 半屏适配 task/schedule-half-screen **29b5b0db**（2c，WIP，worktree C:\Code\ops-wt-2c-red）：6 页代码写完（排班每天最窄 72px、表最窄 650、时间一行缩到最小 6px、标签挪名字下；Bus Manifest 编辑页 ≥640 最窄 650、打印照旧；Order List / Order Log / Farm out Report / Sales Report 640–1279 最窄 650）。950 宽六页都不滑；760 宽 Order List / Sales Report / Bus Manifest 编辑页还差一点要滑（不能折的内容）。tsc / eslint / build；man 586、orders 178、fr 31、olog 24、sales 63、nav 40 过；sch 534/546（12 条新半屏检查 mock 状态问题，已加复位未重跑）、mf 374/375（旧 151 检查要 980 已改未重跑）。下次：合 main → 重跑 sch / mf → 拍改后截图 C:\Users\annzh\Downloads\half-screen-fit\ → 推 main。
+- **📌 等 Annie 答**：导游页 D（后端做）D2–D13 C:\Users\annzh\Downloads\Annie_待答题_2026-11-23_导游页D.xlsx（第 6 版 + 中午折叠）；未发新单提醒 8 题 C:\Users\annzh\Downloads\Annie_待答题_2026-11-23_未发新单提醒.xlsx；David H 在 Team 页开 staff 账号；★ Notes 验收后撤旧 Save note。
+- **等后端**：G363「不送 model_from = 所有日子生效」（b5）；7a / 7b 快捷回复 8 句 + 号码（b5，SQL 先给 Annie）；第 9 件 G320、第 11 件导游必填、G361 DOR No show、页面慢。
+- 下一个主窗口：读这节 + 下面 11-23 当天记录；开工照开工必做第 4 条列 Annie 提过没做完的。
 ## 2026-11-23（周一）前端主窗口 `今天前端主窗口-5e`[b5b9b4]（接着昨天的会话；只分工和汇报，不写代码）
 - 开工：origin/main 463cc257，主目录 detached 干净。资源：空闲内存 49.4 GB，node 0、chrome 0。工作窗口：bb [01f67c]、2c [721148]、9b [532018]（都空）。后端主窗口-bb [384f3c]。
 - 开工必做第 4 条（只读子任务核 PROGRESS 9–565 行）已列给 Annie，等她选今天做哪几件：等 Annie：146 上传 7 题 + G363 3 题（Excel Annie_待答题_2026-11-22_146_G363.xlsx）、导游页手机版 A / B / C（回后端）、David H 账号（Team 页开）、★ Notes 验收后旧路径下线；动手没做：第 8 件 Farm out 每家一页、7c–e 快捷回复搬 Content Studio；等后端：7a / 7b 快捷回复 6 句 + 号码、第 9 件 G320 变量标出、第 11 件导游必填、G361 DOR No show、页面慢（Morning Tracking）；拿不准：150 题 8 Main manifest 手机收键、G318 第二部分、7a / 7b / 9 / 页面慢后端进度没记。
