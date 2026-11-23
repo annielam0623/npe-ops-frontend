@@ -38,6 +38,7 @@
 - G363 后端有条件 PASS（extrasTotal 同 gp:203-214 口径、tips 只私人团、车型只 trim + 小写不合并中间空格、manifest_id 整数）⇒ 9b 核完直接合。Staff Schedule 时间题（A 8px 后滑 / B 6px / C 8px 后换两行，推荐 C）已发 Annie，等答。
 - Annie 新要求（原话）「你看一下antelope的午餐那一页，我想做成那个样子的，只是在后面多两列picked up和board，picked up由relay司机填，TI的客人这个位置为TI，你preview一下。客人的名字排列要跟餐单一致」⇒ 理解为导游页手机版（取代 A / B / C）：照 Antelope 午餐单版式 + Picked up（relay 司机填，TI 客人显示 TI）+ Boarded 两列，名字顺序同餐单。导游页是后端页面 ⇒ 已请后端主窗口派 ab 出 preview（含数据流、题），非动手。
 - 📌 导游页 D 样稿（后端 ab）https://claude.ai/artifact/CuAT4qXq4kopCM3WXA94tR ：午餐单样子 + Picked up / Boarded，TI 写 TI；名字照餐单「First Last」一格（tour_manifest.py:445）。8 题 D1–D8 都推荐 A，Excel C:\Users\annzh\Downloads\Annie_待答题_2026-11-23_导游页D.xlsx（ab 做）。导游页后端做。
+- ✅ **G363 按车型算导游工资前端上 main aad89428**（9b；2b48ccc8 + ffcfeff9 + 条件修复：extras 只算 extras_allowed 里的、tips 只私人团、车型 trim + 小写不合并空格）。后端有条件 PASS。veh 59、payroll 151、hr 138、nav 40、pl 129，tsc / eslint 0 error / build。📌 Annie 线上验：Settings › Vehicles Model 框提示用过车型（无日期）；Human Resource › Payroll 每趟 Vehicle 列「2041 · Sprinter / +$50.00」、人员表 Vehicle extras 列、Pay rates › Vehicle extras 节。后端「不送 model_from = 所有日子生效」b5 之后改。
 
 ## 2026-11-20（周五）前端主窗口 `npe-ops-frontend-5e`[614588]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工：origin/main 9ab99466（主目录 detached 改 PROGRESS）。资源：空闲内存 38.2 / 61.8 GB，node 0、chrome 71。现在没有工作窗口；后端在线 `npe-confirmation-service-bb`[282016]。
