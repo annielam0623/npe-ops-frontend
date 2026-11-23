@@ -1,13 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useCallback, useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   BTN_SUBMIT_CLASS,
   BTN_EDIT_CLASS,
-  BTN_OFF_CLASS,
-  BTN_ON_CLASS,
   CARD_CLASS,
   CARD_HEADER_CLASS,
   CARD_TITLE_CLASS,
@@ -21,10 +20,9 @@ import {
 } from "@/components/pickup-locations/legacy-ui";
 import { byTick } from "@/lib/by-tick";
 import { ActionLogPanel } from "@/components/action-log/action-log-panel";
-import type { ActionResult } from "@/components/ui/action-result";
 import { BulkImportButton, StandardImport } from "@/components/ui/bulk-import";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner } from "@/components/ui/panel";
+import { PhoneMore, usePhoneCollapse } from "@/components/ui/phone";
 import { fetchActionLog } from "@/lib/action-log";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
@@ -32,32 +30,31 @@ import {
   createPartner,
   fetchPartnerRates,
   fetchPartners,
-  savePartnerRates,
-  updatePartner,
 } from "@/lib/farm-out-api";
 import { usePermissions } from "@/lib/staff-permissions";
 import { csvBlob } from "@/lib/csv";
 import { cn } from "@/lib/utils";
-import { useLeaveGuard } from "@/lib/use-leave-guard";
 import type {
   FarmOutPartner,
   FarmOutPrice,
   FarmOutRate,
-  FarmOutRatePut,
 } from "@/types/farm-out";
 
 import { gateFromError, type LoadGate } from "./config";
-import { PartnerDetail } from "./partner-detail";
-import { TourProducts } from "./tour-products";
 import {
-  BTN_BLUE_SMALL,
-  CELL_INPUT,
   GateNotice,
+  PAPER_PHONE_MORE,
   ResultLine,
   useRedirectToLogin,
 } from "./ui";
 
-/** Settings → Farm out Partners：合作公司名单、改名、停用，展开改结算价和它自己的上车点。 */
+/**
+ * Settings → Farm out Partners：合作公司名单（第 8 件，Annie 11-20「8-Q7–Q11 都 A | 动手」，preview v2
+ * https://claude.ai/artifact/9eCQCXvHoEDaEDgsU3uYks）。Q5 Annie「我需要每个partner一页」⇒ 这里只列公司，
+ * 点名字 / Open › 进每家自己的页（/settings/farm-out-partners/<id>，partner-page.tsx）。
+ * Q9 A：Add Partner、⬆ Import rates（所有公司一个文件）、改动记录留在这一页；Add 后直接打开新公司的页。
+ * Q10 A：列 Partner | Tours with products | Status | Open ›；Rename / Timetable / Deactivate 搬到每家的页。
+ */
 /** ⬆ Import 的栏：key → 模板 / 预览里的栏名（G263 v3：多了 Product、Infant）。 */
 const RATE_IMPORT_LABEL: Record<string, string> = {
   partner: "Partner",
@@ -71,7 +68,30 @@ const RATE_IMPORT_LABEL: Record<string, string> = {
 const priceCell = (prices: FarmOutPrice[], t: string) =>
   prices.find((x) => x.ticket_type === t)?.price ?? "";
 
+/** 有产品的团（价格表里至少一个产品）。 */
+export const hasProducts = (r: FarmOutRate) => (r.products ?? []).length > 0;
+
+export const partnerHref = (id: number) => `/settings/farm-out-partners/${id}`;
+
+/** 读每家的价格（读不出来的公司记 "error"，401 往外抛）。 */
+async function loadRates(
+  list: FarmOutPartner[],
+): Promise<Record<number, FarmOutRate[] | "error">> {
+  const entries = await Promise.all(
+    list.map(async (p) => {
+      try {
+        return [p.id, await fetchPartnerRates(p.id)] as const;
+      } catch (error) {
+        if (isStatus(error, 401)) throw error;
+        return [p.id, "error"] as const;
+      }
+    }),
+  );
+  return Object.fromEntries(entries);
+}
+
 export function PartnersView() {
+  const router = useRouter();
   const [gate, setGate] = useState<LoadGate>({ kind: "loading" });
   const [partners, setPartners] = useState<FarmOutPartner[]>([]);
   const [reloadKey, setReloadKey] = useState(0);
@@ -81,58 +101,27 @@ export function PartnersView() {
     tone: "ok" | "error";
     text: string;
   } | null>(null);
-  const [openId, setOpenId] = useState<number | null>(null);
-  const [renaming, setRenaming] = useState<{
-    id: number;
-    name: string;
-    error: string | null;
-  } | null>(null);
-  const [deactivating, setDeactivating] = useState<FarmOutPartner | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  /** 每家公司每个团的价格（列表里直接显示）；读不出来的公司是 "error"。 */
+  /** 每家公司每个团的价格（算「Tours with products」和 Import 模板）；读不出来的公司是 "error"。 */
   const [rates, setRates] = useState<Record<number, FarmOutRate[] | "error">>(
     {},
   );
-  /** 正在编辑的团（一次只开一个；G263 v3 一个团一个 Save）。 */
-  const [editingTour, setEditingTour] = useState<{
-    partnerId: number;
-    manifestId: number;
-  } | null>(null);
-  /** 正在编辑的团有没存的改动：离开页面先问。 */
-  const [tourDirty, setTourDirty] = useState(false);
-  useLeaveGuard(
-    tourDirty,
-    "You have unsaved product prices. Leave without saving?",
-  );
-  /** 刚存好的团（`<合作公司 id>|<团 id>`）：团名旁边写绿字 ✓ Saved，再编辑就去掉。 */
-  const [savedRow, setSavedRow] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [logVersion, setLogVersion] = useState(0);
   const redirectToLogin = useRedirectToLogin();
   const perms = usePermissions();
-  // 没勾 See prices, agent & commission（orders.money_view，题 8；Annie「除了客人的基本信息，CCL看不到任何有价格的信息」，
-  // 合作方的价格也算）：价格列、每个团的价格行、Import rates 都不出，也不请求价格；合作公司本身照 settings.farm_out 照旧。
+  const addFold = usePhoneCollapse();
+  // 没勾 See prices, agent & commission（orders.money_view，题 8）：价格相关的列、Import rates 都不出，也不请求价格。
   const seeMoney = perms.canSeeMoney;
-  /** 价格那几列算不算在表里（没勾时表只剩 Partner / Status / Actions）。 */
-  const cols = seeMoney ? 6 : 3;
 
-  /** 导入存好后静悄悄重拉（不回到 Loading，Import 块和展开的上车点都留着）。 */
+  /** 导入存好后静悄悄重拉（不回到 Loading，Import 块留着）。 */
   const refreshAll = useCallback(async () => {
     setLogVersion((v) => v + 1);
     try {
       const list = await fetchPartners();
-      const entries = await Promise.all(
-        list.map(async (p) => {
-          try {
-            return [p.id, await fetchPartnerRates(p.id)] as const;
-          } catch (error) {
-            if (isStatus(error, 401)) throw error;
-            return [p.id, "error"] as const;
-          }
-        }),
-      );
+      const r = await loadRates(list);
       setPartners(list);
-      setRates(Object.fromEntries(entries));
+      setRates(r);
     } catch (error) {
       if (isStatus(error, 401)) redirectToLogin();
       else setActionError(`Could not reload the list: ${describeError(error)}`);
@@ -169,18 +158,9 @@ export function PartnersView() {
           setGate({ kind: "ready" });
           return;
         }
-        const entries = await Promise.all(
-          list.map(async (p) => {
-            try {
-              return [p.id, await fetchPartnerRates(p.id)] as const;
-            } catch (error) {
-              if (isStatus(error, 401)) throw error;
-              return [p.id, "error"] as const;
-            }
-          }),
-        );
+        const r = await loadRates(list);
         if (controller.signal.aborted) return;
-        setRates(Object.fromEntries(entries));
+        setRates(r);
         setGate({ kind: "ready" });
       } catch (error) {
         if (controller.signal.aborted) return;
@@ -192,9 +172,14 @@ export function PartnersView() {
     return () => controller.abort();
   }, [reloadKey, redirectToLogin, tickPerms.ready, tickPerms.active]);
 
-  const replace = useCallback((p: FarmOutPartner) => {
-    setPartners((all) => all.map((x) => (x.id === p.id ? p : x)));
-  }, []);
+  /** 停用的排最后、变灰（preview v2 第 1 页）；同组照后端顺序。 */
+  const ordered = useMemo(
+    () => [
+      ...partners.filter((p) => p.is_active),
+      ...partners.filter((p) => !p.is_active),
+    ],
+    [partners],
+  );
 
   async function addPartner() {
     const name = newName.trim();
@@ -208,17 +193,10 @@ export function PartnersView() {
     try {
       const created = await createPartner(name);
       setPartners((all) => [...all, created]);
-      if (seeMoney) {
-        try {
-          const r = await fetchPartnerRates(created.id);
-          setRates((all) => ({ ...all, [created.id]: r }));
-        } catch {
-          setRates((all) => ({ ...all, [created.id]: "error" }));
-        }
-      }
       setNewName("");
-      setOpenId(created.id);
       setAddResult({ tone: "ok", text: "✓ Added" });
+      // Q9 A：加好直接打开新公司的页，接着加团、价格和上车点。
+      router.push(partnerHref(created.id));
     } catch (error) {
       if (isStatus(error, 401)) redirectToLogin();
       else setAddResult({ tone: "error", text: describeError(error) });
@@ -227,82 +205,10 @@ export function PartnersView() {
     }
   }
 
-  async function saveRename() {
-    if (!renaming) return;
-    const name = renaming.name.trim();
-    if (!name) {
-      setRenaming({ ...renaming, error: "Partner name is required." });
-      return;
-    }
-    try {
-      replace(await updatePartner(renaming.id, { name }));
-      setRenaming(null);
-    } catch (error) {
-      if (isStatus(error, 401)) redirectToLogin();
-      else setRenaming({ ...renaming, error: describeError(error) });
-    }
-  }
-
-  /** 存一个团的产品：别的团只带 manifest_id（后端「没带 products 就不动」）。返回 null = 存好，字符串 = 原话。 */
-  async function saveTour(
-    partnerId: number,
-    put: FarmOutRatePut,
-  ): Promise<string | null> {
-    const list = rates[partnerId];
-    if (!Array.isArray(list)) return "Reload the page and try again.";
-    try {
-      const saved = await savePartnerRates(
-        partnerId,
-        list.map((r) =>
-          r.manifest_id === put.manifest_id
-            ? put
-            : { manifest_id: r.manifest_id },
-        ),
-      );
-      setRates((all) => ({ ...all, [partnerId]: saved }));
-      setTourDirty(false);
-      setEditingTour(null);
-      setSavedRow(`${partnerId}|${put.manifest_id}`);
-      setLogVersion((v) => v + 1);
-      return null;
-    } catch (error) {
-      if (isStatus(error, 401)) {
-        redirectToLogin();
-        return null;
-      }
-      return describeError(error);
-    }
-  }
-
-  async function setActive(p: FarmOutPartner, active: boolean) {
-    setActionError(null);
-    try {
-      replace(await updatePartner(p.id, { is_active: active }));
-    } catch (error) {
-      if (isStatus(error, 401)) redirectToLogin();
-      else
-        setActionError(`Could not change ${p.name}: ${describeError(error)}`);
-    }
-  }
-
-  async function confirmDeactivate(p: FarmOutPartner): Promise<ActionResult> {
-    try {
-      replace(await updatePartner(p.id, { is_active: false }));
-    } catch (error) {
-      if (isStatus(error, 401)) {
-        redirectToLogin();
-        return { status: "redirecting" };
-      }
-      return { status: "error", message: describeError(error) };
-    }
-    setDeactivating(null);
-    return { status: "ok" };
-  }
-
   const ready = gate.kind === "ready";
 
   return (
-    <main className="text-stone-800 night:text-white/90">
+    <main className="text-stone-800 max-sm:flex max-sm:flex-col night:text-white/90">
       <LegacyPageHeader
         title="⇄ Farm out Partners"
         count={
@@ -321,14 +227,30 @@ export function PartnersView() {
 
       {ready ? (
         <>
-          <HowToUse money={seeMoney} />
+          {/* 手机上 How to use 放页面最底（手机版统一规则）。 */}
+          <div className="max-sm:order-last">
+            <ListHowTo money={seeMoney} />
+          </div>
 
           <section className={CARD_CLASS}>
             <div className={CARD_HEADER_CLASS}>
-              <h2 className={CARD_TITLE_CLASS}>+ Add Partner</h2>
+              <h2 className={cn(CARD_TITLE_CLASS, "flex w-full items-center")}>
+                <button
+                  type="button"
+                  onClick={addFold.toggle}
+                  aria-expanded={addFold.open}
+                  className="pointer-events-none flex w-full items-center text-left max-sm:pointer-events-auto"
+                >
+                  + Add Partner
+                  {addFold.caret}
+                </button>
+              </h2>
             </div>
             <form
-              className="flex flex-wrap items-center gap-3 px-5 py-[18px]"
+              className={cn(
+                "flex flex-wrap items-center gap-3 px-5 py-[18px]",
+                addFold.hide,
+              )}
               onSubmit={(e) => {
                 e.preventDefault();
                 void addPartner();
@@ -341,7 +263,7 @@ export function PartnersView() {
                 value={newName}
                 disabled={adding}
                 onChange={(e) => setNewName(e.target.value)}
-                className={cn(FORM_INPUT_CLASS, "w-[260px]")}
+                className={cn(FORM_INPUT_CLASS, "w-[260px] max-sm:w-full")}
               />
               <button
                 type="submit"
@@ -408,230 +330,117 @@ export function PartnersView() {
             />
           ) : null}
 
-          <section className={CARD_CLASS}>
+          <section className={CARD_CLASS} aria-label="Partners">
             <div className={CARD_HEADER_CLASS}>
-              <h2 className={CARD_TITLE_CLASS}>
-                {seeMoney ? <>Partners &amp; rates</> : "Partners"}
-              </h2>
-              <span
-                hidden={!seeMoney}
-                title={
-                  editingTour
-                    ? "Save or cancel the prices you are editing first."
-                    : ""
-                }
-              >
-                <BulkImportButton
-                  onClick={() => setImportOpen(true)}
-                  disabled={importOpen || editingTour !== null}
-                />
-              </span>
+              <h2 className={CARD_TITLE_CLASS}>Partners</h2>
+              {seeMoney ? (
+                <span className={PAPER_PHONE_MORE}>
+                  <PhoneMore label="More partner actions">
+                    <BulkImportButton
+                      onClick={() => setImportOpen(true)}
+                      disabled={importOpen}
+                    />
+                  </PhoneMore>
+                </span>
+              ) : null}
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[720px] border-collapse text-[12px]">
-                <thead>
+              <table className="w-full min-w-[560px] border-collapse text-[12px] max-sm:min-w-0">
+                <thead className="max-sm:hidden">
                   <tr>
-                    <th className={TH_CLASS}>
-                      {seeMoney ? "Partner / Tour / Product" : "Partner"}
-                    </th>
+                    <th className={TH_CLASS}>Partner</th>
                     {seeMoney ? (
-                      <>
-                        <th className={cn(TH_CLASS, "text-right")}>Adult</th>
-                        <th className={cn(TH_CLASS, "text-right")}>Child</th>
-                        <th className={cn(TH_CLASS, "text-right")}>Infant</th>
-                      </>
+                      <th className={TH_CLASS}>Tours with products</th>
                     ) : null}
                     <th className={TH_CLASS}>Status</th>
-                    <th className={TH_CLASS}>Actions</th>
+                    <th className={TH_CLASS}>
+                      <span className="sr-only">Open</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className={TBODY_CLASS}>
-                  {partners.length === 0 ? (
+                  {ordered.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={cols}
+                        colSpan={seeMoney ? 4 : 3}
                         className={cn(TD_CLASS, "text-center")}
                       >
                         No partners yet.
                       </td>
                     </tr>
                   ) : (
-                    partners.map((p) => {
+                    ordered.map((p) => {
                       const list = rates[p.id];
+                      const count =
+                        list === "error"
+                          ? null
+                          : Array.isArray(list)
+                            ? `${list.filter(hasProducts).length} of ${list.length}`
+                            : null;
+                      const none =
+                        Array.isArray(list) && !list.some(hasProducts);
+                      const status = p.is_active ? "Active" : "Inactive";
                       return (
-                        <Fragment key={p.id}>
-                          <tr
-                            className={cn(
-                              TR_CLASS,
-                              !p.is_active && "opacity-60",
-                            )}
-                            data-partner={p.name}
-                          >
-                            <td
-                              className={cn(TD_CLASS, "font-semibold")}
-                              colSpan={seeMoney ? 4 : 1}
+                        <tr
+                          key={p.id}
+                          className={cn(TR_CLASS, !p.is_active && "opacity-60")}
+                          data-partner={p.name}
+                        >
+                          <td className={cn(TD_CLASS, "font-semibold")}>
+                            <Link
+                              href={partnerHref(p.id)}
+                              data-partner-link
+                              className="text-[#185FA5] no-underline hover:underline night:text-[#93c5fd]"
                             >
-                              {renaming?.id === p.id ? (
-                                <span className="flex flex-wrap items-center gap-2">
-                                  <input
-                                    type="text"
-                                    aria-label="Partner name"
-                                    autoFocus
-                                    value={renaming.name}
-                                    onChange={(e) =>
-                                      setRenaming({
-                                        ...renaming,
-                                        name: e.target.value,
-                                        error: null,
-                                      })
-                                    }
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter") void saveRename();
-                                      if (e.key === "Escape") setRenaming(null);
-                                    }}
-                                    className={cn(CELL_INPUT, "w-[200px]")}
-                                  />
-                                  <button
-                                    type="button"
-                                    className={BTN_BLUE_SMALL}
-                                    onClick={() => void saveRename()}
-                                  >
-                                    Save name
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className={BTN_EDIT_CLASS}
-                                    onClick={() => setRenaming(null)}
-                                  >
-                                    Cancel
-                                  </button>
-                                  {renaming.error ? (
-                                    <span
-                                      role="alert"
-                                      className="text-[12px] font-normal text-[#A32D2D] night:text-red-300"
-                                    >
-                                      {renaming.error}
-                                    </span>
-                                  ) : null}
-                                </span>
-                              ) : (
-                                p.name
+                              {p.name}
+                            </Link>
+                            <span className="mt-0.5 block text-[11px] font-normal text-[#6b7280] sm:hidden night:text-white/50">
+                              {seeMoney && count
+                                ? `${count} tours with products · `
+                                : ""}
+                              {status}
+                            </span>
+                          </td>
+                          {seeMoney ? (
+                            <td
+                              data-tours-with-products
+                              className={cn(
+                                TD_CLASS,
+                                "max-sm:hidden",
+                                none && "text-[#6b7280] night:text-white/45",
                               )}
-                            </td>
-                            <td className={TD_CLASS}>
-                              {p.is_active ? "Active" : "Inactive"}
-                            </td>
-                            <td className={cn(TD_CLASS, "whitespace-nowrap")}>
-                              <span className="inline-flex gap-1.5">
-                                <button
-                                  type="button"
-                                  className={BTN_EDIT_CLASS}
-                                  onClick={() =>
-                                    setRenaming({
-                                      id: p.id,
-                                      name: p.name,
-                                      error: null,
-                                    })
-                                  }
-                                >
-                                  Rename
-                                </button>
-                                <button
-                                  type="button"
-                                  aria-expanded={openId === p.id}
-                                  className={BTN_EDIT_CLASS}
-                                  onClick={() =>
-                                    setOpenId(openId === p.id ? null : p.id)
-                                  }
-                                >
-                                  {openId === p.id
-                                    ? "Close locations"
-                                    : "Locations"}
-                                </button>
-                                {/* 每家自己的时刻表（G199，Annie 2026-10-27），侧栏不再单列 Timetable。 */}
-                                <Link
-                                  href={`/settings/farm-out-partners/${p.id}/timetable`}
-                                  data-timetable-link
-                                  className={cn(BTN_EDIT_CLASS, "no-underline")}
-                                >
-                                  Timetable
-                                </Link>
-                                {p.is_active ? (
-                                  <button
-                                    type="button"
-                                    className={BTN_OFF_CLASS}
-                                    onClick={() => setDeactivating(p)}
-                                  >
-                                    Deactivate
-                                  </button>
+                            >
+                              {count ??
+                                (list === "error" ? (
+                                  <span className="text-[#A32D2D] night:text-red-300">
+                                    Could not load
+                                  </span>
                                 ) : (
-                                  <button
-                                    type="button"
-                                    className={BTN_ON_CLASS}
-                                    onClick={() => void setActive(p, true)}
-                                  >
-                                    Reactivate
-                                  </button>
-                                )}
-                              </span>
+                                  "—"
+                                ))}
                             </td>
-                          </tr>
-                          {!seeMoney ? null : list === "error" ? (
-                            <tr className={TR_CLASS}>
-                              <td
-                                colSpan={6}
-                                className={cn(TD_CLASS, "pl-6 text-[#A32D2D]")}
-                              >
-                                Could not load this partner&apos;s prices.
-                              </td>
-                            </tr>
-                          ) : Array.isArray(list) && list.length === 0 ? (
-                            <tr className={TR_CLASS}>
-                              <td colSpan={6} className={cn(TD_CLASS, "pl-6")}>
-                                No tours yet.
-                              </td>
-                            </tr>
-                          ) : (
-                            (list ?? []).map((r) => (
-                              <TourProducts
-                                key={r.manifest_id}
-                                partnerName={p.name}
-                                active={p.is_active}
-                                rate={r}
-                                editing={
-                                  editingTour?.partnerId === p.id &&
-                                  editingTour.manifestId === r.manifest_id
-                                }
-                                saved={savedRow === `${p.id}|${r.manifest_id}`}
-                                disabled={editingTour !== null}
-                                onStartEdit={() => {
-                                  setSavedRow(null);
-                                  setEditingTour({
-                                    partnerId: p.id,
-                                    manifestId: r.manifest_id,
-                                  });
-                                }}
-                                onCancel={() => {
-                                  setTourDirty(false);
-                                  setEditingTour(null);
-                                }}
-                                onSave={(put) => saveTour(p.id, put)}
-                                onDirty={setTourDirty}
-                              />
-                            ))
-                          )}
-                          {openId === p.id ? (
-                            <tr className={TR_CLASS}>
-                              <td colSpan={cols} className="p-0">
-                                <PartnerDetail
-                                  partnerId={p.id}
-                                  partnerName={p.name}
-                                  onUnauthorized={redirectToLogin}
-                                />
-                              </td>
-                            </tr>
                           ) : null}
-                        </Fragment>
+                          <td
+                            data-status
+                            className={cn(TD_CLASS, "max-sm:hidden")}
+                          >
+                            {status}
+                          </td>
+                          <td
+                            className={cn(
+                              TD_CLASS,
+                              "text-right whitespace-nowrap",
+                            )}
+                          >
+                            <Link
+                              href={partnerHref(p.id)}
+                              aria-label={`Open ${p.name}`}
+                              className={cn(BTN_EDIT_CLASS, "no-underline")}
+                            >
+                              Open ›
+                            </Link>
+                          </td>
+                        </tr>
                       );
                     })
                   )}
@@ -657,80 +466,38 @@ export function PartnersView() {
           )}
         </>
       ) : null}
-
-      {deactivating ? (
-        <ConfirmDialog
-          title={`Deactivate "${deactivating.name}"?`}
-          confirmLabel="Deactivate"
-          busyLabel="Deactivating…"
-          onConfirm={() => confirmDeactivate(deactivating)}
-          onClose={() => setDeactivating(null)}
-        >
-          <p>
-            It stops appearing as a choice when you farm out an order in
-            Dispatch. Orders already farmed out to it are not changed. You can
-            reactivate it here at any time.
-          </p>
-        </ConfirmDialog>
-      ) : null}
     </main>
   );
 }
 
-/** 页面说明（同其它 Settings 页的蓝色 How to use 条）。 */
-/** money = false（没勾 orders.money_view）：不讲价格、产品和 Import rates。 */
-function HowToUse({ money }: { money: boolean }) {
+/** 列表页的 How to use（preview v2「How to use — Farm out Partners (the list)」原文）。money = false：不讲价格和 Import rates。 */
+function ListHowTo({ money }: { money: boolean }) {
   return (
     <LegacyHowTo title="How to use — Farm out Partners" padY="py-2.5">
-      {money ? <MoneyHowTo /> : null}
-      <li>Add a partner: type its name and click Add.</li>
-      <PartnerHowTo />
+      <li>
+        Click a partner&apos;s name to open its own page: its tours
+        {money ? " and prices" : ""}, its pick-up locations and its timetable.
+      </li>
+      <li>
+        Add a partner: type its name and click Add. Its page opens so you can
+        add its {money ? "tours, prices and " : ""}pick-up locations.
+      </li>
+      {money ? (
+        <>
+          <li>
+            Tours with products shows how many of the partner&apos;s tours
+            already have a product with a price.
+          </li>
+          <li>{IMPORT_RATES_HOW_TO}</li>
+        </>
+      ) : null}
+      <li>
+        Inactive partners are greyed out at the bottom of the list. Open one to
+        reactivate it.
+      </li>
     </LegacyHowTo>
   );
 }
 
-/**
- * G263 v3 定稿（Annie「同意推荐，动手」）：preview 题 d A 稿；第 2 条加全名一句，第 7 条用题 b B 句，
- * 第 8 条短名 / 全名都能对上。
- */
-export const RATES_HOW_TO = [
-  "Find the partner, then the tour, and click Edit.",
-  "Each tour lists its products. Click + Add product and type its name (for example Premium Pass, Admission Only). Names must be different within a tour. ↑ ↓ change the order; × removes a product. Everywhere else the system shows the full name: tour, product and partner, for example West Rim Premium Pass - C Tour.",
-  "Prices: under each product, click + Add price, choose Adult, Child or Infant and type the price. Same price for adults and children? Add an Adult row and a Child row with the same price. × removes a price row.",
-  "Click Save on the tour. Nothing is kept until you do.",
-  "In Dispatch › Farm out guests, pick the product for each order. A tour with only one product uses it automatically. The payable is the product's price for each ticket type; infants with no price count as 0.",
-  "An order with more than one product: pick one of them, then type the payable by hand.",
-  "If the product has no Adult or Child price, the order shows “no adult rate” (or child) and its payable stays empty. Add the price here, then pick the product again on the order, or type the payable by hand. Changing a price here does not change orders that already have a payable.",
-  "⬆ Import rates: the file has the columns Partner, Tour, Product, Adult, Child, Infant. Rows are matched by partner, tour and product name; the product can be the short name (Premium Pass) or the full name (West Rim Premium Pass - C Tour). A blank cell changes nothing. A product name that is not on the tour yet is added as a new product. Partners and tours must already be here.",
-];
-
-function MoneyHowTo() {
-  return (
-    <>
-      {RATES_HOW_TO.map((t) => (
-        <li key={t}>{t}</li>
-      ))}
-    </>
-  );
-}
-
-function PartnerHowTo() {
-  return (
-    <>
-      <li>
-        Locations opens this partner&apos;s own pick-up hotels (not linked to
-        our Pickup Locations). Their order there is the order shown in Dispatch.
-        Click Save locations to keep your changes. To change or add many at
-        once, click ⬆ Import, then ⬇ Download template (this partner&apos;s
-        locations), change or add rows in Excel, choose the file, check the
-        preview and click Save. Rows are matched by Hotel; a blank cell never
-        clears a box; rows marked Error are not saved.
-      </li>
-      <li>
-        Rename changes the name shown in this system. Deactivate hides the
-        partner from the Farm out choice in Dispatch; orders already farmed out
-        to it are not changed, and you can Reactivate at any time.
-      </li>
-    </>
-  );
-}
+export const IMPORT_RATES_HOW_TO =
+  "⬆ Import rates (all partners in one file): the file has the columns Partner, Tour, Product, Adult, Child, Infant. Rows are matched by partner, tour and product name; the product can be the short name (Premium Pass) or the full name (West Rim Premium Pass - C Tour). A blank cell changes nothing. A product name that is not on the tour yet is added as a new product. Partners and tours must already be here.";
