@@ -13,6 +13,7 @@
 - 窗口重启：本窗口现 [54a3a7]；bb / 2c / 9b 都不在了，只有 npe-ops-frontend-a2 [be8556]、后端主窗口-bb [80a1b1]。第 8 件改派 a2；7c–e 和第 13 件等 Annie 再开 2 个窗口。
 - ✅ Annie（原话）「13 动手」⇒ 第 13 件 Main manifest 手机把不必要的键合并 / 藏起来（11-16 原话「手机的话需要把一些不必要的键合并或者隐藏起来」），照全站手机规则（PhoneMore ⋯ 等）做，先核是否已部分上 main。
 - 后端主窗口-bb [80a1b1]：以后合同 / SHA / 前端要求只发 5e。G369 拆：7a 后端放 8 句（6 + 2 句带号码，「I can't find you. I will call you now.」取代 call me，SQL 先给 Annie 看）；7b 电话 702-948-4190、短信 / WhatsApp 统一 725-777-1698（入口和模板 key 先给 Annie 看）；7c–e 前端：Driver Quick Replies 管理页搬进 Content Studio › Team Messages 当一个标签，预计沿用现有接口，G369 后端窗口会先确认接口形状再开工。G373 / G361+G372 / G374 / G320 合同等 Annie 确认方案后发。
+- 2c [4debba] 回来 ⇒ 派第 13 件 Main manifest 手机收键（task/manifest-phone-keys；照全站手机规则，桌面不变、表格不动，先核现状，拿不准的键按规则定写进交接不出题）。7c–e 等 G369 后端确认接口形状 + 新窗口。
 
 ## 2026-11-20（周五）前端主窗口 `npe-ops-frontend-5e`[614588]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工：origin/main 9ab99466（主目录 detached 改 PROGRESS）。资源：空闲内存 38.2 / 61.8 GB，node 0、chrome 71。现在没有工作窗口；后端在线 `npe-confirmation-service-bb`[282016]。
