@@ -1189,6 +1189,138 @@ async function run() {
     check("?chat=单号：Dismiss 收起黄字", await evaluate("return !document.querySelector('[data-chat-not-found]');"));
   }
 
+  // ── 搜索不限日期（Annie 2026-11-23「Tracking搜索全部同意推荐，动手」；Q1–Q6 A、Q7 B；接口照 lib/tracking-find-api.ts 草案）──
+  {
+    const E = "2026-10-12";
+    const box = "document.querySelector('input[aria-label=\"Search\"]')";
+    const type = (v) => evaluate(`$setValue(${box}, ${JSON.stringify(v)}); return 1;`);
+    const enter = () => evaluate(`${box}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); return 1;`);
+    const note = () => evaluate("return document.querySelector('[data-anydate-note]')?.textContent.replace(/\\s+/g, ' ').trim() ?? '';");
+    const banner = () => evaluate("return document.querySelector('[data-anydate-banner]')?.textContent.replace(/\\s+/g, ' ').trim() ?? '';");
+    const finds = (before) => since(before, (e) => e.path === "/api/notifications/tracking/find-order");
+    const openDay = async (d) => {
+      await goto(`${APP}/tour-confirmation/tracking?date=${d}`);
+      await waitFor("document.querySelector('input[aria-label=\"Search\"]')", 30000);
+      await sleep(700);
+      await helpers();
+    };
+
+    // 这一天就有：照旧只筛这一天，按 Enter 也不去别的日子找（Q1 A）
+    await openDay(D);
+    await waitFor("document.querySelectorAll('table tbody tr[data-id]').length > 1", 15000);
+    let before = (await mockLog()).length;
+    await type("T01");
+    await enter();
+    await sleep(400);
+    check("不限日期 Q1：这一天就有这单（T01）：按 Enter 不去别的日子找、不跳", (await finds(before)).length === 0 && (await evaluate("return new URLSearchParams(location.search).get('date');")) === D && !(await banner()));
+    await type("ZZ One");
+    await enter();
+    await sleep(400);
+    check("不限日期 Q2：名字这一天对得上（ZZ One）：按 Enter 也不去别的日子找", (await finds(before)).length === 0 && !(await note()));
+    await type("T0");
+    await sleep(200);
+    check("不限日期 Q1：只打字不按 Enter：照旧只筛这一天，不发请求", (await finds(before)).length === 0);
+
+    // 别的日子的单号 ⇒ 跳过去（Q3 A / Q6 A）
+    await openDay(E);
+    before = (await mockLog()).length;
+    await type("t02");
+    await enter();
+    await waitFor("document.querySelector('[data-anydate-banner]')", 15000);
+    await waitFor("document.querySelector('[data-anydate-hit]')", 15000);
+    check("不限日期：在 Mon, Oct 12 输入别的日子的单号 t02 按 Enter ⇒ 查 /api/notifications/tracking/find-order?order=t02（不分大小写），跳到 2026-10-10", (await finds(before)).some((e) => e.q?.order === "t02") && (await evaluate("return new URLSearchParams(location.search).get('date');")) === D, JSON.stringify(await finds(before)));
+    check("不限日期 Q6 A：搜索框留着单号 T02、只显示这一单、整行描黄（橙黄描边）", (await evaluate(`return ${box}.value;`)) === "T02" && (await evaluate("const rows = [...document.querySelectorAll('table tbody tr[data-id]')]; const h = document.querySelector('[data-anydate-hit]'); return rows.length === 1 && !!h && h.textContent.includes('T02') && getComputedStyle(h).outlineColor === 'rgb(245, 158, 11)';")));
+    check("不限日期：选中这单所在的团胶囊（AC-L）", await evaluate("const b = [...document.querySelectorAll('[aria-label=\"Filter by tour\"] button')].find(x => x.textContent.trim().startsWith('AC-L')); const all = [...document.querySelectorAll('[aria-label=\"Filter by tour\"] button')].find(x => x.textContent.trim().startsWith('All')); return !!b && b.className !== all.className;"));
+    check("不限日期：蓝条「T02 is on Sat, Oct 10 · Lower Antelope Canyon. Moved here from Mon, Oct 12. ← Back to Mon, Oct 12」", (await banner()) === "T02 is on Sat, Oct 10 · Lower Antelope Canyon. Moved here from Mon, Oct 12. ← Back to Mon, Oct 12", await banner());
+    await evaluate("document.querySelector('[data-anydate-back]').click(); return 1;");
+    await waitFor(`new URLSearchParams(location.search).get('date') === '${E}'`, 15000);
+    await sleep(300);
+    check("不限日期：← Back 回到 Mon, Oct 12、搜索框清空、蓝条没了", (await evaluate(`return ${box}.value;`)) === "" && !(await banner()));
+
+    // 多产品（Q3 A）：先去这一页有的团，蓝条列出别的产品
+    await type("T03");
+    await enter();
+    await waitFor("document.querySelector('[data-anydate-banner]')", 15000);
+    check("不限日期 Q3：多产品 T03：先去这一页的团（Sat, Oct 10 · Grand Canyon South Rim），蓝条写 Also on this order: <门票> → Tickets Tracking", (await banner()).startsWith("T03 is on Sat, Oct 10 · Grand Canyon South Rim. Also on this order:") && (await evaluate("return document.querySelector('[data-anydate-other]').textContent.includes('Upper Antelope – Tsosie → Tickets Tracking');")), await banner());
+    await evaluate("document.querySelector('[data-anydate-back]').click(); return 1;");
+    await waitFor(`new URLSearchParams(location.search).get('date') === '${E}'`, 15000);
+    await sleep(300);
+    await helpers();
+
+    // 打字清掉蓝条
+    await type("T02");
+    await enter();
+    await waitFor("document.querySelector('[data-anydate-banner]')", 15000);
+    await type("T0");
+    await sleep(200);
+    check("不限日期：跳过去以后再打字：蓝条、描黄都没了", !(await banner()) && !(await evaluate("return !!document.querySelector('[data-anydate-hit]');")));
+
+    // Q5 A：Order List 里取消了、两页都没有 ⇒ 不跳，写状态 + Open in Order List
+    await openDay(E);
+    await type("CHD7001");
+    await enter();
+    await waitFor("document.querySelector('[data-anydate-note=warn]')", 15000);
+    check("不限日期 Q5：取消了、不在 Tracking 上：不跳；搜索框下写「CHD7001 is Cancelled in the Order List (Sun, Oct 11 · Grand Canyon West Rim) and is not on Tour Tracking. Open in Order List →」", (await note()) === "CHD7001 is Cancelled in the Order List (Sun, Oct 11 · Grand Canyon West Rim) and is not on Tour Tracking. Open in Order List →" && (await evaluate("return document.querySelector('[data-anydate-note] a').getAttribute('href');")) === "/orders?q=CHD7001" && (await evaluate("return new URLSearchParams(location.search).get('date');")) === E, await note());
+    // Order List 说在 10-10，那天表里却没有
+    await type("T09");
+    await enter();
+    await waitFor("document.querySelector('[data-anydate-note=error]')", 15000);
+    check("不限日期：Order List 说在 Sat, Oct 10，那天表里没有 ⇒ 跳过去，红字「T09 is in the Order List for Sat, Oct 10 but is not on Tour Tracking yet.」", (await note()) === "T09 is in the Order List for Sat, Oct 10 but is not on Tour Tracking yet.", await note());
+
+    // 哪天都没有
+    await openDay(E);
+    await type("CHD9999");
+    await enter();
+    await waitFor("document.querySelector('[data-anydate-note=error]')", 15000);
+    check("不限日期：哪天都没有：红字「No order CHD9999 found on any date.」（中性，partner 看不到的单也是 404）", (await note()) === "No order CHD9999 found on any date.", await note());
+
+    // Q2 A：名字这一天没有 ⇒ Search all dates →，点了列出所有日子对得上的单，点一个跳过去
+    await type("ZZ Two");
+    await enter();
+    await waitFor("document.querySelector('[data-anydate-all]')", 15000);
+    check("不限日期 Q2：名字这一天没有：「No match on Mon, Oct 12. Search all dates →」", (await note()) === "No match on Mon, Oct 12. Search all dates →", await note());
+    before = (await mockLog()).length;
+    await evaluate("document.querySelector('[data-anydate-all]').click(); return 1;");
+    await waitFor("document.querySelector('[data-anydate-result]')", 15000);
+    check("不限日期 Q2：Search all dates 查 /api/notifications/tracking/search-all-dates?q=ZZ Two，列出 T02 · Sat, Oct 10 · Lower Antelope Canyon · ZZ Two", (await since(before, (e) => e.path === "/api/notifications/tracking/search-all-dates" && e.q?.q === "ZZ Two")).length === 1 && (await evaluate("const t = document.querySelector('[data-anydate-result]').textContent; return t.includes('T02') && t.includes('Sat, Oct 10') && t.includes('Lower Antelope Canyon') && t.includes('ZZ Two');")), await evaluate("return document.querySelector('[data-anydate-result]').textContent;"));
+    await evaluate("document.querySelector('[data-anydate-result]').click(); return 1;");
+    await waitFor("document.querySelector('[data-anydate-hit]')", 15000);
+    check("不限日期 Q2：点一单 ⇒ 跳到 Sat, Oct 10、搜索框换成 T02、描黄", (await evaluate("return new URLSearchParams(location.search).get('date');")) === D && (await evaluate(`return ${box}.value;`)) === "T02");
+
+    // 合同：products 日期早的在前；第一项是 Admin fee（page null）⇒ 跳到这一页有的那一项（Q3 A）
+    await openDay(E);
+    await type("T01");
+    await enter();
+    await waitFor("document.querySelector('[data-anydate-hit]')", 15000);
+    check("不限日期（合同）：第一项 page null（Admin fee、日期早）⇒ 跳到这一页的那一项（Sat, Oct 10），蓝条把 Admin fee 写成别的产品（带状态、不带页名）", (await evaluate("return new URLSearchParams(location.search).get('date');")) === D && (await evaluate("return document.querySelector('[data-anydate-other]')?.textContent.trim();")) === "Thu, Oct 1 · Manual Admin Item (Confirmed)", await evaluate("return document.querySelector('[data-anydate-other]')?.textContent;"));
+    // 超过 20 行：truncated 那句
+    await openDay(E);
+    await type("ZZ Many");
+    await enter();
+    await waitFor("document.querySelector('[data-anydate-all]')", 15000);
+    await evaluate("document.querySelector('[data-anydate-all]').click(); return 1;");
+    await waitFor("document.querySelectorAll('[data-anydate-result]').length === 20", 15000);
+    check("不限日期（合同）：超过 20 行（truncated）⇒ 列 20 行，最后写「Showing the first 20. Type more of the name or number.」", await evaluate("return document.querySelector('[data-anydate-results]').textContent.includes('Showing the first 20. Type more of the name or number.');"));
+    // 400 原话原样
+    await type("Z");
+    await enter();
+    await waitFor("document.querySelector('[data-anydate-all]')", 15000);
+    await evaluate("document.querySelector('[data-anydate-all]').click(); return 1;");
+    await waitFor("document.querySelector('[data-anydate-note=error]')", 15000);
+    check("不限日期（合同）：名字太短 ⇒ 后端 400 原话「Type at least 2 letters of the name.」原样红字", (await note()) === "Type at least 2 letters of the name.", await note());
+
+    // Q4 A：只有门票的单 ⇒ 带去 Tickets Tracking（?date=&q=&from=）
+    await openDay(E);
+    await type("CHDZZ1");
+    await enter();
+    await waitFor("location.pathname === '/tickets-reminder/tracking'", 15000);
+    check("不限日期 Q4：在 Tour Tracking 输入只有门票的单 ⇒ 带去 Tickets Tracking", (await evaluate("return location.pathname;")) === "/tickets-reminder/tracking");
+
+    // How to use 新句
+    await openDay(D);
+    check("不限日期：How to use 新句（Tour：that day and tour）", await evaluate("return [...document.querySelectorAll('details li')].some(li => li.textContent.replace(/\\s+/g, ' ').trim() === 'The search box finds an order #, name or phone on this day. To find an order on any day, type the whole order # and press Enter: the page moves to that day and tour, shows the order and marks it. Click ← Back to return to the day you were on. If the order is cancelled or is not on this page, a line under the search box says so. For a name or phone that is not on this day, click Search all dates.');"));
+  }
+
   await ctl({ fail401: true });
   await goto(`${APP}/tour-confirmation/tracking?date=${D}`);
   await waitFor("location.pathname === '/auth/login'");
