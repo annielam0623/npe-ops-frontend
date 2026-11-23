@@ -67,6 +67,7 @@ export type {
 } from "./dashboard";
 export type {
   ManifestExtra,
+  ManifestTicketLabel,
   ManifestSectionKind,
   ManifestSetup,
   ManifestSetupGroup,

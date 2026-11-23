@@ -1301,6 +1301,101 @@ async function run() {
   await cdp("Emulation.clearDeviceMetricsOverride");
   await sleep(300);
   check("电脑：How to use 照旧在上面、说明照旧全显示", (await evaluate(`return ${howProducts} < document.querySelector('table').getBoundingClientRect().top + scrollY;`)) && (await evaluate("const f = document.querySelector('[data-field]'); return !f || f.querySelector('p').getBoundingClientRect().height > 0;")));
+  await ticketChecks();
+}
+
+// ── G374 票名改名表（Annie 2026-11-23「同意，动手」；后端窗口 47 合同 g374-ticket-labels-2026-11-23）──
+async function ticketChecks() {
+  const T = "[data-field=tickets]";
+  const src = (i) => `$q('[aria-label="Original text, row ${i}"]')`;
+  const lab = (i) => `$q('[aria-label="Name to show, row ${i}"]')`;
+  const rowsNow = () => evaluate("return [...document.querySelectorAll('[data-ticket-labels] tbody tr')].map(tr => [...tr.querySelectorAll('input')].map(i => i.value).join(' => '));");
+  const err = () => evaluate(`return $q('${T} [data-save-error]')?.textContent ?? '';`);
+  const saveBtn = `$q('${T} [data-save-btn]')`;
+  const openSetup = async () => {
+    await goto(`${APP}/settings/products`);
+    await waitFor("document.querySelector('[data-setup-toggle]')", 30000);
+    await h();
+    await evaluate("const t = document.querySelector('[data-setup-toggle]'); if (t.getAttribute('aria-expanded') === 'false') t.click(); return 1;");
+    await waitFor("$q('[data-field=extras]')", 15000);
+  };
+
+  // 旧后端（没带 ticket_labels）：不出这一块
+  await ctl({ tickets: false });
+  await openSetup();
+  check("G374 旧后端没带 ticket_labels：不出票名表、How to use 没有那句", await evaluate(`return !$q('${T}') && !document.querySelector('[data-howto-tickets]');`));
+
+  await ctl({ tickets: true, ticketFail500: false });
+  await openSetup();
+  await waitFor(`$q('${T}')`, 15000);
+  check("G374 在 Sections 下面、Extras 后面，当子项（↳ Ticket names on the Bus Manifest），不另给编号", await evaluate("const f = [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent); const i = f.indexOf('↳:Extras'); return i >= 0 && f[i + 1] === '↳:Ticket names on the Bus Manifest';"), await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|');"));
+  check("G374 表头 Original text | Name to show；按后端顺序 3 行 + 最后一行空的（占位示例）", JSON.stringify(await rowsNow()) === JSON.stringify(["Adult +skywalk +Meal Voucher => Premium", "Adult +skywalk +Grab and Go lunch => Sky + GnG", "Adult Premium => Premium", " => "]) && (await evaluate(`return [...document.querySelectorAll('[data-ticket-labels] th')].map(t => t.textContent.trim()).slice(0, 2).join('|') === 'Original text|Name to show' && ${src(4)}.placeholder === 'Adult +skywalk +Meal Voucher' && ${lab(4)}.placeholder === 'Premium';`)), JSON.stringify(await rowsNow()));
+  check("G374 灰字说明第一句照合同原文；How to use — Bus Manifest setup 加了那条", await evaluate(`return $q('${T} p').textContent.startsWith('Type the ticket exactly as the Bus Manifest shows it today in Original text, and what you want instead in Name to show. Spaces and capitals do not matter. Tickets not listed show as they are. Counts at the bottom do not change.') && document.querySelector('[data-howto-tickets]').textContent.replace(/\\s+/g, ' ').includes('Ticket names on the Bus Manifest: type the ticket exactly as the Bus Manifest shows it today in Original text');`));
+  check("G374 没改：Save 灰着；第 1 行 ↑ 灰、最后一行有字的 ↓ 灰；空行没有 ↑↓ / Remove", await evaluate(`return ${saveBtn}.disabled && $q('[data-ticket-row="0"] [data-ticket-up]').disabled && $q('[data-ticket-row="2"] [data-ticket-down]').disabled && !$q('[data-ticket-row="new"] button');`));
+
+  let before = (await mockLog()).length;
+  await evaluate(`$setValue(${src(4)}, 'ZZ Adult A'); $setValue(${lab(4)}, 'ZZ A');`);
+  await sleep(200);
+  check("G374 在空行打字：下面再多一行空的、这一行描橙、Save 变可按，没发请求（先选后存）", (await rowsNow()).length === 5 && (await evaluate(`return !${saveBtn}.disabled && ${src(4)}.className.includes('outline-[#f59e0b]');`)) && (await since(before, (e) => e.path.endsWith("/ticket-labels"))).length === 0, JSON.stringify(await rowsNow()));
+  await evaluate("$q('[data-ticket-row=\"3\"] [data-ticket-up]').click();");
+  await sleep(150);
+  await evaluate("$q('[data-ticket-row=\"0\"] [data-ticket-remove]').click();");
+  await sleep(150);
+  check("G374 ↑ 把新行挪到第 3、Remove 拿掉第 1 行：只在页面上", JSON.stringify(await rowsNow()) === JSON.stringify(["Adult +skywalk +Grab and Go lunch => Sky + GnG", "ZZ Adult A => ZZ A", "Adult Premium => Premium", " => "]) && (await since(before, (e) => e.path.endsWith("/ticket-labels"))).length === 0, JSON.stringify(await rowsNow()));
+
+  // leave-guard：有没存的票名，点站内链接先问，列出这一项
+  await evaluate("const a = [...document.querySelectorAll('a[href^=\"/\"]')].find((x) => !x.target && x.getAttribute('href') !== location.pathname); a.click();");
+  await waitFor("document.querySelector('[data-leave-dialog]')");
+  check("G374 没存就点站内链接：弹 Leave without saving?，列出 Upper Antelope: Ticket names", await evaluate("const d = document.querySelector('[data-leave-dialog]'); return !!d && d.textContent.includes('Upper Antelope: Ticket names');"), await evaluate("return document.querySelector('[data-leave-dialog]')?.textContent;"));
+  await evaluate("$btn('Cancel', document.querySelector('[data-leave-dialog]')).click();");
+  await sleep(300);
+  check("G374 Cancel：还在这一页，改动还在", (await evaluate("return location.pathname;")) === "/settings/products" && (await rowsNow()).length === 4);
+
+  before = (await mockLog()).length;
+  await evaluate(`${saveBtn}.click();`);
+  let put = await waitPut(before, "/api/settings/manifest-setup/groups/1/ticket-labels");
+  await waitFor(`!!$q('${T} [data-save-ok]')`);
+  check("G374 Save：PUT 整张表、照页面顺序、空行不送；绿字 Saved、Save 又灰", JSON.stringify(put?.body) === JSON.stringify({ rows: [{ source: "Adult +skywalk +Grab and Go lunch", label: "Sky + GnG" }, { source: "ZZ Adult A", label: "ZZ A" }, { source: "Adult Premium", label: "Premium" }] }) && (await evaluate(`return ${saveBtn}.disabled && getComputedStyle($q('${T} [data-save-ok]')).color === 'rgb(30, 107, 67)' || ${saveBtn}.disabled;`)), JSON.stringify(put?.body));
+  check("G374 存好：顺序照后端回的、描橙没了", JSON.stringify(await rowsNow()) === JSON.stringify(["Adult +skywalk +Grab and Go lunch => Sky + GnG", "ZZ Adult A => ZZ A", "Adult Premium => Premium", " => "]) && (await evaluate(`return !${src(1)}.className.includes('outline-[#f59e0b]');`)));
+
+  // 400：后端原话原样标红，草稿留着
+  const try400 = async (setup, want) => {
+    await evaluate(setup);
+    await sleep(150);
+    const b = (await mockLog()).length;
+    await evaluate(`${saveBtn}.click();`);
+    await waitPut(b, "/api/settings/manifest-setup/groups/1/ticket-labels");
+    await waitFor(`($q('${T} [data-save-error]')?.textContent ?? '').includes(${JSON.stringify(want)})`, 5000);
+    return (await err()).includes(want);
+  };
+  check("G374 400 重复（不分大小写和空格）：原话「\"Adult Premium\" is listed twice (rows 2 and 3). Keep one.」，草稿留着", await try400(`$setValue(${src(2)}, ' adult   PREMIUM ');`, '"Adult Premium" is listed twice (rows 2 and 3). Keep one.') && (await rowsNow())[1].startsWith(" adult   PREMIUM"), await err());
+  check("G374 400 名字以 = 开头：原话「\"=SUM(1)\": the name to show cannot start with =.」", await try400(`$setValue(${src(2)}, 'ZZ Adult A'); $setValue(${lab(2)}, '=SUM(1)');`, '"=SUM(1)": the name to show cannot start with =.'), await err());
+  check("G374 400 只填了原文：原话「\"ZZ Adult A\": type the name to show.」", await try400(`$setValue(${lab(2)}, '');`, '"ZZ Adult A": type the name to show.'), await err());
+  check("G374 400 只填了名字：原话「Ticket name row 2: type the original text, or clear the name to show too.」", await try400(`$setValue(${src(2)}, ''); $setValue(${lab(2)}, 'ZZ A');`, "Ticket name row 2: type the original text, or clear the name to show too."), await err());
+  await ctl({ ticketFail500: true });
+  check("G374 500：原话「Could not save. Nothing was changed - try again.」", await try400(`$setValue(${src(2)}, 'ZZ Adult A'); $setValue(${lab(2)}, 'ZZ A2');`, "Could not save. Nothing was changed - try again."), await err());
+  await ctl({ ticketFail500: false });
+  check("G374 存不上时表格照旧是草稿（没被冲掉）", JSON.stringify(await rowsNow()) === JSON.stringify(["Adult +skywalk +Grab and Go lunch => Sky + GnG", "ZZ Adult A => ZZ A2", "Adult Premium => Premium", " => "]), JSON.stringify(await rowsNow()));
+
+  // 全清空：Remove 三行 ⇒ PUT {rows: []}，只剩空行
+  for (let i = 0; i < 3; i++) {
+    await evaluate("$q('[data-ticket-row=\"0\"] [data-ticket-remove]').click();");
+    await sleep(120);
+  }
+  before = (await mockLog()).length;
+  await evaluate(`${saveBtn}.click();`);
+  put = await waitPut(before, "/api/settings/manifest-setup/groups/1/ticket-labels");
+  await waitFor(`!!$q('${T} [data-save-ok]')`);
+  check("G374 全部 Remove 再 Save：PUT {\"rows\":[]}，表里只剩一行空的", JSON.stringify(put?.body) === '{"rows":[]}' && JSON.stringify(await rowsNow()) === JSON.stringify([" => "]), JSON.stringify(put?.body));
+
+  // 手机：表格在框里左右滑，整页不晃
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await openSetup();
+  await waitFor(`$q('${T}')`, 15000);
+  await sleep(400);
+  check("G374 手机 390：整页不左右晃", await evaluate("return document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1;"), await evaluate("return document.documentElement.scrollWidth + ' / ' + document.documentElement.clientWidth;"));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await ctl({ tickets: false });
 }
 
 main().catch((e) => {

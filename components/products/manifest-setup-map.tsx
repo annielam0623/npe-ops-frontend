@@ -16,6 +16,8 @@ export type MapZone =
   | "sections"
   | "order"
   | "extras"
+  // G374 票名改名表：Sections 下面的子项（同 Extras 一个编号），示意图上不另亮。
+  | "tickets"
   | "lunch"
   | "perBus"
   | "split"
@@ -31,6 +33,7 @@ export const PIN: Record<MapZone, number> = {
   sections: 2,
   order: 2,
   extras: 2,
+  tickets: 2,
   lunch: 3,
   // 4–9：不是改 Bus Manifest 的设置，收在「其他页面用的设置」里（Dispatch 的 4–5，7 Days Forecast 的 6–9）。
   perBus: 4,

@@ -1,6 +1,7 @@
 import { apiFetch } from "@/lib/api-client";
 import type {
   ManifestExtra,
+  ManifestTicketLabel,
   ManifestSectionKind,
   ManifestSetup,
   MissingProduct,
@@ -282,6 +283,20 @@ export function saveManifestExtras(
   return apiFetch(`${SETUP_API}/groups/${manifestId}/extras`, {
     method: "PUT",
     body: { extras },
+  });
+}
+
+/**
+ * G374 票名改名表（后端合同 g374-ticket-labels-2026-11-23，require_admin）：整张表按显示顺序送，没送的行删掉；
+ * {rows: []} = 清空；两格都空的行后端跳过。回 {ok, rows}（存好的整张表，同 GET 形状）。400 的 detail 原样显示。
+ */
+export function saveManifestTicketLabels(
+  manifestId: number,
+  rows: { source: string; label: string }[],
+): Promise<{ ok: boolean; rows: ManifestTicketLabel[] }> {
+  return apiFetch(`${SETUP_API}/groups/${manifestId}/ticket-labels`, {
+    method: "PUT",
+    body: { rows },
   });
 }
 

@@ -197,6 +197,11 @@ export interface ManifestSetupGroup {
    */
   relay_round?: string | null;
   extras: ManifestExtra[];
+  /**
+   * G374 票名改名表（后端合同 g374-ticket-labels-2026-11-23，migrate_v183）：Bus Manifest Pax 格里一种票的原文 → 要显示的名字，
+   * 按页面顺序（同名的几行用最上面那行的颜色）。[] = 没设；旧后端没有这个键 ⇒ 不出这一块。
+   */
+  ticket_labels?: ManifestTicketLabel[];
   products: ManifestSetupProduct[];
   /** 每个有 Tour 产品的节一行（班车节不列），按节名排；后端没上线 G130 时没有这个键。 */
   section_tour_types?: SectionTourType[];
@@ -222,4 +227,11 @@ export interface ManifestSetup {
   relay_rounds?: { value: string; label: string }[];
   /** 每节 tour type 下拉能选的键（后端 G130）。 */
   tour_types?: { key: string; label: string }[];
+}
+
+/** G374 一行票名：source = Bus Manifest 今天显示的原文（去掉人数和「(2 or older)」），label = 要显示的名字。 */
+export interface ManifestTicketLabel {
+  id: number;
+  source: string;
+  label: string;
 }

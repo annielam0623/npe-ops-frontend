@@ -11,6 +11,7 @@ import {
   saveBusSectionOrder,
   saveSectionOrder,
   saveManifestExtras,
+  saveManifestTicketLabels,
   saveManifestGroup,
   saveManifestSection,
   saveGroupShortName,
@@ -53,6 +54,7 @@ import {
 import { useTick } from "@/lib/use-tick";
 import type {
   ManifestExtra,
+  ManifestTicketLabel,
   ManifestSectionKind,
   ManifestSetup,
   ManifestSetupGroup,
@@ -267,6 +269,30 @@ const toExtraDrafts = (list: ManifestExtra[]): ExtraDraft[] => [
   { key: ++extraKey, id: null, name: "", seats: "" },
 ];
 
+/** G374 票名改名表的一行草稿。最后总有一行空的（填上就是新加一行）。 */
+interface TicketDraft {
+  key: number;
+  source: string;
+  label: string;
+}
+let ticketKey = 0;
+const emptyTicket = (): TicketDraft => ({
+  key: ++ticketKey,
+  source: "",
+  label: "",
+});
+const toTicketDrafts = (list: ManifestTicketLabel[]): TicketDraft[] => [
+  ...list.map((t) => ({ key: ++ticketKey, source: t.source, label: t.label })),
+  emptyTicket(),
+];
+/** 末尾保证有一行空的（打了字的空行变成正常行时，下面再补一行）。 */
+const withTrailingEmpty = (rows: TicketDraft[]): TicketDraft[] => {
+  const last = rows[rows.length - 1];
+  return !last || last.source.trim() || last.label.trim()
+    ? [...rows, emptyTicket()]
+    : rows;
+};
+
 /** 产品的 Type 下拉的值：挂了 Extra 的是 "extra:<id>"，否则是 kind（同旧页面 typeValue）。 */
 const typeValue = (p: ManifestSetupProduct) =>
   p.manifest_extra_id !== null
@@ -331,6 +357,13 @@ function GroupEditor({
     [group.extras],
   );
   const [extrasEdit, setExtrasEdit] = useState<ExtraDraft[] | null>(null);
+  /** G374 票名改名表（旧后端没带 ticket_labels ⇒ 不出这一块）。 */
+  const ticketMode = group.ticket_labels !== undefined;
+  const savedTickets = useMemo(
+    () => toTicketDrafts(group.ticket_labels ?? []),
+    [group.ticket_labels],
+  );
+  const [ticketsEdit, setTicketsEdit] = useState<TicketDraft[] | null>(null);
 
   /** 存着的颜色（"" = 默认灰）。 */
   const savedColorValue = group.manifest_color ?? "";
@@ -344,6 +377,7 @@ function GroupEditor({
   const relay = relayEdit ?? group.relay_round ?? "";
   const cfmOn = cfmEdit ?? group.cfm_sections ?? [];
   const extras = extrasEdit ?? savedExtras;
+  const tickets = ticketsEdit ?? savedTickets;
   /** 左边指到 / Tab 到的那项设置：右边地图上对应那块亮起来（反过来指右边也一样）。 */
   const [zone, setZone] = useState<MapZone | null>(null);
   /** 示意图默认收起（Annie 2026-10-19：Bus Manifest 设置合并），点开才显示。 */
@@ -608,6 +642,37 @@ function GroupEditor({
         groupRef.current = next;
         onGroupChange(next);
         setExtrasEdit(null);
+        return null;
+      } catch (e) {
+        return failText(e);
+      }
+    },
+  });
+
+  // G374 票名改名表整张保存（Annie 2026-11-23「同意，动手」，后端窗口 47 合同）：整张表按显示顺序 PUT，
+  // 两格都空的行不送（后端也跳过）；全清空 = {rows: []}。检查都在后端，400 的 detail 原样标红。
+  const ticketRows = tickets
+    .map((t) => ({ source: t.source.trim(), label: t.label.trim() }))
+    .filter((t) => t.source || t.label);
+  const ticketsDirty =
+    ticketMode &&
+    JSON.stringify(ticketRows.map((t) => [t.source, t.label])) !==
+      JSON.stringify(
+        (group.ticket_labels ?? []).map((t) => [t.source, t.label]),
+      );
+  const ticketsBlock = useBlockSave({
+    id: sid("tickets"),
+    label: label("Ticket names"),
+    dirty: ticketsDirty,
+    draftKey: JSON.stringify(ticketRows),
+    auto: true,
+    doSave: async () => {
+      try {
+        const d = await saveManifestTicketLabels(group.id, ticketRows);
+        const next = { ...groupRef.current, ticket_labels: d.rows };
+        groupRef.current = next;
+        onGroupChange(next);
+        setTicketsEdit(null);
         return null;
       } catch (e) {
         return failText(e);
@@ -1376,6 +1441,23 @@ function GroupEditor({
             <SaveControl block={extrasBlock} />
           </MapField>
 
+          {ticketMode ? (
+            <MapField
+              {...field("tickets")}
+              sub
+              title="Ticket names on the Bus Manifest"
+              hint="Type the ticket exactly as the Bus Manifest shows it today in Original text, and what you want instead in Name to show. Spaces and capitals do not matter. Tickets not listed show as they are. Counts at the bottom do not change. Rows with the same name share the colour of the top one, so use ↑ ↓ to change the order. To add one, fill in the empty last row and click Save."
+            >
+              <TicketNamesTable
+                rows={tickets}
+                saved={group.ticket_labels ?? []}
+                disabled={ticketsBlock.state.kind === "saving"}
+                onChange={(next) => setTicketsEdit(withTrailingEmpty(next))}
+              />
+              <SaveControl block={ticketsBlock} />
+            </MapField>
+          ) : null}
+
           {restaurantMode ? (
             // G199（preview 第 4 版 ③）：只读一行，改在 Supplier › Restaurant。
             <MapField
@@ -1636,6 +1718,20 @@ function GroupEditor({
             and the Driver and Guide pages; empty keeps the earliest pickup
             first.
           </li>
+          {group.ticket_labels !== undefined ? (
+            // G374（Annie 2026-11-23「同意，动手」）：第一句照后端窗口 47 建议的原文。
+            <li data-howto-tickets>
+              Ticket names on the Bus Manifest: type the ticket exactly as the
+              Bus Manifest shows it today in Original text, and what you want
+              instead in Name to show. Spaces and capitals do not matter.
+              Tickets not listed show as they are. Counts at the bottom do not
+              change. Rows with the same name share the colour of the top one,
+              so use ↑ ↓ to change the order. Fill in the empty last row to add
+              one, click Remove to take one off, then click Save. The Bus
+              Manifest, its printout and Excel, and the Driver and Guide pages
+              all show the new name.
+            </li>
+          ) : null}
           <li>
             Settings for other pages (open the box under Lunch{" "}
             {restaurantMode ? "vendor" : "sheet line"}). Guests per bus: how
@@ -1897,5 +1993,133 @@ function SectionRow({
         ) : null}
       </td>
     </tr>
+  );
+}
+
+/**
+ * G374 票名改名表：Original text | Name to show | ↑ ↓ | Remove；最后一行空的用来加。
+ * 改动都只在页面上（↑↓ 换顺序、Remove 拿掉一行、打字），按这一项的 Save 才 PUT 整张表。
+ * 同名的几行在 Bus Manifest 上用最上面那行的颜色，所以顺序要保留、可以挪。
+ */
+function TicketNamesTable({
+  rows,
+  saved,
+  disabled,
+  onChange,
+}: {
+  rows: TicketDraft[];
+  saved: ManifestTicketLabel[];
+  disabled: boolean;
+  onChange: (rows: TicketDraft[]) => void;
+}) {
+  const filledCount = rows.filter(
+    (r) => r.source.trim() || r.label.trim(),
+  ).length;
+  const set = (key: number, patch: Partial<TicketDraft>) =>
+    onChange(rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  const move = (i: number, by: -1 | 1) => {
+    const next = [...rows];
+    [next[i], next[i + by]] = [next[i + by], next[i]];
+    onChange(next);
+  };
+  return (
+    <div className="overflow-x-auto">
+      <table
+        data-ticket-labels
+        className="w-full border-collapse text-[12.5px]"
+      >
+        <thead>
+          <tr>
+            <th className={TH}>Original text</th>
+            <th className={TH}>Name to show</th>
+            <th className={cn(TH, "w-[1%]")}>
+              <span className="sr-only">Order and remove</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => {
+            const empty = !r.source.trim() && !r.label.trim();
+            const isAdd = empty && i === rows.length - 1;
+            const was = saved[i];
+            const changed = isAdd
+              ? false
+              : !was ||
+                was.source !== r.source.trim() ||
+                was.label !== r.label.trim();
+            const ring = changed && CHANGED_RING;
+            return (
+              <tr key={r.key} data-ticket-row={isAdd ? "new" : i}>
+                <td className={cn(TD, "min-w-[180px]")}>
+                  <input
+                    type="text"
+                    aria-label={`Original text, row ${i + 1}`}
+                    value={r.source}
+                    maxLength={200}
+                    placeholder={isAdd ? "Adult +skywalk +Meal Voucher" : ""}
+                    disabled={disabled}
+                    onChange={(e) => set(r.key, { source: e.target.value })}
+                    className={cn(INPUT, "w-full", ring)}
+                  />
+                </td>
+                <td className={cn(TD, "min-w-[120px]")}>
+                  <input
+                    type="text"
+                    aria-label={`Name to show, row ${i + 1}`}
+                    value={r.label}
+                    maxLength={60}
+                    placeholder={isAdd ? "Premium" : ""}
+                    disabled={disabled}
+                    onChange={(e) => set(r.key, { label: e.target.value })}
+                    className={cn(INPUT, "w-full", ring)}
+                  />
+                </td>
+                <td className={cn(TD, "whitespace-nowrap")}>
+                  {isAdd ? null : (
+                    <span className="inline-flex items-center gap-1">
+                      <button
+                        type="button"
+                        data-ticket-up
+                        aria-label={`Move row ${i + 1} up`}
+                        disabled={disabled || i === 0}
+                        onClick={() => move(i, -1)}
+                        className={cn(BUTTON, "h-7 px-2")}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        data-ticket-down
+                        aria-label={`Move row ${i + 1} down`}
+                        disabled={disabled || i >= filledCount - 1}
+                        onClick={() => move(i, 1)}
+                        className={cn(BUTTON, "h-7 px-2")}
+                      >
+                        ↓
+                      </button>
+                      <button
+                        type="button"
+                        data-ticket-remove
+                        aria-label={`Remove row ${i + 1}`}
+                        disabled={disabled}
+                        onClick={() =>
+                          onChange(rows.filter((x) => x.key !== r.key))
+                        }
+                        className={cn(
+                          BUTTON,
+                          "h-7 px-2 text-[#b3261e] night:text-red-300",
+                        )}
+                      >
+                        Remove
+                      </button>
+                    </span>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
