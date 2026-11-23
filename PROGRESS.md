@@ -110,6 +110,7 @@
 - 2026-11-22 后端主窗口-bb 转 Annie 今天必做（原话「以上全部」）：① P-Q1 已上 189b3afb ✅；② 151 Bus Manifest 编辑页手机一屏 ①–④；③ 151 David H 账号 A / B；④ 146 Farm out 上传收图片 + 表格格式；⑤ 排班 Rules 两个 bug（G272）。⇒ ⑤ 派 2c task/schedule-rules-bugs（先核 schedule-engine.ts targetDays null / min_days 重复报，再修钉测试）；② ③ 5 题做成 Excel C:\Users\annzh\Downloads\Annie_待答题_2026-11-22_151.xlsx 给 Annie（推荐 ① C、② A、③ Annie 定（114 不要隐藏冲突）、④ A、David A）；④ bb 做完 Lankun 后查现状出题。
 - Lankun 后端上 main bb898936（打印 / Excel 用同一 lunch_sheet，删 .rest / This bus 块；restaurant_block 对 Lankun 照发供 TOTAL SANDWICH 读 totals）⇒ 已转 bb：前端只不画 RestaurantBlock，照读 totals。
 - 2026-11-22 Annie 对 151 Excel 没逐题填，直接回「动手」⇒ 按推荐：① C 自动横竖屏 + Full screen；② A 竖屏 6 列；③（没推荐）照她 114 原话「不要隐藏」定 B 手机上 Text size 卡一直打开；④ A 只改 ops 编辑页；David H A 另开 staff 账号只勾 Dispatch Read only（不用写代码，要 Annie / 管理员在 Team 页开）。151 排给 bb（Lankun 之后，task/151-edit-phone，今晚必须上线）；146 改排给先空出来的窗口。资源：空闲内存 32 / 62 GB。
+- 2026-11-22 Annie「我想改一下导游页面」「导游页的手机版也一起改」⇒ 151 ④ 改 B：后端导游页手机版照 ① ② ③ 一起改（电脑不变），已转后端主窗口-bb；导游页跟 ops 对不上的地方后端先列出来问 Annie。前端 bb 做完把 6 列 + 截图转后端对齐。
 - 答后端：95 G371 旧发送入口盘点（三个 tracking 已切 ops；utilities / test-orders ops 没页面没入口；ops 直接调 /booking-notes/multi/reply、不调 /resend）；bb 7a 8 句原文 + 号码 grep（ops 代码没写死旧号码）。
 ## 📌 2026-11-20 17:15 Annie 新提：staff 备注几个入口打通（记录，未动手）
 
