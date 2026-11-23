@@ -12,7 +12,7 @@
   - Mirror task/order-mirror c95da628（9b）：95 PASS，📌 等 Annie 看截图 C:\Users\annzh\Downloads\order-mirror\ 说可以。
   - G374 门票显示名 task/g374-ticket-labels-fe 63f25045（bb）：等 Annie 跑 v183 SQL + 后端 47 上 main + PASS + Annie 看截图 C:\Users\annzh\Downloads\g374-ticket-labels\。
   - 146 Farm out 上传 task/farm-out-photo-upload ea85f9f8（89）：合同 v1 对齐，等 Annie 对后端方案说动手 + 后端 28 上 main + PASS。
-  - 半屏适配 task/schedule-half-screen（2c）：动手了，状态看 2c 收工回报（当天记录）。
+  - 半屏适配 task/schedule-half-screen **29b5b0db**（2c，WIP，worktree C:\Code\ops-wt-2c-red）：6 页代码写完（排班每天最窄 72px、表最窄 650、时间一行缩到最小 6px、标签挪名字下；Bus Manifest 编辑页 ≥640 最窄 650、打印照旧；Order List / Order Log / Farm out Report / Sales Report 640–1279 最窄 650）。950 宽六页都不滑；760 宽 Order List / Sales Report / Bus Manifest 编辑页还差一点要滑（不能折的内容）。tsc / eslint / build；man 586、orders 178、fr 31、olog 24、sales 63、nav 40 过；sch 534/546（12 条新半屏检查 mock 状态问题，已加复位未重跑）、mf 374/375（旧 151 检查要 980 已改未重跑）。下次：合 main → 重跑 sch / mf → 拍改后截图 C:\Users\annzh\Downloads\half-screen-fit\ → 推 main。
 - **📌 等 Annie 答**：导游页 D（后端做）D2–D13 C:\Users\annzh\Downloads\Annie_待答题_2026-11-23_导游页D.xlsx（第 6 版 + 中午折叠）；未发新单提醒 8 题 C:\Users\annzh\Downloads\Annie_待答题_2026-11-23_未发新单提醒.xlsx；David H 在 Team 页开 staff 账号；★ Notes 验收后撤旧 Save note。
 - **等后端**：G363「不送 model_from = 所有日子生效」（b5）；7a / 7b 快捷回复 8 句 + 号码（b5，SQL 先给 Annie）；第 9 件 G320、第 11 件导游必填、G361 DOR No show、页面慢。
 - 下一个主窗口：读这节 + 下面 11-23 当天记录；开工照开工必做第 4 条列 Annie 提过没做完的。
