@@ -594,6 +594,19 @@ async function g363Checks() {
   check("G363 Q2 B：人员表 Fees 后面一列 Vehicle extras", pheads === "Person|Runs|Fees|Vehicle extras|Extras|Tips|Total", pheads);
   check("G363：Kevin Vehicle extras $95.00（50 + 45），名字后面灰字 Driver + Guide（HR Position）；Jake（Not in HR）没有 Position", await evaluate(`const k = document.querySelector('[data-payroll-person="Kevin Tran"]'), j = document.querySelector('[data-payroll-person="Jake"]'); return k.querySelector('[data-payroll-person-vx]').textContent === '$95.00' && k.querySelector('[data-payroll-position]').textContent === 'Driver + Guide' && !j.querySelector('[data-payroll-position]') && j.textContent.includes('Not in HR');`));
   check("G363：Kevin 合计行 = Fees + Vehicle extras + Extras + Tips；整期合计行也有 Vehicle extras", await evaluate(`const n = (s) => Number(String(s).replace(/[$,—]/g, '') || 0); const k = [...document.querySelector('[data-payroll-person="Kevin Tran"]').children].map(c => c.textContent.trim()); const t = [...document.querySelector('[data-payroll-total]').children].map(c => c.textContent.trim()); return Math.abs(n(k[2]) + n(k[3]) + n(k[4]) + n(k[5]) - n(k[6])) < 0.001 && t.length === 7 && t[3] === '$95.00';`));
+  // 后端核对 2b48ccc8 第 1 条：页面的 Total 不在后端的 total 上再加补贴——没暂存改动时每趟 / 每人 / 整期都跟后端给的一样。
+  {
+    const P = await (await fetch(`${MOCK}/api/payroll/period?date=2026-11-01`)).json();
+    const kev = P.people.find((p) => p.name === "Kevin Tran");
+    const pageRuns = await evaluate(`return Object.fromEntries([...document.querySelectorAll('[data-payroll-run]')].filter(r => r.closest('[data-payroll-by-person]')).map(r => [r.dataset.payrollRun, r.children[7].textContent.trim()]));`);
+    const want = Object.fromEntries(kev.runs.map((r) => [String(r.assignment_id), "$" + Number(r.total).toLocaleString("en-US", { minimumFractionDigits: 2 })]));
+    const sprinter = kev.runs.find((r) => r.assignment_id === 812);
+    check("G363 后端核对 1：每趟 Total 跟后端 run.total 一样（812 Sprinter 补贴只算一次：后端 total 已含 vehicle_extra_amount）", Object.keys(want).every((k) => pageRuns[k] === want[k]) && Number(sprinter.vehicle_extra_amount) === 50 && pageRuns["812"] === want["812"], JSON.stringify({ pageRuns, want }));
+    const pageKevin = await evaluate(`return document.querySelector('[data-payroll-person-total]') && document.querySelector('[data-payroll-person="Kevin Tran"] [data-payroll-person-total]').textContent.trim();`);
+    const pageTile = await text(`${tile("Period total")}.children[1]`);
+    const fmt = (v) => "$" + Number(v).toLocaleString("en-US", { minimumFractionDigits: 2 });
+    check("G363 后端核对 1：Kevin 合计 = 后端 people[].total、Period total = 后端 total（没有重复加补贴）", pageKevin === fmt(kev.total) && pageTile === fmt(P.total), `${pageKevin} vs ${fmt(kev.total)} · ${pageTile} vs ${fmt(P.total)}`);
+  }
   await shot("payroll-runs-vehicle.png");
   // 页面上手填 Fee：补贴马上变 0（手填的就是全部）
   await clickFee(818);
@@ -605,7 +618,12 @@ async function g363Checks() {
   // 手填的趟点 Use the price：补贴要存了才知道
   await evaluate(`${run_(819)}.querySelector('[data-payroll-use-price]').click();`);
   await sleep(200);
-  check("G363：手填的 819 点 Use the price ⇒ 写 Vehicle extra after Save，Total 先只算价格 $280.00", (await evaluate(`return ${run_(819)}.querySelector('[data-payroll-vx-pending]')?.textContent === 'Vehicle extra after Save';`)) && (await cell(819, 7)) === "$280.00", await cell(819, 7));
+  check("G363：手填的 819 点 Use the price ⇒ 写 Vehicle extra after Save（Antelope 有启用的 Sprinter 补贴），Total 先只算价格 $280.00", (await evaluate(`return ${run_(819)}.querySelector('[data-payroll-vx-pending]')?.textContent === 'Vehicle extra after Save';`)) && (await cell(819, 7)) === "$280.00", await cell(819, 7));
+  await evaluate(`${q("[data-payroll-discard]")}.click();`);
+  await sleep(150);
+  await evaluate(`${run_(820)}.querySelector('[data-payroll-use-price]').click();`);
+  await sleep(200);
+  check("G363 后端核对 3：手填的 820（South Rim 开 Sprinter，South Rim 没有 Sprinter 补贴）点 Use the price ⇒ 不写 after Save，Total $270.00", (await evaluate(`return !${run_(820)}.querySelector('[data-payroll-vx-pending]') && !${run_(820)}.querySelector('[data-payroll-vx]');`)) && (await cell(820, 7)) === "$270.00", await cell(820, 7));
   await evaluate(`${q("[data-payroll-discard]")}.click();`);
   await sleep(150);
 

@@ -279,6 +279,8 @@ export interface PayrollRatesProps {
   runs?: PayrollRun[];
   /** + Add price / + Add extra 表单里 From 的默认值（这一期第一天）。 */
   defaultFrom?: string;
+  /** 每次读到 GET /api/payroll/rates 后调用（G363：页面用 vehicle_rates 判断 Use the price 后会不会有补贴）。 */
+  onLoaded?: (data: PayrollRatesData) => void;
 }
 
 export function PayrollRates({
@@ -286,6 +288,7 @@ export function PayrollRates({
   onUnauthorized,
   onDirtyChange,
   onSaved,
+  onLoaded,
   people,
   runs,
   defaultFrom,
@@ -326,6 +329,7 @@ export function PayrollRates({
         .then((d) => {
           setData(d);
           setLoadErr(null);
+          onLoaded?.(d);
         })
         .catch((e: unknown) => {
           if (signal?.aborted) return;
@@ -336,7 +340,7 @@ export function PayrollRates({
           setLoadErr(describeError(e));
         });
     },
-    [onUnauthorized],
+    [onUnauthorized, onLoaded],
   );
 
   useEffect(() => {

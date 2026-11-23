@@ -21,6 +21,7 @@ import type {
   PayrollPerson,
   PayrollRun,
   PayrollRunInput,
+  PayrollVehicleRate,
 } from "@/types/guide-payroll";
 
 import {
@@ -136,7 +137,45 @@ type Shown = {
   chgExtras: boolean;
 };
 
-function shownOf(run: PayrollRun, d: RunDraft | undefined): Shown {
+/**
+ * G363：这一趟存好以后会不会有车型补贴（后端 guide_payroll.py 229-233 的条件，只查前端看得到的）：
+ * Bus tour、司机就是导游、有导游有价格、有 manifest、那天有车型，且 Pay rates › Vehicle extras 里有一行启用的
+ * 同车型（去头尾空格、不分大小写）、同团、盖住那天的补贴。没手改 Fee 那一条由调用的地方管。
+ */
+function vehicleRateFor(
+  run: PayrollRun,
+  vrates: readonly PayrollVehicleRate[],
+): PayrollVehicleRate | undefined {
+  const model = run.vehicle_model?.trim().toLowerCase() ?? "";
+  if (
+    run.shift === "private_tour" ||
+    run.role !== "driver_guide" ||
+    !run.guide_name ||
+    run.rate_fee === null ||
+    run.manifest_id === null ||
+    !model
+  )
+    return undefined;
+  return vrates.find(
+    (v) =>
+      v.active &&
+      v.model.trim().toLowerCase() === model &&
+      v.manifest_id === run.manifest_id &&
+      v.from <= run.date &&
+      (v.to === null || v.to >= run.date),
+  );
+}
+
+/**
+ * 一趟加上暂存以后的样子。G363（后端核对 2b48ccc8 第 1 条）：Total 不读后端的 run.total / people[].total / total
+ * 再往上加，而是照后端 guide_payroll.py:245 的写法自己加一遍：fee + vehicle_extra_amount + extras_total + tips；
+ * 没暂存改动时跟后端的 total 一样（检查套对过）。vrates = Pay rates 的 vehicle_rates（只用来判断 Use the price 后会不会有补贴）。
+ */
+function shownOf(
+  run: PayrollRun,
+  d: RunDraft | undefined,
+  vrates: readonly PayrollVehicleRate[] = [],
+): Shown {
   const feeRaw = d?.fee !== undefined ? d.fee : run.fee_override;
   const override = numOrNull(feeRaw);
   const edited = override !== null && Number.isFinite(override);
@@ -157,14 +196,13 @@ function shownOf(run: PayrollRun, d: RunDraft | undefined): Shown {
   const tips = d?.tips !== undefined ? d.tips : run.tips;
   const t = numOrNull(tips);
   const tipsNum = t !== null && Number.isFinite(t) ? t : 0;
-  // G363：只有司机导游、Bus tour、有价格、那天有车型的趟才可能有补贴（后端规则）。
-  const vxPossible =
-    run.role === "driver_guide" &&
-    run.shift !== "private_tour" &&
-    rate !== null &&
-    !!run.vehicle_model?.trim();
+  // G363：存着手填 Fee、页面上点了 Use the price（存好后就没有手填了）：有对得上的启用补贴才写「after Save」；
+  // 金额要存了才知道（Total 方式价格不低于总价时是 0），所以只写 after Save、不写数。
   const vxPending =
-    !edited && run.fee_override !== null && d?.fee !== undefined && vxPossible;
+    !edited &&
+    run.fee_override !== null &&
+    d?.fee !== undefined &&
+    !!vehicleRateFor(run, vrates);
   const vxBase = Number(run.vehicle_extra_amount ?? 0);
   const vx = edited || vxPending || !Number.isFinite(vxBase) ? 0 : vxBase;
   const chgFee =
@@ -488,6 +526,8 @@ type RowApi = {
   patch: (run: PayrollRun, p: RunDraft) => void;
   /** 这一期碰到的锁：状态格判断「Paid · locked」用（后端的 run.locked 之外再按日期对一次）。 */
   locks: PayrollLock[];
+  /** G363：Pay rates 的 vehicle_rates（Use the price 后会不会有补贴）。 */
+  vrates: PayrollVehicleRate[];
 };
 
 /** 这一趟的日子锁住了：后端标了 locked，或落在某个锁的日期里。 */
@@ -509,7 +549,7 @@ function RunRows({
       {runs.map((run, i) => {
         const id = run.assignment_id;
         const d = id !== null ? api.drafts[id] : undefined;
-        const s = shownOf(run, d);
+        const s = shownOf(run, d, api.vrates);
         const editable = runEditable(run, api.canEdit);
         // 没有导游的趟 Fee 不能改（V9：No guide 先去 Dispatch 排人）。
         const feeEditable = editable && !!run.guide_name;
@@ -635,12 +675,17 @@ type PersonSum = {
   total: number;
 };
 
-function sumRuns(runs: PayrollRun[], drafts: Drafts): PersonSum {
+function sumRuns(
+  runs: PayrollRun[],
+  drafts: Drafts,
+  vrates: readonly PayrollVehicleRate[],
+): PersonSum {
   const out = { fee: 0, vx: 0, extras: 0, tips: 0, total: 0 };
   for (const r of runs) {
     const s = shownOf(
       r,
       r.assignment_id !== null ? drafts[r.assignment_id] : undefined,
+      vrates,
     );
     out.fee += s.fee;
     out.vx += s.vx;
@@ -714,6 +759,13 @@ export function Payroll({
   /** 换期时有没存的改动：黄框问 Save / Discard / Stay。 */
   const [guard, setGuard] = useState<null | -1 | 1>(null);
   const [ratesDirty, setRatesDirty] = useState(false);
+  /** G363：Pay rates 卡读到的 vehicle_rates（旧后端没有 = []）。 */
+  const [vrates, setVrates] = useState<PayrollVehicleRate[]>([]);
+  const onRatesLoaded = useCallback(
+    (d: { vehicle_rates?: PayrollVehicleRate[] }) =>
+      setVrates(d.vehicle_rates ?? []),
+    [],
+  );
   /** Change history 重拉的记号：每次存好加 1。 */
   const [version, setVersion] = useState(0);
   const byPersonInfo = usePhoneInfo("About Payroll by person");
@@ -870,7 +922,7 @@ export function Payroll({
 
   const P = state.data;
   const nRuns = P.people.reduce((a, p) => a + p.runs.length, 0);
-  const sums = P.people.map((p) => sumRuns(p.runs, drafts));
+  const sums = P.people.map((p) => sumRuns(p.runs, drafts, vrates));
   const tot = sums.reduce(
     (a, s) => ({
       fee: a.fee + s.fee,
@@ -891,6 +943,7 @@ export function Payroll({
     setEditingId,
     patch,
     locks: P.locks,
+    vrates,
   };
   const nDirty = dirtyRuns.length;
   const saving = saveState === "saving";
@@ -1373,6 +1426,7 @@ export function Payroll({
         onUnauthorized={onUnauthorized}
         onDirtyChange={setRatesDirty}
         onSaved={reloadQuiet}
+        onLoaded={onRatesLoaded}
         people={P.people}
         runs={[...P.runs, ...P.unpaid]}
         defaultFrom={P.from}

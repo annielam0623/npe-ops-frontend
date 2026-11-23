@@ -28,6 +28,7 @@ const VEHMAP = {
   812: { van: "2041", model: "Sprinter" },
   818: { van: "2622B", model: "Mini Van" },
   819: { van: "2041", model: "Sprinter" },
+  820: { van: "2041", model: "Sprinter" },
 };
 const log = [];
 
@@ -101,6 +102,8 @@ const runsNov = [
   // G363 才有的两趟：Bryce & Zion 开 Mini Van（Total 320 − 价格 275 = 补 45）；Antelope 开 Sprinter 但 Fee 手改了（没有补贴）。
   mk({ ...KEVIN, g363only: true, date: "2026-11-04", assignment_id: 818, role: "driver_guide", driver_hr_id: 201, driver_name: "Kevin Tran", tour: "Bryce & Zion", manifest_id: 5, rate_id: 4, rate_fee: "275.00" }),
   mk({ ...KEVIN, g363only: true, date: "2026-11-10", assignment_id: 819, role: "driver_guide", driver_hr_id: 201, driver_name: "Kevin Tran", rate_id: 2, rate_fee: "280.00", fee_override: "300.00" }),
+  // 后端核对 2b48ccc8 第 3 条：South Rim 开 Sprinter、Fee 手改了——South Rim 没有 Sprinter 补贴，点 Use the price 不该写 after Save。
+  mk({ ...KEVIN, g363only: true, date: "2026-11-09", assignment_id: 820, role: "driver_guide", driver_hr_id: 201, driver_name: "Kevin Tran", tour: "Grand Canyon South Rim", manifest_id: 4, rate_id: 3, rate_fee: "270.00", fee_override: "290.00" }),
 ];
 const runsOct = [mk({ ...KEVIN, date: "2026-10-20", assignment_id: 701, rate_id: 1, rate_fee: "230.00" })];
 
