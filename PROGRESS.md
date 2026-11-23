@@ -58,6 +58,7 @@
 - ✅ Annie（原话）「可以，动手」⇒ Products How to use「Setting up a ticket product」（9b af1e719a，照真实标签：Category / Group / Tour type、TIX_TOURS 短名、Content Studio › Tickets Reminder › Guest Page 的 + New tour / ✎ Edit tour）合 main。
 - Annie 新要求（原话）「我要在现在的tour和ticket tracking 页面上的搜索功能加不限日期搜索，就是在搜索框里输入任何一个日期的订单号都可以定位到实际页面的那个产品上去」⇒ 记录，非动手；派 bb 出 preview（现状、用哪个接口查订单 → 日期 + 产品、多产品 / 找不到 / 取消、只认完整单号还是名字电话也跨日期、要后端的）。
 - ✅ Products How to use「Setting up a ticket product」上 main c826f333（9b，功能 af1e719a）。products 253、nav 40，tsc / eslint 0 error / build。
+- 📌 Tracking 不限日期搜索 preview（bb）https://claude.ai/artifact/TZYW2kAVLFsdqkkkRQBaVZ ：现状两页搜索只在当天已读行里筛（tour-tracking-view.tsx:405-415、tickets-tracking-view.tsx:436-441），都认 ?date=&q=；单号 → 日期 + 产品用 Order List。bb 原 Q7（无 orders.view 的人）按「前台能操作就能写」不出题，定 B：后端加只读接口 GET /api/tracking/find-order?order=（能开 Tracking 就能用）。6 题 Excel C:\Users\annzh\Downloads\Annie_待答题_2026-11-23_Tracking搜索.xlsx（推荐都 A）。
 
 ## 2026-11-20（周五）前端主窗口 `npe-ops-frontend-5e`[614588]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工：origin/main 9ab99466（主目录 detached 改 PROGRESS）。资源：空闲内存 38.2 / 61.8 GB，node 0、chrome 71。现在没有工作窗口；后端在线 `npe-confirmation-service-bb`[282016]。
