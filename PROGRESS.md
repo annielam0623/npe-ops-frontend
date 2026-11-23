@@ -41,6 +41,7 @@
 - ✅ **G363 按车型算导游工资前端上 main aad89428**（9b；2b48ccc8 + ffcfeff9 + 条件修复：extras 只算 extras_allowed 里的、tips 只私人团、车型 trim + 小写不合并空格）。后端有条件 PASS。veh 59、payroll 151、hr 138、nav 40、pl 129，tsc / eslint 0 error / build。📌 Annie 线上验：Settings › Vehicles Model 框提示用过车型（无日期）；Human Resource › Payroll 每趟 Vehicle 列「2041 · Sprinter / +$50.00」、人员表 Vehicle extras 列、Pay rates › Vehicle extras 节。后端「不送 model_from = 所有日子生效」b5 之后改。
 - Annie 对导游页 D 样稿（原话）「导游页面，太难看了，我是要你按照格式，不是样式，我还是喜欢我们以前的样式，看上去高科技和先进一些」⇒ 内容 / 结构照午餐单（分节、名字一格、顺序同餐单、餐列、合计 + Picked up / Boarded、TI），视觉照导游页现在的深色高科技样式；已请后端 ab 出 D 第 2 版。D1–D8 未答。
 - ✅ Annie（原话）「Staff Schedule 时间选B，动手」⇒ 班次卡时间一行、最小缩到 6px、不换两行（760 基本不滑，字约 5.6–6px）；已转 2c。
+- 导游页 D 第 2 版（同链接 CuAT4qXq…，深色卡片样式；D5 加合计放哪 A 表上蓝框 / B 表尾 / C 照餐单）。Annie 意见（原话）「导游：第一，竖屏的时候按钮肯定要小正方形啊，名字单独一行，第二行是餐和按钮，餐就写nT/nB/nV就好-」⇒ 竖屏按钮小正方形、每人两行（名字 / 餐 + 按钮）、餐写 nT / nB / nV；已请后端出第 3 版。非动手。
 
 ## 2026-11-20（周五）前端主窗口 `npe-ops-frontend-5e`[614588]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工：origin/main 9ab99466（主目录 detached 改 PROGRESS）。资源：空闲内存 38.2 / 61.8 GB，node 0、chrome 71。现在没有工作窗口；后端在线 `npe-confirmation-service-bb`[282016]。
