@@ -16,6 +16,7 @@
 - 2c [4debba] 回来 ⇒ 派第 13 件 Main manifest 手机收键（task/manifest-phone-keys；照全站手机规则，桌面不变、表格不动，先核现状，拿不准的键按规则定写进交接不出题）。7c–e 等 G369 后端确认接口形状 + 新窗口。
 - bb [782471] 回来 ⇒ 派 7c–e 快捷回复管理搬 Content Studio › Team Messages 标签（task/quick-replies-content-studio；沿用现有接口先写，合 main 前等 G369 后端确认接口形状）。已请后端确认。现在：a2 第 8 件、2c 第 13 件、bb 7c–e。
 - ✅ Annie（原话）「1同意推荐，动手」⇒ 146 Farm out 时刻表上传 Q1–Q7 全 A（只改 Timetable；照片系统读 + 黄框核对；收 Excel / CSV / jpg / png / heic / PDF，照片 10 MB；每家记团名 / 酒店对照 + Remember；两种方向；酒店对到已有上车点；不存原件）。要后端：收图片 / PDF、读图服务（API Key 按次收费，跟 Annie 确认）、每家存格式（可能迁移）、未识别名字回前端。已全文发后端主窗口-bb 要合同；前端 2c 做完第 13 件后照合同 mock 写，后端上 main + PASS 才合。没说今天必须完成。
+- 后端：146 要开第 5 个后端窗口（Annie 开），迁移排在 G373 → G374 / G361 后；读图用 G373 同一个 Claude API Key（后端技术选择，不问 Annie），每次费用写进给 Annie 的方案。新前端窗口 npe-ops-frontend-89 [dafc12] ⇒ 146 前端改派 89（先读代码 + preview，等合同再 mock；后端上 main + PASS 才合），2c 只做第 13 件。
 
 ## 2026-11-20（周五）前端主窗口 `npe-ops-frontend-5e`[614588]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工：origin/main 9ab99466（主目录 detached 改 PROGRESS）。资源：空闲内存 38.2 / 61.8 GB，node 0、chrome 71。现在没有工作窗口；后端在线 `npe-confirmation-service-bb`[282016]。
