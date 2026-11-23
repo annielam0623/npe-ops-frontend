@@ -12,6 +12,7 @@ import { fetchScheduleWeek, setScheduleTimeOff } from "@/lib/schedule-api";
 import { bulkCreateSlots } from "@/lib/schedule-rules-api";
 import {
   generateWeek,
+  runReportFlags,
   seedFromBase,
   type DayIndex,
   type DayShift,
@@ -309,6 +310,13 @@ export function AutoFillDialog({
     else runEngine(s.weeks, s.history, "replace", 1);
   }
 
+  /** G272：几周连着排时哪一周写哪几种提醒（见 runReportFlags）。 */
+  const reportFlags = (weeks: WeekInfo[], i: number) =>
+    runReportFlags(
+      weeks.map((w) => w.published),
+      i,
+    );
+
   function runEngine(
     weeks: WeekInfo[],
     history: WeekPlan[],
@@ -346,6 +354,7 @@ export function AutoFillDialog({
           end: settings.work_window.end_time,
         },
         seed: seed * 101 + i,
+        ...reportFlags(weeks, i),
         locked,
         leave: leaveFor(w),
       });
@@ -444,6 +453,7 @@ export function AutoFillDialog({
           end: settings.work_window.end_time,
         },
         seed: seed * 101 + i,
+        ...reportFlags(weeks, i),
         locked: start,
         leave: leaveFor(w),
       });
