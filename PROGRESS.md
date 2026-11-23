@@ -9,13 +9,13 @@
 ## 2026-11-23 收工交接：前端主窗口 `今天前端主窗口-5e`[54a3a7]（公司电脑，14:30 下班）
 - **今天上 main**：第 8 件 Farm out 每家一页 451d4497；第 13 件 Main manifest 手机收键 8fc13aca；7c–e 快捷回复搬 Content Studio 9a3ae1fc；G363 按车型算导游工资前端 aad89428；Order List 搜索提示加 product code 197616f1；Products How to use 门票设置节 c826f333；nav-test 时序修复 34374a6f。✅ Tracking 不限日期搜索 **01f53bc5**（bb，功能 5a85de19 + 404 改中性句「No order X found on any date.」；47 PASS；tt 249、tk 164、nav 40）。📌 Annie 线上试：Tour Tracking 别的日子输 CHDWQLV4Z 按 Enter ⇒ 跳 11-26、Also 列 Admin fee；CHDXQYEQG ⇒ 带到 Tickets Tracking 11-16。
 - **分支等着（未合）**：
-  - Mirror task/order-mirror c95da628（9b）：95 PASS；✅ Annie（原话）「Mirror 可以，动手」⇒ 已让 9b 合 main（SHA 见当天记录；没见到就是还没合，下个窗口接着合）。
+  - Mirror task/order-mirror c95da628（9b）：95 PASS；✅ Annie（原话）「Mirror 可以，动手」⇒ 上 main 91924767。
   - G374 门票显示名 task/g374-ticket-labels-fe 63f25045（bb）：等 Annie 跑 v183 SQL + 后端 47 上 main + PASS + Annie 看截图 C:\Users\annzh\Downloads\g374-ticket-labels\。
   - 146 Farm out 上传 task/farm-out-photo-upload ea85f9f8（89）：合同 v1 对齐，等 Annie 对后端方案说动手 + 后端 28 上 main + PASS。
   - 半屏适配 task/schedule-half-screen **29b5b0db**（2c，WIP，worktree C:\Code\ops-wt-2c-red）：6 页代码写完（排班每天最窄 72px、表最窄 650、时间一行缩到最小 6px、标签挪名字下；Bus Manifest 编辑页 ≥640 最窄 650、打印照旧；Order List / Order Log / Farm out Report / Sales Report 640–1279 最窄 650）。950 宽六页都不滑；760 宽 Order List / Sales Report / Bus Manifest 编辑页还差一点要滑（不能折的内容）。tsc / eslint / build；man 586、orders 178、fr 31、olog 24、sales 63、nav 40 过；sch 534/546（12 条新半屏检查 mock 状态问题，已加复位未重跑）、mf 374/375（旧 151 检查要 980 已改未重跑）。下次：合 main → 重跑 sch / mf → 拍改后截图 C:\Users\annzh\Downloads\half-screen-fit\ → 推 main。
 - **📌 等 Annie 答**：导游页 D（后端做）D2–D13 C:\Users\annzh\Downloads\Annie_待答题_2026-11-23_导游页D.xlsx（第 6 版 + 中午折叠）；未发新单提醒 8 题 C:\Users\annzh\Downloads\Annie_待答题_2026-11-23_未发新单提醒.xlsx；David H 在 Team 页开 staff 账号；★ Notes 验收后撤旧 Save note。
 - **等后端**：G363「不送 model_from = 所有日子生效」（b5）；7a / 7b 快捷回复 8 句 + 号码（b5，SQL 先给 Annie）；第 9 件 G320、第 11 件导游必填、G361 DOR No show、页面慢。
-- **家里接着做（Annie 11-23 原话「ok，我回家再做，你收工吧，让我在家里也可以继续」）**：所有分支都已推远端（origin/task/order-mirror c95da628、task/schedule-half-screen 29b5b0db、task/g374-ticket-labels-fe 63f25045、task/farm-out-photo-upload ea85f9f8）。家里后端仓库在 D:\npe-confirmation-service。家里开窗后先做：① Mirror 还没合（14:3x 查 origin/main 没有）⇒ 拉 task/order-mirror、合最新 main、跑 tsc / eslint / build + orders / os / nav、推 main（Annie 已「Mirror 可以，动手」，95 已 PASS）；② 半屏适配照上面「下次接着做」4 步；③ 其他照「等 Annie / 等后端」。
+- **家里接着做（Annie 11-23 原话「ok，我回家再做，你收工吧，让我在家里也可以继续」）**：所有分支都已推远端（origin/task/order-mirror c95da628、task/schedule-half-screen 29b5b0db、task/g374-ticket-labels-fe 63f25045、task/farm-out-photo-upload ea85f9f8）。家里后端仓库在 D:\npe-confirmation-service。家里开窗后先做：① ✅ Mirror 已上 main **91924767**（9b 收工前合；orders 184、os 174、nav 40；Annie 线上试 CHD51C9K5 ↔ NPE-4WD4WJ），不用再做；② 半屏适配照上面「下次接着做」4 步；③ 其他照「等 Annie / 等后端」。
 - 下一个主窗口：读这节 + 下面 11-23 当天记录；开工照开工必做第 4 条列 Annie 提过没做完的。
 ## 2026-11-23（周一）前端主窗口 `今天前端主窗口-5e`[b5b9b4]（接着昨天的会话；只分工和汇报，不写代码）
 - 开工：origin/main 463cc257，主目录 detached 干净。资源：空闲内存 49.4 GB，node 0、chrome 0。工作窗口：bb [01f67c]、2c [721148]、9b [532018]（都空）。后端主窗口-bb [384f3c]。
