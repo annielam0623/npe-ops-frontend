@@ -117,6 +117,7 @@
 - 2026-11-22 ✅ Lankun 单独午餐单上 main **b3ddb5d9**（bb，功能 fd3bf378；后端 bb898936）：manifest-view.tsx 去掉 `version !== "lankun"`，删 RestaurantBlock，TOTAL SANDWICH 照读 block.restaurant.totals。mf 356、man 557、da 665（限时放到 1800 秒）、rl 165；tsc / eslint 0 error / build 过。截图 C:\Users\annzh\Downloads\lankun-lunch-sheet\，5e 看过正常。
 - 151 竖屏 6 列（9b）：Pick-up Time、Pick-up Location、Last Name、#、Special Requirements、✓（Lankun / West Rim 无 ✓ 共 5 列）；横屏全列 ×0.62。导游页（guide_home.html）是卡片不是表格，后端主窗口已直接问 Annie A 只加 Full screen + 横屏两栏（推荐）/ B 改表格 6 列 / C 不动。
 - 2026-11-22 ✅ 151 Bus Manifest 编辑页手机一屏上 main **1a6d3ecb**（9b，功能 35a8eca8）：竖屏 < 640 6 列（Lankun / West Rim 5 列）；横屏 640–1023 × ≤500 全列、本页藏 shortcut 条；手机字 ×0.62 只在屏幕；白键「⛶ Full screen」（细栏 团 · 车、A / B、✕ / Esc，仍先改后 Save）；Text size 卡手机照开（114）、页头键不收 ⋯；How to use 加 3 条；电脑不变。mf 371（+18）、man 557、rl 165、nav 40、tsc / eslint / build 过；da 633 / 0 失败后卡老 147 段（已知）。截图 C:\Users\annzh\Downloads\151-edit-phone\，5e 看过竖屏 / 全屏正常。已知：Quantities 格不跟 Text size（原来就这样）；竖屏首屏被页头 + Text size 卡占，看名单用 Full screen。
+- 2026-11-22 G363 按车型算导游工资：后端上 main 08c8f5f8（Annie 已跑 v180 SQL，0 行），合同 docs/interfaces/guide-pay-vehicle-extra-2026-11-22.md。前端要做：Vehicles 页 Model from 日期 + Model history 链接 + 导入模板列；Payroll 运行行车型 / 差额字段、personal_and_vehicle 提示、Vehicle extras 设置节（PUT / DELETE vehicle-rates）、CSV 加 5 列、How to use。不在 Annie 今晚清单 ⇒ 先派 bb 出 preview（只出样稿），等 Annie 答题 + 动手。
 - 答后端：95 G371 旧发送入口盘点（三个 tracking 已切 ops；utilities / test-orders ops 没页面没入口；ops 直接调 /booking-notes/multi/reply、不调 /resend）；bb 7a 8 句原文 + 号码 grep（ops 代码没写死旧号码）。
 ## 📌 2026-11-20 17:15 Annie 新提：staff 备注几个入口打通（记录，未动手）
 
