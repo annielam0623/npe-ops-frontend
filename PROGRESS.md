@@ -60,6 +60,7 @@
 - ✅ Products How to use「Setting up a ticket product」上 main c826f333（9b，功能 af1e719a）。products 253、nav 40，tsc / eslint 0 error / build。
 - 📌 Tracking 不限日期搜索 preview（bb）https://claude.ai/artifact/TZYW2kAVLFsdqkkkRQBaVZ ：现状两页搜索只在当天已读行里筛（tour-tracking-view.tsx:405-415、tickets-tracking-view.tsx:436-441），都认 ?date=&q=；单号 → 日期 + 产品用 Order List。bb 原 Q7（无 orders.view 的人）按「前台能操作就能写」不出题，定 B：后端加只读接口 GET /api/tracking/find-order?order=（能开 Tracking 就能用）。6 题 Excel C:\Users\annzh\Downloads\Annie_待答题_2026-11-23_Tracking搜索.xlsx（推荐都 A）。
 - 后端转：Annie 在后端窗口对 Mirror 说「动手」：Order List 加 Mirror 列（Rezdy 行显示 TripGuru 对应单号、反之亦然，可点开详情，Export 也加）；顶栏订单搜索结果也显示对方渠道单号；配对 = Rezdy agent ref 含 TripGuru 单号，或 日期 + 开始时间 + 名字 + 电话末 10 位 + 产品名；只显示。后端 95 做，合同 + SHA 之后发。派 9b task/order-mirror 先规划 + 占位 mock；合前要合同、后端 PASS、截图给 Annie。
+- ✅ Annie（原话）「Tracking搜索全部同意推荐，动手」⇒ Q1–Q6 全 A；Q7 按前台能写定 B（后端加只读 find-order 接口，能开 Tracking 就能用，含名字 / 电话 Search all dates）。已发后端要合同；bb task/tracking-any-date-search 先照 mock 写，合同 + 后端 PASS 才合。
 
 ## 2026-11-20（周五）前端主窗口 `npe-ops-frontend-5e`[614588]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工：origin/main 9ab99466（主目录 detached 改 PROGRESS）。资源：空闲内存 38.2 / 61.8 GB，node 0、chrome 71。现在没有工作窗口；后端在线 `npe-confirmation-service-bb`[282016]。
