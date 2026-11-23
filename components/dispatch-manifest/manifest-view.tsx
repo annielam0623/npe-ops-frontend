@@ -1750,15 +1750,9 @@ function BusCard({
           sandwich={block.restaurant?.totals ?? null}
           big={version === "marcello"}
         />
-        {block.restaurant ? (
-          <RestaurantBlock
-            restaurant={block.restaurant}
-            busNumber={block.bus_number}
-          />
-        ) : null}
       </section>
-      {/* Lankun 不另印午餐单，餐厅信息在合计下面（定 19）；General / Marcello 照旧（Q31）。 */}
-      {block.lunch && version !== "lankun" ? (
+      {/* 午餐单：所有版式都接在车后面。Lankun 也单独一张、合计下面不再放餐厅块（Annie 2026-11-22「Lankun 餐单两个都选A，动手」，取代定 19）。 */}
+      {block.lunch ? (
         <LunchSheet
           lunch={block.lunch}
           paper={data.paper_colors}
@@ -2702,45 +2696,6 @@ function AttractionBox({
   );
 }
 
-/**
- * Lankun 合计一排下面的餐厅块（定 19 / Q30）：只放店名、Contact 两行（亮黄，同午餐单页脚）、这车 B / T / V 合计。
- * 照后端打印模板的 .rest。
- */
-function RestaurantBlock({
-  restaurant: r,
-  busNumber,
-}: {
-  restaurant: ManifestRestaurant;
-  busNumber: string;
-}) {
-  const t = r.totals;
-  return (
-    <div
-      data-restaurant
-      className="mt-2 max-w-[560px] border-2 border-[#444] text-[13px]"
-    >
-      <div className="flex justify-between gap-3 bg-[#fff200] px-2 py-[3px] text-[14px] font-extrabold">
-        <span>{r.title || r.name}</span>
-        <span>Bus {busNumber}</span>
-      </div>
-      {r.footer_lines.length ? (
-        <div className="border-t border-[#444] bg-[#ffff00] px-2 py-1 text-center leading-[1.35] font-extrabold">
-          {r.footer_lines.map((line, i) => (
-            <div key={i}>{line}</div>
-          ))}
-        </div>
-      ) : null}
-      <div
-        data-restaurant-totals
-        className="border-t border-[#444] px-2 py-[3px] font-bold [word-spacing:2px]"
-      >
-        This bus: <b>{t.total}</b> = {t.beef} B &nbsp;{t.turkey} T &nbsp;
-        {t.veggie} V
-      </div>
-    </div>
-  );
-}
-
 function Footer({
   cells,
   headColor,
@@ -2750,7 +2705,7 @@ function Footer({
   cells: ManifestFooterCell[];
   /** 格头的灰（后端 paper_colors.foot_head，照纸本）；没带 ⇒ 照旧 #c9d3dc。自定的格子照旧淡紫。 */
   headColor?: string;
-  /** Lankun：合计一排最后加 TOTAL SANDWICH（定 18，读不出的按 Turkey 算，后端算好）。 */
+  /** Lankun：合计一排最后加 TOTAL SANDWICH（定 18，读不出的按 Turkey 算，后端算好，读 block.restaurant.totals；没带 ⇒ 不出这格）。 */
   sandwich?: ManifestRestaurant["totals"] | null;
   /** Marcello：合计一排的数字一起放大（Q24）。 */
   big?: boolean;
