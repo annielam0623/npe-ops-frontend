@@ -118,6 +118,7 @@ async function main() {
     await runLayoutText();
     await runColumns();
     await runViewOnly();
+    await runPhoneFit();
   } finally {
     ws.close();
     chrome.kill();
@@ -544,7 +545,8 @@ async function run() {
   // 手机宽：最多 +4（屏幕上），整列 +3 +整行 +2 = +5 ⇒ 显示 +4
   await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await sleep(500);
-  check("G197 手机（< 600px）最多 +4：+3 +2 的格子显示 20.5px", await evaluate("return getComputedStyle(document.querySelector('tr[data-guest=CHD3]').children[2]).fontSize === '20.5px';"));
+  // 151 起手机竖屏只出 6 列（Pick-up Location 是第 2 格）、字按 0.62 缩：最多 +4 的 20.5px ⇒ 12.5px（没 clamp 的 21.5 会是 13.5）。
+  check("G197 手机（< 600px）最多 +4：+3 +2 的格子显示 20.5px（151 手机缩字后 12.5px）", await evaluate("return getComputedStyle(document.querySelector('tr[data-guest=CHD3]').children[1]).fontSize === '12.5px';"), await evaluate("return getComputedStyle(document.querySelector('tr[data-guest=CHD3]').children[1]).fontSize;"));
   await waitFor(`!!${A}.querySelector('[data-text-size-phone]')`);
   const mph = await evaluate(`const t = ${A}.querySelector('[data-text-size-phone]'); const gs = [...t.querySelectorAll('[data-text-size-group]')];
     return { groups: gs.map(g => g.dataset.textSizeGroup).join(','), quick: [...t.querySelectorAll('[data-text-size-group=quick] button')].map(b => b.textContent.trim()).join('|'), keyH: Math.round(t.querySelector('[data-text-size-group=apply] button').getBoundingClientRect().height), finH: Math.round(t.querySelector('[data-text-size-cancel]').getBoundingClientRect().height), noMenu: !t.querySelector('[data-text-size-reset-menu]'), spacing: !!t.querySelector('[data-relay-spacing]'), scrollX: document.documentElement.scrollWidth <= window.innerWidth + 1 };`);
@@ -927,7 +929,7 @@ async function run() {
   check("Affiliate 栏 Hotel 格隔组标色（同车上的表、同后端打印页；Annie 11-05「所有设置了的颜色都要打印」）：第一家 Paris 不标、第二家 Venetian 首行用节颜色 #bfe3b0",
     await evaluate("const a = document.querySelector('[data-affiliate]'); const td = (o) => a.querySelector('tr[data-affiliate-guest=' + o + ']').children[2]; return !td('CHD71').dataset.hotelMark && td('CHD72').dataset.hotelMark === 'true' && getComputedStyle(td('CHD72')).backgroundColor === 'rgb(191, 227, 176)' && getComputedStyle(td('CHD71')).backgroundColor === 'rgba(0, 0, 0, 0)';"),
     await evaluate("return [...document.querySelectorAll('[data-affiliate] tr[data-affiliate-guest] td:nth-child(3)')].map(t => t.outerHTML).join(' | ');"));
-  check("半宽、靠左（宽度约为内容区的一半）、字比主表小", await evaluate("const a = document.querySelector('[data-affiliate]'); const p = a.parentElement.getBoundingClientRect(); const w = a.getBoundingClientRect(); const ratio = w.width / p.width; const fs = parseFloat(getComputedStyle(a.querySelector('td')).fontSize); const main = parseFloat(getComputedStyle(document.querySelector('tr[data-guest=CHD1] td')).fontSize); return ratio > 0.4 && ratio < 0.6 && Math.abs(w.left - p.left) < 2 && fs < main;"));
+  check("半宽、靠左（宽度约为内容区的一半）、字比主表小", await evaluate("const a = document.querySelector('[data-affiliate]'); const p = a.parentElement.closest(':not([data-mf-page])').getBoundingClientRect(); const w = a.getBoundingClientRect(); const ratio = w.width / p.width; const fs = parseFloat(getComputedStyle(a.querySelector('td')).fontSize); const main = parseFloat(getComputedStyle(document.querySelector('tr[data-guest=CHD1] td')).fontSize); return ratio > 0.4 && ratio < 0.6 && Math.abs(w.left - p.left) < 2 && fs < main;"));
   check("页头只算我们车上的人（4 orders, 8 pax），不含 Affiliate 的 6 人、没有总和", await evaluate("const t = document.body.textContent; return t.includes('4 orders, 8 pax') && !t.includes('14 pax') && !t.includes('Total: 14');"));
   check("整页没有合作公司名（partner）", await evaluate("return !/partner/i.test(document.querySelector('main').textContent);"));
   await ctl({ affiliate: false });
@@ -1695,4 +1697,85 @@ async function runViewOnly() {
   await evaluate("document.querySelector('[data-bm-next]').click(); return 1;");
   await sleep(300);
   check("入口页 › 换到下一天、网址跟着变", await evaluate("return document.querySelector('[data-bm-date]').textContent === 'Tue, Oct 6, 2026' && new URL(location.href).searchParams.get('date') === '2026-10-06';"));
+}
+
+// ── 151 编辑页手机一屏（Annie 2026-11-22「动手」：① C 自动横竖屏 + Full screen；② A 竖屏 6 列；③ B Text size 卡一直打开）──
+async function runPhoneFit() {
+  const URL0 = `${APP}/dispatch/manifest?date=2026-10-05&tour=3`;
+  const SHOTS = process.env.SHOT_DIR || "";
+  const fs = require("fs");
+  const shot = async (name) => {
+    if (!SHOTS) return;
+    fs.mkdirSync(SHOTS, { recursive: true });
+    const r = await cdp("Page.captureScreenshot", { format: "png" });
+    fs.writeFileSync(path.join(SHOTS, name), Buffer.from(r.data, "base64"));
+  };
+  const SIX = '["Pick-up Time","Pick-up Location","Last Name","#","Special Requirements","✓"]';
+  const heads = "[...document.querySelector('section[aria-label^=\"Bus\"] table thead tr').children].map((t) => t.textContent.trim())";
+  const vis = "const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0;";
+  const tableFits = "[...document.querySelectorAll('section[aria-label^=\"Bus\"] table[data-mf-fit]')].every((t) => t.parentElement.scrollWidth <= t.parentElement.clientWidth + 1)";
+  const widest = "[...document.querySelectorAll('section[aria-label^=\"Bus\"] table[data-mf-fit]')].map((t) => { const R = t.parentElement.getBoundingClientRect(); const bad = [...t.querySelectorAll('td, th, td *')].filter((c) => c.getBoundingClientRect().right > R.right + 1).slice(0, 4).map((c) => c.tagName + '.' + String(c.className).slice(0, 40) + ':' + Math.round(c.getBoundingClientRect().width) + ':' + c.textContent.slice(0, 24)); return t.parentElement.scrollWidth + '/' + t.parentElement.clientWidth + ' ' + bad.join(' | '); })";
+  await ctl({ bmv: true, version: "general", busCols: false, partner: false, staffPerms: null, superAdmin: false, layout: false, canyon: false, canyonHoover: false, g198: false, textSize: true, assist: true });
+
+  // 电脑先量一遍（对照：电脑不变）
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await goto(URL0);
+  await waitFor("document.querySelector('section[aria-label^=\"Bus\"] table')", 60000);
+  await sleep(600);
+  const desk = await evaluate(`const t = document.querySelector('section[aria-label^="Bus"] table'); const td = t.querySelector('tbody tr[data-guest] td'); return { heads: ${heads}, minW: getComputedStyle(t).minWidth, fit: t.getAttribute('data-mf-fit'), html: document.documentElement.dataset.mfFit ?? null, fs: !!document.querySelector('[data-mf-fullscreen]'), td: getComputedStyle(td).fontSize };`);
+  check("151 电脑：照旧全部列（含 Order Number / Bus / ASSIST）、表最小宽 980px、字 16.5px、没有 Full screen 键、html 没有 data-mf-fit",
+    desk.heads.length >= 12 && desk.heads.includes("Order Number") && desk.heads.includes("Bus") && desk.heads.includes("ASSIST") && desk.minW === "980px" && desk.fit === null && desk.html === null && !desk.fs && desk.td === "16.5px", JSON.stringify(desk));
+  await shot("desktop-1600x1000.png");
+
+  // 竖屏 390×844
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  await goto(URL0);
+  await waitFor("document.querySelector('section[aria-label^=\"Bus\"] table[data-mf-fit=portrait]')", 60000);
+  await sleep(600);
+  const por = await evaluate(`${vis} return { heads: ${heads}, buses: [...document.querySelectorAll('section[aria-label^="Bus"] table thead tr')].map((r) => r.children.length), sw: document.documentElement.scrollWidth, vw: innerWidth, fits: ${tableFits}, wide: ${widest}, fs: vis(document.querySelector('[data-mf-fullscreen]')), ts: [...document.querySelectorAll('section[aria-label^="Bus"]')].map((s) => vis(s.querySelector('[data-text-size-toolbar]'))), td: getComputedStyle(document.querySelector('section[aria-label^="Bus"] tbody tr[data-guest] td')).fontSize, html: document.documentElement.dataset.mfFit };`);
+  check("151 竖屏 390：整页不左右晃（scrollWidth ≤ 屏宽）、客人表放得下不用滑", por.sw <= por.vw + 1 && por.fits, JSON.stringify(por));
+  check("151 竖屏：每台车只出 6 列 Pick-up Time / Pick-up Location / Last Name / # / Special Requirements / ✓", JSON.stringify(por.heads) === SIX && por.buses.length >= 2 && por.buses.every((n) => n === 6), JSON.stringify(por));
+  check("151 竖屏：有 ⛶ Full screen 键（白键，不是蓝色）", por.fs && (await evaluate("return getComputedStyle(document.querySelector('[data-mf-fullscreen]')).backgroundColor !== 'rgb(59, 130, 246)' && document.querySelector('[data-mf-fullscreen]').textContent.includes('Full screen');")), JSON.stringify(por));
+  check("151 竖屏（③ B）：每台车的 Text size 编辑卡一直打开", por.ts.length >= 2 && por.ts.every(Boolean), JSON.stringify(por.ts));
+  check("151 竖屏：字缩到约 10px（纸本 16.5 × 0.62，只改屏幕）", por.td === "10px", por.td);
+  check("151 竖屏：114 的页头键照旧（View only｜Print all｜Download 一排，没有 ⋯）", await evaluate(`${vis} const k = [...document.querySelector('[data-mf-output-keys]').querySelectorAll('a, button')].filter(vis).map((b) => b.innerText.trim()); return k[0] === 'View only' && k[1] === 'Print all' && k[2] === 'Download' && !document.querySelector('[data-mf-header-actions] [data-phone-more]');`));
+  await shot("portrait-390x844.png");
+
+  await evaluate("document.querySelector('[data-mf-fullscreen]').click(); return 1;");
+  await waitFor("document.querySelector('[data-mf-full]')", 3000);
+  await sleep(300);
+  const fsv = await evaluate(`${vis} return { full: vis(document.querySelector('[data-mf-full]')), page: vis(document.querySelector('[data-mf-page] header')), topbar: getComputedStyle(document.querySelector('[data-app-topbar]')).display, back: vis(document.querySelector('nav[aria-label=Back]')), buses: [...document.querySelectorAll('[data-mf-full-bus]')].map((b) => b.textContent + ':' + b.getAttribute('aria-pressed')), title: document.querySelector('[data-mf-full-title]').textContent, heads: [...document.querySelector('[data-mf-full] table thead tr').children].map((t) => t.textContent.trim()), sw: document.documentElement.scrollWidth, vw: innerWidth, float: vis(document.querySelector('button[title=Top]')), ts: !!document.querySelector('[data-mf-full] [data-text-size-toolbar]') };`);
+  check("151 Full screen：只剩细栏 + 客人表（顶栏、Back、页头都藏）、右下角 ↑↓ 还在、不左右晃",
+    fsv.full && !fsv.page && fsv.topbar === "none" && !fsv.back && fsv.float && fsv.sw <= fsv.vw + 1 && !fsv.ts, JSON.stringify(fsv));
+  check("151 Full screen：细栏有 A / B 换车，先看 A；竖屏同样 6 列", JSON.stringify(fsv.buses) === '["A:true","B:false"]' && fsv.title.includes("Antelope Canyon") && JSON.stringify(fsv.heads) === SIX, JSON.stringify(fsv));
+  await shot("portrait-fullscreen-390x844.png");
+  await evaluate("document.querySelector('[data-mf-full-bus=B]').click(); return 1;");
+  await sleep(200);
+  check("151 Full screen：点 B 换到 B 车", await evaluate("return document.querySelector('[data-mf-full-bus=B]').getAttribute('aria-pressed') === 'true' && document.querySelector('[data-mf-full-bus=A]').getAttribute('aria-pressed') === 'false';"));
+  await evaluate("document.querySelector('[data-mf-full-close]').click(); return 1;");
+  await sleep(300);
+  check("151 Full screen：✕ 回到页面（页头、顶栏都回来）", await evaluate(`${vis} return !document.querySelector('[data-mf-full]') && vis(document.querySelector('[data-mf-page] header')) && getComputedStyle(document.querySelector('[data-app-topbar]')).display !== 'none' && !document.documentElement.dataset.mfFull;`));
+  await evaluate("document.querySelector('[data-mf-fullscreen]').click(); return 1;");
+  await waitFor("document.querySelector('[data-mf-full]')", 3000);
+  await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); return 1;");
+  await sleep(300);
+  check("151 Full screen：Esc 也退出", await evaluate("return !document.querySelector('[data-mf-full]');"));
+
+  // 横屏 844×390
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 844, height: 390, deviceScaleFactor: 2, mobile: true, screenOrientation: { type: "landscapePrimary", angle: 90 } });
+  await goto(URL0);
+  await waitFor("document.querySelector('section[aria-label^=\"Bus\"] table[data-mf-fit=landscape]')", 60000);
+  await sleep(600);
+  const lan = await evaluate(`${vis} return { heads: ${heads}, sw: document.documentElement.scrollWidth, vw: innerWidth, fits: ${tableFits}, wide: ${widest}, fs: vis(document.querySelector('[data-mf-fullscreen]')), sc: vis(document.querySelector('[data-phone-shortcuts]')), bar: Math.round(document.querySelector('[data-app-topbar] > header').getBoundingClientRect().height), ts: [...document.querySelectorAll('section[aria-label^="Bus"]')].map((s) => vis(s.querySelector('[data-text-size-toolbar]'))) };`);
+  check("151 横屏 844：全部列都出（同电脑）、整页不晃、客人表放得下不用滑", JSON.stringify(lan.heads) === JSON.stringify(desk.heads) && lan.sw <= lan.vw + 1 && lan.fits, JSON.stringify(lan));
+  check("151 横屏：shortcut 条藏、顶栏 48px、有 Full screen、Text size 卡照旧打开", !lan.sc && lan.bar === 48 && lan.fs && lan.ts.length >= 2 && lan.ts.every(Boolean), JSON.stringify(lan));
+  await shot("landscape-844x390.png");
+  await evaluate("document.querySelector('[data-mf-fullscreen]').click(); return 1;");
+  await waitFor("document.querySelector('[data-mf-full]')", 3000);
+  await sleep(300);
+  check("151 横屏 Full screen：全部列、不晃", await evaluate(`return [...document.querySelector('[data-mf-full] table thead tr').children].length === ${desk.heads.length} && document.documentElement.scrollWidth <= innerWidth + 1;`));
+  await shot("landscape-fullscreen-844x390.png");
+  await evaluate("document.querySelector('[data-mf-full-close]').click(); return 1;");
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await ctl({ textSize: false, assist: false });
 }

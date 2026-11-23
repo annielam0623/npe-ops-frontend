@@ -267,3 +267,20 @@ table.afm .col-resizer {
     line-height: 1;
   }
 }
+
+/*
+ * 151 Bus Manifest 编辑页手机一屏（Annie 2026-11-22「动手」）：只在 /dispatch/manifest 打开时（页面给 <html> 加 data-mf-fit / data-mf-full）。
+ * 横拿手机：藏 My shortcuts 条、顶栏 48px、内容区边距 12px；⛶ Full screen：整个顶栏都藏。电脑不受影响。
+ */
+html[data-mf-fit="landscape"] [data-app-topbar] [data-phone-shortcuts] {
+  display: none;
+}
+html[data-mf-fit="landscape"] [data-app-topbar] > header {
+  height: 48px;
+}
+html[data-mf-fit="landscape"] [data-app-topbar] + [data-phone-compact] {
+  padding: 12px;
+}
+html[data-mf-full] [data-app-topbar] {
+  display: none;
+}
