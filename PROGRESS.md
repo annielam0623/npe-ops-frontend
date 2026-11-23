@@ -55,6 +55,7 @@
 - ✅ Order List 搜索提示加 product code 上 main 197616f1（9b，功能 ab5f2705）：占位字「Search order#, name, email, phone, product, product code, agent ref...」（无 agent 权限去掉 agent ref）；How to use 第 1 条加「product or product code (part of a code is enough, like PHSU5Q)」。orders 174、nav 40，tsc / eslint 0 error / build。
 - 📌 未发新单提醒 preview（bb，未写代码）https://claude.ai/artifact/8YtCoE8VWFXjV6iCt3pZTk ：页面一次只读一天一团 ⇒ 要后端汇总接口；手机没勾选时勾选条藏 ⇒ 提醒单独一行；红气泡照 Dashboard CountPill #dc3545。8 题 Excel C:\Users\annzh\Downloads\Annie_待答题_2026-11-23_未发新单提醒.xlsx（推荐 Q1 A 今明后三天、Q2 A 所有团、Q3 A 同 NEW、Q4 A 单号 · 团期 · 团可跳、Q5 A Show、Q6 A 一单一张自动消、Q7 A Res team × 当班（问 team 名）、Q8 A Notice 开关默认关红框不加）。要后端：汇总接口、Notice kind、开关、Res team。
 - 后端转 Annie（原话）「写进 Products 页面的 How to use 吧」⇒ Settings › Products How to use 加折叠节「Setting up a ticket product」6 条（产品码设 Ticket + 组、Ticket tour type、Cfm # 字段、Brenda waiver、TripGuru 码、Content Studio › Tickets 管类型）。派 9b task/products-howto-tickets：照真实标签名、先截图给 Annie，她 OK 再合。
+- ✅ Annie（原话）「可以，动手」⇒ Products How to use「Setting up a ticket product」（9b af1e719a，照真实标签：Category / Group / Tour type、TIX_TOURS 短名、Content Studio › Tickets Reminder › Guest Page 的 + New tour / ✎ Edit tour）合 main。
 
 ## 2026-11-20（周五）前端主窗口 `npe-ops-frontend-5e`[614588]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工：origin/main 9ab99466（主目录 detached 改 PROGRESS）。资源：空闲内存 38.2 / 61.8 GB，node 0、chrome 71。现在没有工作窗口；后端在线 `npe-confirmation-service-bb`[282016]。
