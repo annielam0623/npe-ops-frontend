@@ -25,6 +25,8 @@
 - ✅ **7c–e 快捷回复搬 Content Studio › Team Messages 上 main 9a3ae1fc**（bb，功能 9cea782e；后端 PASS；补丁：POST 回包没 updated_at ⇒ 类型改可缺，界面不变）。qr 63、cs 244、nav 40，tsc / eslint 0 error / build。📌 Annie 线上验：Team Messages › Driver Quick Replies 标签；旧网址 /settings/quick-replies 跳过去；拖 ⠿ 出黄条、Save order 才存；标签下 Action Log + How to use。⇒ 今天必做 第 8 件 / 7c–e / 第 13 件 全部上 main。
 - G374 West Rim 门票显示名表（后端 47，Annie 在 47 说「同意，动手」）：合同 GET manifest-setup groups[].ticket_labels [{id, source, label}]；PUT …/groups/{id}/ticket-labels {rows} 整表替换（require_admin，限 200 / 60 字、100 行，400 detail 原样）；同名共用最上一行颜色、底部计数不用这表；种子只 West Rim 8 行。后端等 v183 SQL 未上 main。派 bb task/g374-ticket-labels-fe 照合同 mock（每团小表 Original text | Name to show | 删 + 空行、↑↓、每块 Save、How to use 第 5 条）；合前要后端 SHA + PASS + 截图给 Annie 看。
 - ✅ Annie（原话）「2 同意推荐，动手」⇒ G363 前端 Q1 A（Model from 日期框编辑时一直有、默认今天、只改日期也算改动）、Q2 B（Fee 只写价格，加 Vehicle 列「2041 · Sprinter」+「+$50.00」，人员表加 Vehicle extras 列，跟 CSV 一致）、Q3 B（Model 框打字提示用过的车型）。派 a2 task/g363-vehicle-extra（后端已上 08c8f5f8；交 commit + 对照表 ⇒ 后端 PASS 才合）。导游页手机版 A / B / C 仍等 Annie。
+- 9b（原 a2，[be8556]）接 G363 前端 task/g363-vehicle-extra。G374 加 400「name to show cannot start with =」已转 bb。
+- Annie 截图 Staff Schedule 半屏（约 950 宽，只看到 SUN–THU、要横滑；Anita 名字一字一行），原话「有个页面交互的问题，像这样半屏的显示，页面上的小窗也应该调整比例来适配，而不是显示需要移动滑条来看」⇒ 记录，不是动手。派 2c 出 preview：核现状（列宽 / min-width）、列全站同类宽表、Staff Schedule 全屏 / 半屏 / 手机改前改后、题（范围 A 只排班 / B 全站宽表、多窄才允许横滑、手机照旧否）；名字被挤一并当 bug 修。
 
 ## 2026-11-20（周五）前端主窗口 `npe-ops-frontend-5e`[614588]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工：origin/main 9ab99466（主目录 detached 改 PROGRESS）。资源：空闲内存 38.2 / 61.8 GB，node 0、chrome 71。现在没有工作窗口；后端在线 `npe-confirmation-service-bb`[282016]。
