@@ -7,9 +7,11 @@ import { describeError, isStatus } from "@/lib/api-errors";
 import {
   deletePayrollExtraRate,
   deletePayrollPrice,
+  deletePayrollVehicleRate,
   fetchPayrollRates,
   savePayrollExtraRate,
   savePayrollPrice,
+  savePayrollVehicleRate,
 } from "@/lib/guide-payroll-api";
 import { cn } from "@/lib/utils";
 import type {
@@ -22,6 +24,7 @@ import type {
   PayrollPriceInput,
   PayrollRates as PayrollRatesData,
   PayrollRun,
+  PayrollVehicleRate,
 } from "@/types/guide-payroll";
 
 import {
@@ -135,6 +138,52 @@ interface ExtraForm {
   amount: string;
   applies: "all" | "people";
   people: string[];
+}
+
+/** G363：Pay rates › Vehicle extras 一行（已存的或暂存的）。 */
+interface VehicleRow {
+  key: string;
+  id: number | null;
+  model: string;
+  manifest_id: number;
+  tour: string;
+  mode: "add" | "total";
+  amount: string;
+  from: string;
+  to: string | null;
+}
+
+interface VehicleForm {
+  /** 改哪一行；null = 新加。改的时候车型和团固定（合同）。 */
+  id: number | null;
+  /** 下拉选的车型；TYPED = 手打。 */
+  modelSel: string;
+  typed: string;
+  /** 团（只能是有 manifest 的团，合同要 manifest_id）；"" = 还没选。 */
+  tourKey: string;
+  mode: "add" | "total";
+  amount: string;
+  from: string;
+  to: string;
+}
+
+const MODE_LABEL: Record<"add" | "total", string> = {
+  add: "Add to the driver-guide fee",
+  total: "Total for the run",
+};
+
+function fromVehicle(v: PayrollVehicleRate): VehicleRow {
+  return {
+    key: `v${v.id}`,
+    id: v.id,
+    model: v.model,
+    manifest_id: v.manifest_id,
+    tour: v.tour,
+    mode: v.mode,
+    amount: v.amount,
+    from: v.from,
+    to: v.to,
+  };
 }
 
 const TYPED = "__typed";
@@ -252,6 +301,12 @@ export function PayrollRates({
   const [extraGone, setExtraGone] = useState<number[]>([]);
   /** 改过、还没存的已存加购项行（照 priceEdits）。 */
   const [extraEdits, setExtraEdits] = useState<Record<number, ExtraRow>>({});
+  /** G363 车型补贴：暂存的新行 / 改过的已存行 / 要删的（同 Prices、Extras，按 Save rates 才存）。 */
+  const [vDraft, setVDraft] = useState<VehicleRow[]>([]);
+  const [vEdits, setVEdits] = useState<Record<number, VehicleRow>>({});
+  const [vGone, setVGone] = useState<number[]>([]);
+  const [vf, setVf] = useState<VehicleForm | null>(null);
+  const [vfErr, setVfErr] = useState<string | null>(null);
 
   const [pf, setPf] = useState<PriceForm | null>(null);
   const [pfErr, setPfErr] = useState<string | null>(null);
@@ -263,6 +318,7 @@ export function PayrollRates({
 
   const pricesInfo = usePhoneInfo("About prices");
   const extrasInfo = usePhoneInfo("About extras");
+  const vehicleInfo = usePhoneInfo("About vehicle extras");
 
   const load = useCallback(
     (signal?: AbortSignal) => {
@@ -295,7 +351,10 @@ export function PayrollRates({
     priceGone.length +
     extraDraft.length +
     Object.keys(extraEdits).length +
-    extraGone.length;
+    extraGone.length +
+    vDraft.length +
+    Object.keys(vEdits).length +
+    vGone.length;
 
   useEffect(() => {
     onDirtyChange(dirtyCount > 0);
@@ -308,6 +367,10 @@ export function PayrollRates({
   );
   const savedExtras = useMemo(
     () => (data?.extra_rates ?? []).filter((x) => x.active).map(fromExtra),
+    [data],
+  );
+  const savedVehicles = useMemo(
+    () => (data?.vehicle_rates ?? []).filter((v) => v.active).map(fromVehicle),
     [data],
   );
 
@@ -590,7 +653,128 @@ export function PayrollRates({
     touched();
   }
 
+  // ── 车型补贴表单（G363）─────────────────────────────────
+  /** Model 下拉：后端 vehicle_models（Vehicles 车型历史里有的）+ 已存行的车型；最后一项手打。 */
+  const modelOpts = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const x of [
+      ...(data?.vehicle_models ?? []),
+      ...savedVehicles.map((v) => v.model),
+    ]) {
+      if (x?.trim() && !m.has(norm(x))) m.set(norm(x), x.trim());
+    }
+    return [...m.values()].sort((a, b) => a.localeCompare(b));
+  }, [data?.vehicle_models, savedVehicles]);
+
+  /** Tour 下拉：合同要 manifest_id ⇒ 只列有 manifest 的团（同 Prices 的团 + 已存补贴的团）。 */
+  const vTourOpts = useMemo(() => {
+    const m = new Map<
+      string,
+      { key: string; manifest_id: number; tour: string }
+    >();
+    for (const t of tourOpts)
+      if (t.manifest_id !== null)
+        m.set(t.key, { key: t.key, manifest_id: t.manifest_id, tour: t.tour });
+    for (const v of savedVehicles) {
+      const key = tourKeyOf(v.manifest_id, v.tour);
+      if (!m.has(key))
+        m.set(key, { key, manifest_id: v.manifest_id, tour: v.tour });
+    }
+    return [...m.values()].sort((a, b) => a.tour.localeCompare(b.tour));
+  }, [tourOpts, savedVehicles]);
+
+  const vehicleRows: (VehicleRow & { saved: boolean; edited: boolean })[] = [
+    ...savedVehicles.map((v) => ({
+      ...(v.id !== null && vEdits[v.id] ? vEdits[v.id] : v),
+      saved: true,
+      edited: v.id !== null && !!vEdits[v.id],
+    })),
+    ...vDraft.map((v) => ({ ...v, saved: false, edited: false })),
+  ].sort(
+    (a, b) =>
+      a.model.localeCompare(b.model) ||
+      a.tour.localeCompare(b.tour) ||
+      a.from.localeCompare(b.from),
+  );
+
+  function openNewVehicle() {
+    setVf({
+      id: null,
+      modelSel: modelOpts[0] ?? TYPED,
+      typed: "",
+      tourKey: "",
+      mode: "add",
+      amount: "",
+      from: defaultFrom ?? "",
+      to: "",
+    });
+    setVfErr(null);
+  }
+
+  function addVehicle() {
+    if (!vf) return;
+    const model = (vf.modelSel === TYPED ? vf.typed : vf.modelSel).trim();
+    const tour = vTourOpts.find((t) => t.key === vf.tourKey);
+    const err = (() => {
+      if (!model)
+        return "Type the vehicle model exactly as on the Vehicles page, like Sprinter.";
+      if (!tour) return "Pick a tour.";
+      const de = dateError(vf.from, "from");
+      if (de) return de;
+      if (vf.to) {
+        const te = dateError(vf.to, "to");
+        if (te) return te;
+        if (vf.to < vf.from) return "'To' can't be before 'from'.";
+      }
+      const ae = amountError(vf.amount);
+      if (ae) return ae;
+      const l = lockCovering(locks, vf.from, vf.to || null);
+      if (l) return lockSentence(l);
+      // 同车型、同团、同一天起 ⇒ 后端会 400，页面先挡（同原句）。
+      const dup = vehicleRows.find(
+        (v) =>
+          v.id !== vf.id &&
+          !(v.id !== null && vGone.includes(v.id)) &&
+          norm(v.model) === norm(model) &&
+          v.manifest_id === tour.manifest_id &&
+          v.from === vf.from,
+      );
+      if (dup)
+        return `${dup.model} on ${tour.tour} already has an extra starting ${vf.from}. Change that one instead.`;
+      return null;
+    })();
+    if (err || !tour) {
+      setVfErr(err);
+      return;
+    }
+    const row: VehicleRow = {
+      key: vf.id !== null ? `v${vf.id}` : `vd${++draftSeq}`,
+      id: vf.id,
+      model,
+      manifest_id: tour.manifest_id,
+      tour: tour.tour,
+      mode: vf.mode,
+      amount: two(vf.amount),
+      from: vf.from,
+      to: vf.to || null,
+    };
+    if (vf.id !== null) {
+      const id = vf.id;
+      setVEdits((m) => ({ ...m, [id]: row }));
+    } else {
+      setVDraft((d) => [...d, row]);
+    }
+    setVf(null);
+    setVfErr(null);
+    touched();
+  }
+
   function discard() {
+    setVDraft([]);
+    setVEdits({});
+    setVGone([]);
+    setVf(null);
+    setVfErr(null);
     setPriceDraft([]);
     setPriceEdits({});
     setPriceGone([]);
@@ -681,6 +865,39 @@ export function PayrollRates({
         await deletePayrollExtraRate(id);
         changed = true;
         setExtraGone((g) => g.filter((x) => x !== id));
+      }
+      // G363 车型补贴：改一行只送 id + mode / amount / from / to（车型和团固定，合同）。
+      for (const [id, row] of Object.entries(vEdits)) {
+        await savePayrollVehicleRate({
+          id: Number(id),
+          mode: row.mode,
+          amount: row.amount,
+          from: row.from,
+          to: row.to,
+        });
+        changed = true;
+        setVEdits((m) => {
+          const next = { ...m };
+          delete next[Number(id)];
+          return next;
+        });
+      }
+      for (const row of vDraft) {
+        await savePayrollVehicleRate({
+          model: row.model,
+          manifest_id: row.manifest_id,
+          mode: row.mode,
+          amount: row.amount,
+          from: row.from,
+          to: row.to,
+        });
+        changed = true;
+        setVDraft((d) => d.filter((x) => x.key !== row.key));
+      }
+      for (const id of vGone) {
+        await deletePayrollVehicleRate(id);
+        changed = true;
+        setVGone((g) => g.filter((x) => x !== id));
       }
       setStatus("saved");
     } catch (e) {
@@ -1210,6 +1427,256 @@ export function PayrollRates({
     </div>
   );
 
+  function vehicleAction(v: (typeof vehicleRows)[number]) {
+    if (!canEdit) return null;
+    if (!v.saved) {
+      return (
+        <button
+          type="button"
+          className={C_LINK}
+          data-vehicle-undo
+          onClick={() => setVDraft((d) => d.filter((y) => y.key !== v.key))}
+        >
+          Remove
+        </button>
+      );
+    }
+    if (lockCovering(locks, v.from, v.to)) {
+      return (
+        <span
+          className={C_LOCKED}
+          title="This vehicle extra covers locked days"
+        >
+          🔒 Locked
+        </span>
+      );
+    }
+    const id = v.id as number;
+    const gone = vGone.includes(id);
+    return (
+      <span className="inline-flex gap-2.5 whitespace-nowrap no-underline">
+        {gone ? null : (
+          <button
+            type="button"
+            className={C_LINK}
+            data-vehicle-edit={id}
+            onClick={() => {
+              setVf({
+                id,
+                modelSel: v.model,
+                typed: "",
+                tourKey: tourKeyOf(v.manifest_id, v.tour),
+                mode: v.mode,
+                amount: two(v.amount),
+                from: v.from,
+                to: v.to ?? "",
+              });
+              setVfErr(null);
+            }}
+          >
+            Edit
+          </button>
+        )}
+        <button
+          type="button"
+          className={C_LINK}
+          data-vehicle-remove={id}
+          onClick={() => {
+            setVGone((g) =>
+              g.includes(id) ? g.filter((y) => y !== id) : [...g, id],
+            );
+            touched();
+          }}
+        >
+          {gone ? "Keep" : "Remove"}
+        </button>
+      </span>
+    );
+  }
+
+  const vehiclesTable = (
+    <table className={cn(C_TABLE, "min-w-[720px]")} data-payroll-vehicle-extras>
+      <thead>
+        <tr>
+          <th className={cn(C_TH, C_STICKY)}>Model</th>
+          <th className={C_TH}>Tour</th>
+          <th className={C_TH}>Dates</th>
+          <th className={C_TH}>How it is paid</th>
+          <th className={cn(C_TH, "text-right")}>Amount</th>
+          <th className={C_TH} />
+        </tr>
+      </thead>
+      <tbody>
+        {vehicleRows.map((v) => {
+          const gone = v.id !== null && vGone.includes(v.id);
+          return (
+            <tr
+              key={v.key}
+              data-vehicle-row={v.id ?? "new"}
+              data-pending={!v.saved || v.edited || undefined}
+              data-gone={gone || undefined}
+              className={rowClass(!v.saved || v.edited, gone)}
+            >
+              <td className={cn(C_TD, C_STICKY, "whitespace-nowrap")}>
+                {v.model}
+              </td>
+              <td className={C_TD}>{v.tour}</td>
+              <td className={cn(C_TD, "whitespace-nowrap")}>
+                {cardDatesOf(v.from, v.to)}
+              </td>
+              <td className={C_TD}>{MODE_LABEL[v.mode]}</td>
+              <td className={cn(C_TD, C_NUM)}>
+                {v.mode === "add" ? "+" : ""}
+                {cardMoney(v.amount)}
+              </td>
+              <td className={cn(C_TD, "no-underline")}>{vehicleAction(v)}</td>
+            </tr>
+          );
+        })}
+        {vehicleRows.length === 0 ? (
+          <tr>
+            <td className={cn(C_TD, C_DIM)} colSpan={6}>
+              No vehicle extras yet.
+            </td>
+          </tr>
+        ) : null}
+      </tbody>
+    </table>
+  );
+
+  const vehicleForm = !canEdit ? null : vf ? (
+    <div className={C_FORMROW} data-vehicle-form>
+      <label className={C_FLABEL}>
+        Model
+        <SelectMenu
+          className={C_INPUT}
+          value={String(vf.modelSel)}
+          options={[
+            ...(vf.id !== null
+              ? [{ value: String(vf.modelSel), label: String(vf.modelSel) }]
+              : [
+                  ...modelOpts.map((m) => ({ value: m, label: m })),
+                  { value: TYPED, label: "Type a model…" },
+                ]),
+          ]}
+          disabled={vf.id !== null}
+          data-vf="model"
+          onChange={(next) => setVf({ ...vf, modelSel: next })}
+        />
+      </label>
+      {vf.modelSel === TYPED && vf.id === null ? (
+        <label className={C_FLABEL}>
+          Model (as on the Vehicles page)
+          <input
+            className={C_INPUT}
+            value={vf.typed}
+            placeholder="Sprinter"
+            data-vf="typed"
+            onChange={(e) => setVf({ ...vf, typed: e.target.value })}
+          />
+        </label>
+      ) : null}
+      <label className={C_FLABEL}>
+        Tour
+        <SelectMenu
+          className={C_INPUT}
+          value={String(vf.tourKey)}
+          options={[
+            ...(vf.tourKey === ""
+              ? [{ value: "", label: "Pick a tour…" }]
+              : []),
+            ...vTourOpts.map((t) => ({ value: t.key, label: t.tour })),
+          ]}
+          disabled={vf.id !== null}
+          data-vf="tour"
+          onChange={(next) => setVf({ ...vf, tourKey: next })}
+        />
+      </label>
+      <label className={C_FLABEL}>
+        How it is paid
+        <SelectMenu
+          className={C_INPUT}
+          value={vf.mode}
+          options={[
+            { value: "add", label: MODE_LABEL.add },
+            { value: "total", label: MODE_LABEL.total },
+          ]}
+          data-vf="mode"
+          onChange={(next) =>
+            setVf({ ...vf, mode: next === "total" ? "total" : "add" })
+          }
+        />
+      </label>
+      <label className={C_FLABEL}>
+        Amount
+        <input
+          className={cn(C_INPUT, "w-[100px] text-right max-sm:w-auto")}
+          inputMode="decimal"
+          placeholder="0.00"
+          value={vf.amount}
+          data-vf="amount"
+          onChange={(e) => setVf({ ...vf, amount: e.target.value })}
+        />
+      </label>
+      <label className={C_FLABEL}>
+        From
+        <input
+          type="date"
+          className={C_INPUT}
+          value={vf.from}
+          data-vf="from"
+          onChange={(e) => setVf({ ...vf, from: e.target.value })}
+        />
+      </label>
+      <label className={C_FLABEL}>
+        To (empty = no end)
+        <input
+          type="date"
+          className={C_INPUT}
+          value={vf.to}
+          data-vf="to"
+          onChange={(e) => setVf({ ...vf, to: e.target.value })}
+        />
+      </label>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          className={C_BTN_ADD}
+          data-vf="add"
+          onClick={addVehicle}
+        >
+          {vf.id !== null ? "Update" : "Add"}
+        </button>
+        <button
+          type="button"
+          className={C_BTN}
+          onClick={() => {
+            setVf(null);
+            setVfErr(null);
+          }}
+        >
+          Cancel
+        </button>
+        {vfErr ? (
+          <span className={C_RED} data-vf-err>
+            {vfErr}
+          </span>
+        ) : null}
+      </div>
+    </div>
+  ) : (
+    <div className="px-4 pt-2.5 max-sm:px-3">
+      <button
+        type="button"
+        className={C_BTN}
+        data-add-vehicle-extra
+        onClick={openNewVehicle}
+      >
+        + Add vehicle extra
+      </button>
+    </div>
+  );
+
   return (
     <div className={HR_CARD_CLASS} data-payroll-rates>
       <div className={HR_CARD_HEADER_CLASS}>
@@ -1228,7 +1695,9 @@ export function PayrollRates({
           </span>
           Pay rates
           <span className="font-normal text-[#4b5563]">
-            · Prices and extras
+            {data?.vehicle_rates
+              ? "· Prices, extras and vehicle extras"
+              : "· Prices and extras"}
           </span>
         </button>
       </div>
@@ -1267,12 +1736,32 @@ export function PayrollRates({
           </div>
           <div className={C_WRAP}>{extrasTable}</div>
           {extraForm}
+          {/* G363：旧后端没有 vehicle_rates ⇒ 不出这一节。 */}
+          {data.vehicle_rates ? (
+            <>
+              <div className={cn(C_SUBH, "mt-3.5")} data-vehicle-extras-head>
+                <span>
+                  Vehicle extras
+                  {vehicleInfo.button}
+                </span>
+                <span className={cn(C_HINT, "font-normal", vehicleInfo.hide)}>
+                  For driver-guide runs in a vehicle of this model, on tours
+                  that have a price. Add: paid on top of the driver-guide fee.
+                  Total: the driver-guide gets this much for the run; if that
+                  day’s Driver + Guide price for everyone is higher, the run
+                  gets the price. Not added when the fee was typed by hand.
+                </span>
+              </div>
+              <div className={C_WRAP}>{vehiclesTable}</div>
+              {vehicleForm}
+            </>
+          ) : null}
           {canEdit ? (
             <div className={cn(C_SAVEBAR, "mt-3")} data-rates-savebar>
               <span className={C_HINT}>
-                Prices or extras that cover locked days can’t be changed or
-                removed. To change a price from now on, add a new one starting
-                after the locked days.
+                Prices, extras or vehicle extras that cover locked days can’t be
+                changed or removed. To change one from now on, add a new one
+                starting after the locked days.
               </span>
               <span className="flex-1" />
               {saveErr ? (

@@ -42,6 +42,53 @@ export interface PayrollRun {
   day_status: "completed" | "not_completed";
   /** true ⇒ 这天锁住了，整趟只读。 */
   locked: boolean;
+  /**
+   * G363 车型补贴（后端 08c8f5f8，合同 docs/interfaces/guide-pay-vehicle-extra-2026-11-22.md）。旧后端没有这几个键。
+   * van = 那天记下的车号；vehicle_model = 那天的车型（"" = 没有）；guide_position = 导游在 HR 的 Position（手打的 ""）。
+   */
+  van?: string;
+  vehicle_model?: string;
+  guide_position?: "" | "driver" | "guide" | "both";
+  /** 这趟的车型补贴；没有 = null。mode add = 加在 Driver + Guide 价上，total = 这趟一共给多少（rate_amount）。 */
+  vehicle_extra?: PayrollVehicleExtra | null;
+  /** 加进 total 的补贴（没有 = "0.00"）。total = fee + vehicle_extra_amount + extras_total + tips。 */
+  vehicle_extra_amount?: string;
+  /** true ⇒ 写「This run includes both a personal rate and a vehicle extra」。 */
+  personal_and_vehicle?: boolean;
+}
+
+export interface PayrollVehicleExtra {
+  rate_id: number;
+  model: string;
+  mode: "add" | "total";
+  /** 价目表上的数（add = 加多少；total = 这趟一共多少）。 */
+  rate_amount: string;
+  /** 实际加进这趟的数。 */
+  amount: string;
+}
+
+/** G363：Pay rates › Vehicle extras 一行（GET /api/payroll/rates 的 vehicle_rates，只回 active 的）。 */
+export interface PayrollVehicleRate {
+  id: number;
+  model: string;
+  manifest_id: number;
+  tour: string;
+  mode: "add" | "total";
+  amount: string;
+  from: string;
+  to: string | null;
+  active: boolean;
+}
+
+/** PUT /api/payroll/vehicle-rates：不带 id = 新增；带 id = 改（车型和团不能改，只送 mode / amount / from / to）。 */
+export interface PayrollVehicleRateInput {
+  id?: number;
+  model?: string;
+  manifest_id?: number;
+  mode: "add" | "total";
+  amount: string;
+  from: string;
+  to: string | null;
 }
 
 export interface PayrollLock {
@@ -121,6 +168,10 @@ export interface PayrollRates {
    * 同 Dispatch 导游下拉（nickname 优先）。Applies to 选人用，回传 {hr_id}；手打导游不在里面。旧后端没有这个键。
    */
   guides?: { hr_id: number; name: string }[];
+  /** G363：车型补贴（旧后端没有这个键 ⇒ 页面不出 Vehicle extras 一节）。 */
+  vehicle_rates?: PayrollVehicleRate[];
+  /** G363：Vehicles 车型历史里出现过的车型（排好序），Vehicle extras 表单的 Model 下拉用。 */
+  vehicle_models?: string[];
 }
 
 /** PUT /api/payroll/rates：不带 id = 新增，带 id = 改（团不能改）。 */

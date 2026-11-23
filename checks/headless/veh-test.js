@@ -378,6 +378,43 @@ async function run() {
   await sleep(300);
   check("电脑：表单照旧展开、How to use 照旧在最上面", (await evaluate(`return ${shownBox("[aria-label='Extra columns'] form")};`)) && (await evaluate("const d = [...document.querySelectorAll('details')].find(x => /How to use/.test(x.textContent) && x.getBoundingClientRect().height > 0); return !!d && d.getBoundingClientRect().top < document.querySelector('table').getBoundingClientRect().top;")));
 
+  // ── G363（Annie 11-23「2 同意推荐，动手」；同日「车型是不会变的…这个日期没有必要」）：Model 列按 is_model 找，
+  //    编辑时打字给已用过的车型提示（Q3 B），没有 Model from 日期、没有 History；How to use 新句 ──
+  await ctl({ g363: true });
+  await openPage(`${APP}/settings/vehicles`);
+  await waitFor("$heads().includes('Model')");
+  check("G363：有 Model 列（后端 is_model 列），显示今天的车型（车 1 = Sprinter）；没有 History 链接", await evaluate(`const i = $heads().indexOf('Model'); return i > 0 && ${row(1)}.children[i].textContent.trim() === 'Sprinter' && !document.querySelector('[data-model-history-link]');`), await evaluate(`const i = $heads().indexOf('Model'); return i + '|' + ${row(1)}.children[i]?.textContent;`));
+  await evaluate(`$btn('Edit', ${row(2)}).click();`);
+  await waitFor(`${row(2)}.querySelector('input[aria-label="Model"]')`);
+  check("G363 Q3 B：编辑时 Model 框是文字框、接已用过的车型提示（Mini Van、Sprinter，排好序）；没有 Model from 日期框", await evaluate(`const inp = ${row(2)}.querySelector('input[aria-label="Model"]'); const dl = document.getElementById(inp.getAttribute('list')); return inp.type === 'text' && inp.getAttribute('list') === 'vehicle-model-options' && JSON.stringify([...dl.options].map(o => o.value)) === JSON.stringify(['Mini Van', 'Sprinter']) && !document.querySelector('input[type=date]') && !document.body.textContent.includes('Model from');`));
+  check("G363：别的自加列（Plate）没有车型提示", await evaluate(`return !${row(2)}.querySelector('input[aria-label="Plate"]').getAttribute('list');`));
+  if (process.env.SHOT_DIR) {
+    const fs = require("fs");
+    fs.mkdirSync(process.env.SHOT_DIR, { recursive: true });
+    await evaluate(`${row(2)}.querySelector('input[aria-label="Model"]').focus();`);
+    const r = await cdp("Page.captureScreenshot", { format: "png" });
+    fs.writeFileSync(path.join(process.env.SHOT_DIR, "vehicles-edit-model.png"), Buffer.from(r.data, "base64"));
+  }
+  let g363b = (await mockLog()).length;
+  await evaluate(`$setValue(${row(2)}.querySelector('input[aria-label="Model"]'), 'SUV'); $btn('Save', ${row(2)}).click();`);
+  await waitFor(`!${row(2)}.querySelector('input')`);
+  let g363put = await since(g363b, (e) => e.method === "PUT");
+  check("G363：Save 送 custom 里的车型，不带 model_from（Annie：不要日期，后端按今天）", g363put.length === 1 && g363put[0].body.custom["9"] === "SUV" && !("model_from" in g363put[0].body), JSON.stringify(g363put[0]?.body));
+  check("G363：How to use 写 Model 给工资用、打字有提示、锁住的日子不存；不提日期 / History", await evaluate("const t = document.body.textContent; return t.includes('These columns are only for reading on this page, except Model, which guide pay uses (see below).') && t.includes('Model: Payroll uses this column to pay the vehicle extra to driver-guides') && t.includes('the models already used are listed under the box to pick from') && t.includes('If a change would change guide pay on locked days, it is not saved') && !t.includes('Model from') && !t.includes('Click History');"));
+  await evaluate("$btn('⬆ Import').click();");
+  await waitFor("document.querySelector('[data-bulk-import]')");
+  await evaluate(`
+    window.__blob = null;
+    const orig = URL.createObjectURL;
+    URL.createObjectURL = (b) => { window.__blob = b; return orig(b); };
+    HTMLAnchorElement.prototype.click = function () {};
+    $btn('⬇ Download template').click();`);
+  await waitFor("window.__blob");
+  const g363tpl = (await evaluate("return (await window.__blob.text()).replace(/^\\uFEFF/, '');")).split("\r\n");
+  check("G363：导入模板里 Model 跟别的自加列一样一列，没有 Model from 列", g363tpl[0] === "Vehicle,Live GPS,Seats,Plate,Model,Note,Status" && g363tpl.some((l) => l.includes(",Sprinter,")), JSON.stringify(g363tpl.slice(0, 2)));
+  await evaluate("$btn('Close', document.querySelector('[data-bulk-import]')).click();");
+  await ctl({ g363: false });
+
   // 权限 / 未登录
   await ctl({ staff: true });
   await goto(`${APP}/settings/vehicles`);

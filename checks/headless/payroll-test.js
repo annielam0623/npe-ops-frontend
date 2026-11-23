@@ -308,7 +308,7 @@ async function run() {
   await evaluate(`${q("[data-payroll-prev]")}.click();`);
   await waitFor(`${q("[data-payroll-period]")}?.textContent === 'Nov 1–15, 2026'`, 5000);
   check("Pay rates / Locked dates / Change history 依次在名单下面", await waitFor(`(() => { const a = ['[data-payroll-by-person]','[data-payroll-rates]','[data-payroll-locks]','[data-payroll-history]'].map(s => document.querySelector(s)); return a.every(Boolean) && a.every((e, i) => i === 0 || (a[i-1].compareDocumentPosition(e) & Node.DOCUMENT_POSITION_FOLLOWING)); })()`, 5000));
-  check("How to use — Payroll：15 条、照 V9（第 8 条是状态格那句）", await evaluate(`const d = [...document.querySelectorAll('details')].find(x => x.textContent.includes('How to use — Payroll')); const li = d ? d.querySelectorAll('li') : []; return li.length === 15 && li[4].textContent.startsWith('Click a name to see that person') && li[7].textContent === 'The Status column is blank for runs that are counted in the total. Runs on locked days show Paid · locked. No rate, No guide and Not completed need a look.' && li[14].textContent.startsWith('Only Admin accounts given Payroll');`));
+  check("How to use — Payroll：18 条（G363 加 3 条车型补贴 / Vehicle 列 / Position），状态格那句是第 11 条", await evaluate(`const d = [...document.querySelectorAll('details')].find(x => x.textContent.includes('How to use — Payroll')); const li = d ? d.querySelectorAll('li') : []; return li.length === 18 && li[4].textContent.startsWith('Vehicle extra: a driver who also guides a run') && li[7].textContent.startsWith('Click a name to see that person') && li[10].textContent === 'The Status column is blank for runs that are counted in the total. Runs on locked days show Paid · locked. No rate, No guide and Not completed need a look.' && li[17].textContent.startsWith('Only Admin accounts given Payroll');`));
 
   // ⑫ Locked dates 卡（5a）：有改动时 Lock 先挡；锁 / 解锁黄框
   check("Locked dates：Nov 1–2, 2026 一行、Note、Locked by", (await text(`document.querySelector('[data-lock-row="1"]')`))?.includes("Nov 1–2, 2026Paid Nov 1–2Annie"), await text(`document.querySelector('[data-lock-row="1"]')`));
@@ -541,7 +541,7 @@ async function run() {
   check("Payroll: View：有页签、能打开", await openPayroll());
   await expand("Kevin Tran");
   check("View only：没有点格子改、没有勾、没有小费框、没有 Save 条", await evaluate(`const r = document.querySelector('[data-payroll]'); return !!${run_(812)} && !r.querySelector('[data-payroll-fee-cell], [data-payroll-extra], [data-payroll-tips], [data-payroll-savebar], [data-payroll-use-price], [data-lock-form], [data-unlock]');`));
-  const ant = await text(`${run_(813)}.children[4]`);
+  const ant = await text(`${run_(813)}.children[5]`);
   check("View only：勾着的加购项照样显示金额（813 Long day）", ant === "Long day $40.00", ant);
 
   // ⑮ 读失败：红框 + 后端原句
@@ -551,6 +551,8 @@ async function run() {
   await evaluate(`${TAB}.click();`);
   check("读失败：Could not load payroll: + 后端原句", await waitFor(`document.body.textContent.includes('Could not load payroll: Could not reach the database. Try again.')`, 5000));
   await ctl({ periodFail: false });
+
+  await g363Checks();
 
   // ⑯ 手机（题 4 甲）：表格在卡片里左右滑、第一列钉住、整页不左右晃、说明收进 i
   await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
@@ -564,6 +566,121 @@ async function run() {
   await sleep(100);
   check("手机：点 i 显示说明", await evaluate(`return ${hintShown};`));
   await cdp("Emulation.clearDeviceMetricsOverride");
+}
+
+// ── G363 车型补贴（Annie 11-23「2 同意推荐，动手」：Q2 B 单独 Vehicle 列 + 人员表 Vehicle extras 列；Pay rates › Vehicle extras）──
+// 合同：npe-confirmation-service docs/interfaces/guide-pay-vehicle-extra-2026-11-22.md（后端 08c8f5f8）。
+async function g363Checks() {
+  const fs = require("fs");
+  const SHOTS = process.env.SHOT_DIR || "";
+  const shot = async (name) => {
+    if (!SHOTS) return;
+    fs.mkdirSync(SHOTS, { recursive: true });
+    const m = await cdp("Page.getLayoutMetrics");
+    const r = await cdp("Page.captureScreenshot", { format: "png", captureBeyondViewport: true, clip: { x: 0, y: 0, width: Math.ceil(m.cssContentSize.width), height: Math.ceil(m.cssContentSize.height), scale: 1 } });
+    fs.writeFileSync(path.join(SHOTS, name), Buffer.from(r.data, "base64"));
+  };
+  const cell = (id, i) => text(`${run_(id)}.children[${i}]`);
+  await ctl({ superadmin: true, codes: [], runFail: null, periodFail: false, g363: true, vehicleFail: false });
+  check("G363：打开 Payroll", await openPayroll());
+  await expand("Kevin Tran");
+  await waitFor(run_(818), 5000);
+  const heads = await evaluate(`return [...${run_(812)}.closest('table').querySelectorAll('thead th')].map(t => t.textContent.trim()).join('|');`);
+  check("G363 Q2 B：明细表列 Date | Tour | Role | Fee | Vehicle | Extras | Tips | Total | Status", heads === "Date|Tour|Role|Fee|Vehicle|Extras|Tips|Total|Status", heads);
+  check("G363：812 Fee 照旧只写价格 $280.00；Vehicle「2041 · Sprinter」下面绿字 +$50.00、个人价 + 补贴那句；Total = 280 + 50 + 勾的加购项", (await cell(812, 3)) === "$280.00" && (await evaluate(`const c = ${run_(812)}.querySelector('[data-payroll-vehicle]'); return c.textContent.startsWith('2041 · Sprinter') && c.querySelector('[data-payroll-vx]').textContent === '+$50.00' && getComputedStyle(c.querySelector('[data-payroll-vx]')).color === 'rgb(30, 107, 67)' && c.querySelector('[data-payroll-personal-vehicle]').textContent === 'This run includes both a personal rate and a vehicle extra';`)) && (await evaluate(`const n = (x) => Number(String(x).replace(/[^0-9.]/g, '') || 0); const r = ${run_(812)}; const ticked = [...r.querySelectorAll('[data-payroll-extra]:checked')].reduce((a, i) => a + n(i.closest('label').textContent.split('$').pop()), 0); return Math.abs(n(r.children[7].textContent) - 280 - 50 - ticked) < 0.001;`)), `${await cell(812, 4)} | ${await cell(812, 7)}`);
+  check("G363：818 Total 方式 Vehicle「2622B · Mini Van」下面「+$45.00 · total $320.00」，Total $320.00", (await evaluate(`return ${run_(818)}.querySelector('[data-payroll-vx]')?.textContent.replace(/\\s+/g, ' ');`)) === "+$45.00 · total $320.00" && (await cell(818, 7)) === "$320.00", `${await cell(818, 4)} | ${await cell(818, 7)}`);
+  check("G363：819 Fee 手改 $300.00（edited）⇒ 没有补贴，只写 2041 · Sprinter；811 车型空着只写车号 2622；Guide 的趟没有补贴", (await evaluate(`return !${run_(819)}.querySelector('[data-payroll-vx]') && ${run_(819)}.querySelector('[data-payroll-vehicle]').textContent === '2041 · Sprinter' && ${run_(811)}.querySelector('[data-payroll-vehicle]').textContent === '2622' && !${run_(811)}.querySelector('[data-payroll-vx]');`)) && (await cell(819, 7)) === "$300.00");
+  const pheads = await evaluate(`return [...document.querySelector('[data-payroll-by-person] table thead').querySelectorAll('th')].map(t => t.textContent.trim()).join('|');`);
+  check("G363 Q2 B：人员表 Fees 后面一列 Vehicle extras", pheads === "Person|Runs|Fees|Vehicle extras|Extras|Tips|Total", pheads);
+  check("G363：Kevin Vehicle extras $95.00（50 + 45），名字后面灰字 Driver + Guide（HR Position）；Jake（Not in HR）没有 Position", await evaluate(`const k = document.querySelector('[data-payroll-person="Kevin Tran"]'), j = document.querySelector('[data-payroll-person="Jake"]'); return k.querySelector('[data-payroll-person-vx]').textContent === '$95.00' && k.querySelector('[data-payroll-position]').textContent === 'Driver + Guide' && !j.querySelector('[data-payroll-position]') && j.textContent.includes('Not in HR');`));
+  check("G363：Kevin 合计行 = Fees + Vehicle extras + Extras + Tips；整期合计行也有 Vehicle extras", await evaluate(`const n = (s) => Number(String(s).replace(/[$,—]/g, '') || 0); const k = [...document.querySelector('[data-payroll-person="Kevin Tran"]').children].map(c => c.textContent.trim()); const t = [...document.querySelector('[data-payroll-total]').children].map(c => c.textContent.trim()); return Math.abs(n(k[2]) + n(k[3]) + n(k[4]) + n(k[5]) - n(k[6])) < 0.001 && t.length === 7 && t[3] === '$95.00';`));
+  await shot("payroll-runs-vehicle.png");
+  // 页面上手填 Fee：补贴马上变 0（手填的就是全部）
+  await clickFee(818);
+  await evaluate(`$setValue(${run_(818)}.querySelector('[data-payroll-fee-editor] input'), '300'); ${run_(818)}.querySelector('[data-payroll-fee-done]').click();`);
+  await sleep(200);
+  check("G363：页面上手填 818 Fee 300 ⇒ 补贴马上没了，Total $300.00，Kevin Vehicle extras $50.00", (await evaluate(`return !${run_(818)}.querySelector('[data-payroll-vx]') && document.querySelector('[data-payroll-person="Kevin Tran"] [data-payroll-person-vx]').textContent === '$50.00';`)) && (await cell(818, 7)) === "$300.00", await cell(818, 7));
+  await evaluate(`${q("[data-payroll-discard]")}.click();`);
+  await sleep(150);
+  // 手填的趟点 Use the price：补贴要存了才知道
+  await evaluate(`${run_(819)}.querySelector('[data-payroll-use-price]').click();`);
+  await sleep(200);
+  check("G363：手填的 819 点 Use the price ⇒ 写 Vehicle extra after Save，Total 先只算价格 $280.00", (await evaluate(`return ${run_(819)}.querySelector('[data-payroll-vx-pending]')?.textContent === 'Vehicle extra after Save';`)) && (await cell(819, 7)) === "$280.00", await cell(819, 7));
+  await evaluate(`${q("[data-payroll-discard]")}.click();`);
+  await sleep(150);
+
+  // Pay rates › Vehicle extras
+  const sec = "document.querySelector('[data-payroll-vehicle-extras]')";
+  check("G363：Pay rates 有 Vehicle extras 一节（在 Extras 下面），说明句照 preview；卡头「· Prices, extras and vehicle extras」", (await waitFor(sec, 5000)) && (await evaluate(`const h = document.querySelector('[data-vehicle-extras-head]'); const ex = document.querySelector('[data-payroll-extras]'); return h.textContent.includes('For driver-guide runs in a vehicle of this model, on tours that have a price. Add: paid on top of the driver-guide fee.') && h.textContent.includes('Not added when the fee was typed by hand.') && !!(ex.compareDocumentPosition(h) & Node.DOCUMENT_POSITION_FOLLOWING) && document.querySelector('[data-rates-toggle]').textContent.includes('· Prices, extras and vehicle extras');`)));
+  const vrows = await evaluate(`return [...${sec}.querySelectorAll('tr[data-vehicle-row]')].map(r => [...r.children].map(c => c.textContent.trim()).join('|'));`);
+  check("G363：表 Model | Tour | Dates | How it is paid | Amount；按车型排；Add 写 +$50.00、Total 写 $320.00；盖住锁的两行 🔒 Locked，SUV（12 月起）有 Edit / Remove", JSON.stringify(vrows) === JSON.stringify([
+    "Mini Van|Bryce & Zion|From Nov 1, 2026 · no end|Total for the run|$320.00|🔒 Locked",
+    "Sprinter|Antelope Canyon|From Nov 1, 2026 · no end|Add to the driver-guide fee|+$50.00|🔒 Locked",
+    "SUV|Antelope Canyon|From Dec 1, 2026 · no end|Total for the run|$350.00|EditRemove",
+  ]), JSON.stringify(vrows));
+  await evaluate(`document.querySelector('[data-add-vehicle-extra]').click();`);
+  await waitFor(`document.querySelector('[data-vehicle-form]')`, 3000);
+  const mopts = await evaluate(`return (await $selOptions(document.querySelector('[data-vf="model"]'))).map(o => o.label);`);
+  check("G363：+ Add vehicle extra 表单：Model 下拉 = 后端 vehicle_models + Type a model…；Tour 先是 Pick a tour…；How it is paid 两种；Add 灰绿", JSON.stringify(mopts) === JSON.stringify(["Mini Van", "Sprinter", "SUV", "Type a model…"]) && (await evaluate(`return $selLabel(document.querySelector('[data-vf="tour"]')) === 'Pick a tour…' && getComputedStyle(document.querySelector('[data-vf="add"]')).backgroundColor === 'rgb(107, 142, 116)';`)) && JSON.stringify(await evaluate(`return (await $selOptions(document.querySelector('[data-vf="mode"]'))).map(o => o.label);`)) === JSON.stringify(["Add to the driver-guide fee", "Total for the run"]), JSON.stringify(mopts));
+  await evaluate(`$setValue(document.querySelector('[data-vf="amount"]'), '330'); document.querySelector('[data-vf="add"]').click();`);
+  check("G363：没选团按 Add ⇒ 红字 Pick a tour.", await waitFor(`document.querySelector('[data-vf-err]')?.textContent === 'Pick a tour.'`, 3000));
+  await evaluate(`await $sel(document.querySelector('[data-vf="tour"]'), 'm:5'); await $sel(document.querySelector('[data-vf="model"]'), 'SUV'); await $sel(document.querySelector('[data-vf="mode"]'), 'total'); document.querySelector('[data-vf="add"]').click();`);
+  check("G363：From 是锁住的 Nov 1 ⇒ 红字照后端锁的原句", await waitFor(`document.querySelector('[data-vf-err]')?.textContent === 'Pay from 2026-11-01 to 2026-11-02 is locked. Unlock it first, then save.'`, 3000), await text(`document.querySelector('[data-vf-err]')`));
+  await evaluate(`$setValue(document.querySelector('[data-vf="from"]'), '2026-12-01'); return 1;`);
+  await shot("payroll-vehicle-extra-form.png");
+  let before = (await mockLog()).length;
+  await evaluate(`document.querySelector('[data-vf="add"]').click();`);
+  check("G363：Add 只放到表上（淡黄行 SUV · Bryce & Zion），没发请求，Save 条写 Not saved yet", (await waitFor(`${sec}.querySelector('tr[data-vehicle-row="new"][data-pending]')?.textContent.includes('Bryce & Zion')`, 3000)) && (await since(before, (e) => e.path.includes("vehicle-rates"))).length === 0 && (await evaluate(`return !!document.querySelector('[data-rates-unsaved]');`)));
+  await evaluate(`document.querySelector('[data-add-vehicle-extra]').click();`);
+  await waitFor(`document.querySelector('[data-vehicle-form]')`, 3000);
+  await evaluate(`await $sel(document.querySelector('[data-vf="tour"]'), 'm:3'); await $sel(document.querySelector('[data-vf="model"]'), 'SUV'); $setValue(document.querySelector('[data-vf="amount"]'), '1'); $setValue(document.querySelector('[data-vf="from"]'), '2026-12-01'); document.querySelector('[data-vf="add"]').click();`);
+  check("G363：同车型同团同一天起 ⇒ 红字（同后端原句）", await waitFor(`document.querySelector('[data-vf-err]')?.textContent === 'SUV on Antelope Canyon already has an extra starting 2026-12-01. Change that one instead.'`, 3000), await text(`document.querySelector('[data-vf-err]')`));
+  await evaluate(`$btn('Cancel', document.querySelector('[data-vehicle-form]')).click();`);
+  // Edit SUV（id 3）：车型、团灰掉，只改 How it is paid / 金额 / 日期
+  await evaluate(`document.querySelector('[data-vehicle-edit="3"]').click();`);
+  await waitFor(`document.querySelector('[data-vehicle-form]')`, 3000);
+  check("G363：Edit 时 Model、Tour 灰掉（合同：车型和团固定）", await evaluate(`return document.querySelector('[data-vf="model"]').disabled && document.querySelector('[data-vf="tour"]').disabled && $selLabel(document.querySelector('[data-vf="model"]')) === 'SUV';`));
+  await evaluate(`$setValue(document.querySelector('[data-vf="amount"]'), '360'); document.querySelector('[data-vf="add"]').click();`);
+  await waitFor(`${sec}.querySelector('tr[data-vehicle-row="3"][data-pending]')`, 3000);
+  before = (await mockLog()).length;
+  await evaluate(`document.querySelector('[data-rates-save]').click();`);
+  await waitFor(`document.querySelector('[data-rates-saved]')`, 6000);
+  const puts = await since(before, (e) => e.method === "PUT" && e.path === "/api/payroll/vehicle-rates");
+  check("G363：Save rates：改的那行只送 id + mode / amount / from / to；新行送 model + manifest_id + mode / amount / from / to；绿字 Saved", JSON.stringify(puts.map((e) => e.body)) === JSON.stringify([
+    { id: 3, mode: "total", amount: "360.00", from: "2026-12-01", to: null },
+    { model: "SUV", manifest_id: 5, mode: "total", amount: "330.00", from: "2026-12-01", to: null },
+  ]), JSON.stringify(puts.map((e) => e.body)));
+  // Remove（只暂存，按 Save rates 才 DELETE）
+  await waitFor(`document.querySelector('[data-vehicle-remove="3"]')`, 4000);
+  await evaluate(`document.querySelector('[data-vehicle-remove="3"]').click();`);
+  check("G363：Remove ⇒ 淡红删除线、键变 Keep，还没发 DELETE", await evaluate(`return !!${sec}.querySelector('tr[data-vehicle-row="3"][data-gone]') && document.querySelector('[data-vehicle-remove="3"]').textContent === 'Keep';`));
+  before = (await mockLog()).length;
+  await evaluate(`document.querySelector('[data-rates-save]').click();`);
+  check("G363：Save rates ⇒ DELETE /api/payroll/vehicle-rates/3", await (async () => { for (let i = 0; i < 40; i++) { if ((await since(before, (e) => e.method === "DELETE" && e.path === "/api/payroll/vehicle-rates/3")).length) return true; await sleep(150); } return false; })());
+  // 后端 400：红字照原句、暂存留着
+  await ctl({ vehicleFail: true });
+  await evaluate(`document.querySelector('[data-add-vehicle-extra]').click();`);
+  await waitFor(`document.querySelector('[data-vehicle-form]')`, 3000);
+  await evaluate(`await $sel(document.querySelector('[data-vf="model"]'), '__typed'); return 1;`);
+  await waitFor(`document.querySelector('[data-vf="typed"]')`, 2000);
+  await evaluate(`$setValue(document.querySelector('[data-vf="typed"]'), 'Sprinter'); await $sel(document.querySelector('[data-vf="tour"]'), 'm:4'); $setValue(document.querySelector('[data-vf="amount"]'), '20'); $setValue(document.querySelector('[data-vf="from"]'), '2026-12-01'); document.querySelector('[data-vf="add"]').click();`);
+  await waitFor(`${sec}.querySelector('tr[data-vehicle-row="new"][data-pending]')`, 3000);
+  await evaluate(`document.querySelector('[data-rates-save]').click();`);
+  check("G363：手打车型 Sprinter 也能加；后端 400 ⇒ 红字照原句，行还留着", (await waitFor(`document.querySelector('[data-rates-err]')?.textContent === 'Sprinter on South Rim already has an extra starting 2026-12-01. Change that one instead.'`, 5000)) && (await evaluate(`return !!${sec}.querySelector('tr[data-vehicle-row="new"][data-pending]');`)));
+  await evaluate(`document.querySelector('[data-rates-discard]').click();`);
+  await ctl({ vehicleFail: false });
+  await shot("payroll-vehicle-extras-section.png");
+  check("G363：How to use 新句（Q2 B 写法）", await evaluate(`const t = document.body.textContent; return t.includes("The Vehicle column shows the vehicle number and its model on that day, with the vehicle extra under it; Vehicle extras in the list of people adds them up.") && t.includes("The grey word after a name is that person's Position in Human Resource.") && t.includes('A typed fee is the whole fee: it replaces the price and the vehicle extra.') && t.includes('Click + Add vehicle extra to add an amount for a vehicle model on a tour') && t.includes('prices, extra amounts or vehicle extras that cover them can’t be changed or removed — add a new one that starts after the locked days instead.') && t.includes('The last five columns are Position, Vehicle, Model, Vehicle extra and Note.');`));
+  // 手机：明细表、补贴表在卡片里左右滑，整页不晃
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  await openPayroll();
+  await expand("Kevin Tran");
+  await waitFor(run_(812), 4000);
+  await sleep(300);
+  check("G363 手机：整页不左右晃；Vehicle extras 说明收进 i", await evaluate(`return document.documentElement.scrollWidth <= innerWidth + 1 && !!document.querySelector('[data-vehicle-extras-head] [data-phone-info]');`), await evaluate(`return document.documentElement.scrollWidth + '/' + innerWidth;`));
+  await shot("payroll-phone-390.png");
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await ctl({ g363: false });
 }
 
 async function main() {

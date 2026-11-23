@@ -192,6 +192,18 @@ export function VehiclesView() {
   const vehicles = view.kind === "ready" ? view.vehicles : [];
   const columns = view.kind === "ready" ? view.columns : [];
   const shownCols = columns.filter((c) => !c.is_hidden);
+  // G363 Q3 B（Annie 11-23「2 同意推荐，动手」）：车型那一列（按后端的 is_model 标记找，不看列名）打字时
+  // 下面列出已经用过的车型（还是文字框，新的也能打）。Annie 同日：车型不会变，不要 Model from 日期 / History。
+  const modelCol = shownCols.find((c) => c.is_model) ?? null;
+  const usedModels = modelCol
+    ? [
+        ...new Set(
+          vehicles
+            .map((v) => norm(v.custom[String(modelCol.id)]))
+            .filter(Boolean),
+        ),
+      ].sort((a, b) => a.localeCompare(b))
+    : [];
 
   async function refresh() {
     setLogVersion((v) => v + 1);
@@ -721,6 +733,7 @@ export function VehiclesView() {
                         bulk={bulk}
                         locked={bulkSaving}
                         busy={busyId === v.id}
+                        modelColId={modelCol?.id ?? null}
                         onEdit={() =>
                           setEdits((all) => ({
                             ...all,
@@ -740,6 +753,13 @@ export function VehiclesView() {
                   )}
                 </tbody>
               </table>
+              {modelCol ? (
+                <datalist id="vehicle-model-options">
+                  {usedModels.map((m) => (
+                    <option key={m} value={m} />
+                  ))}
+                </datalist>
+              ) : null}
             </div>
           </section>
 
@@ -850,6 +870,7 @@ function VehicleRow({
   bulk,
   locked,
   busy,
+  modelColId,
   onEdit,
   onDraft,
   onSave,
@@ -862,6 +883,8 @@ function VehicleRow({
   bulk: boolean;
   locked: boolean;
   busy: boolean;
+  /** G363：车型那一列的 id（没有 = null）：编辑时这一格给已用过的车型提示。 */
+  modelColId: number | null;
   onEdit: () => void;
   onDraft: (draft: Draft) => void;
   onSave: () => void;
@@ -941,6 +964,8 @@ function VehicleRow({
               value={d.custom[c.id] ?? ""}
               maxLength={CUSTOM_VALUE_MAX}
               disabled={dis}
+              list={c.id === modelColId ? "vehicle-model-options" : undefined}
+              autoComplete={c.id === modelColId ? "off" : undefined}
               onChange={(e) =>
                 onDraft({
                   ...d,
@@ -1114,7 +1139,21 @@ function HowToUse() {
       <li>
         Add your own column: under Extra columns, type a name (for example
         Plate) and click Add column. It appears in the list. Fill it in with
-        Edit or Edit all. These columns are only for reading on this page.
+        Edit or Edit all. These columns are only for reading on this page,
+        except Model, which guide pay uses (see below).
+      </li>
+      <li>
+        Model: Payroll uses this column to pay the vehicle extra to
+        driver-guides (for example Sprinter, Mini Van, SUV; the amounts are
+        under Human Resource › Payroll › Pay rates › Vehicle extras). Type the
+        model the same way every time, like Sprinter: while you type, the
+        models already used are listed under the box to pick from.
+      </li>
+      <li>
+        If a change would change guide pay on locked days, it is not saved:
+        the row turns red with the reason. For example, a vehicle number that
+        is on locked pay can&rsquo;t be changed or used for a new vehicle. Ask
+        an Admin to unlock those days first.
       </li>
       <li>
         Rename changes a column&rsquo;s name; what was filled in stays. Hide

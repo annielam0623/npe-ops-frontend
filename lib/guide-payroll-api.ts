@@ -9,6 +9,8 @@ import type {
   PayrollPriceInput,
   PayrollRates,
   PayrollRunInput,
+  PayrollVehicleRate,
+  PayrollVehicleRateInput,
 } from "@/types/guide-payroll";
 
 /**
@@ -63,6 +65,20 @@ export function deletePayrollExtraRate(
   id: number,
 ): Promise<{ changed: boolean; extra_rate: PayrollExtraRate }> {
   return apiFetch(`/api/payroll/extra-rates/${id}`, { method: "DELETE" });
+}
+
+/** G363：车型补贴加 / 改（edit 权限）。400 / 404 的 detail 原样标红。 */
+export function savePayrollVehicleRate(
+  body: PayrollVehicleRateInput,
+): Promise<{ changed: boolean; vehicle_rate: PayrollVehicleRate }> {
+  return apiFetch("/api/payroll/vehicle-rates", { method: "PUT", body });
+}
+
+/** G363：删一行车型补贴（后端停用，记在改动记录里）。 */
+export function deletePayrollVehicleRate(
+  id: number,
+): Promise<{ changed: boolean; vehicle_rate: PayrollVehicleRate }> {
+  return apiFetch(`/api/payroll/vehicle-rates/${id}`, { method: "DELETE" });
 }
 
 export function savePayrollRun(

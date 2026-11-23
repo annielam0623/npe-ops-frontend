@@ -124,6 +124,12 @@ type Shown = {
   extrasTotal: number;
   tips: string | null;
   tipsNum: number;
+  /**
+   * G363 车型补贴（Q2 B：单独一列，不算进 Fee）：后端给的 vehicle_extra_amount；页面上手填了 Fee ⇒ 0（手填的就是全部）。
+   */
+  vx: number;
+  /** 原来手填、页面上点了 Use the price：补贴要存了才知道（先写 Vehicle extra after Save）。 */
+  vxPending: boolean;
   total: number;
   chgFee: boolean;
   chgTips: boolean;
@@ -151,6 +157,16 @@ function shownOf(run: PayrollRun, d: RunDraft | undefined): Shown {
   const tips = d?.tips !== undefined ? d.tips : run.tips;
   const t = numOrNull(tips);
   const tipsNum = t !== null && Number.isFinite(t) ? t : 0;
+  // G363：只有司机导游、Bus tour、有价格、那天有车型的趟才可能有补贴（后端规则）。
+  const vxPossible =
+    run.role === "driver_guide" &&
+    run.shift !== "private_tour" &&
+    rate !== null &&
+    !!run.vehicle_model?.trim();
+  const vxPending =
+    !edited && run.fee_override !== null && d?.fee !== undefined && vxPossible;
+  const vxBase = Number(run.vehicle_extra_amount ?? 0);
+  const vx = edited || vxPending || !Number.isFinite(vxBase) ? 0 : vxBase;
   const chgFee =
     d?.fee !== undefined &&
     numOrNull(d.fee) !== numOrNull(run.fee_override) &&
@@ -169,7 +185,9 @@ function shownOf(run: PayrollRun, d: RunDraft | undefined): Shown {
     extrasTotal,
     tips,
     tipsNum,
-    total: fee + extrasTotal + tipsNum,
+    vx,
+    vxPending,
+    total: fee + vx + extrasTotal + tipsNum,
     chgFee,
     chgTips,
     chgExtras,
@@ -312,6 +330,55 @@ function FeeCell({
       {pill}
       {sub}
     </span>
+  );
+}
+
+/**
+ * G363 Q2 B（Annie 11-23「2 同意推荐，动手」）：Vehicle 列写「车号 · 车型」，补贴写在下面「+$50.00」
+ * （Total 方式「+$45.00 · total $320.00」）；个人价 + 补贴都有时多一行说明。
+ */
+function VehicleCell({ run, s }: { run: PayrollRun; s: Shown }) {
+  const van = run.van?.trim() ?? "";
+  const model = run.vehicle_model?.trim() ?? "";
+  const head = van && model ? `${van} · ${model}` : van || model;
+  const x = run.vehicle_extra;
+  return (
+    <>
+      {head ? (
+        <span className="whitespace-nowrap">{head}</span>
+      ) : (
+        <span className="text-[#888]">—</span>
+      )}
+      {s.vxPending ? (
+        <span
+          data-payroll-vx-pending
+          className="block text-[11px] whitespace-nowrap text-[#4b5563]"
+        >
+          Vehicle extra after Save
+        </span>
+      ) : s.vx > 0 ? (
+        <span
+          data-payroll-vx
+          className="block text-[11.5px] font-semibold whitespace-nowrap text-[#1e6b43]"
+        >
+          +{money(s.vx)}
+          {x?.mode === "total" ? (
+            <span className="font-normal text-[#4b5563]">
+              {" "}
+              · total {money(x.rate_amount)}
+            </span>
+          ) : null}
+        </span>
+      ) : null}
+      {run.personal_and_vehicle && s.vx > 0 ? (
+        <span
+          data-payroll-personal-vehicle
+          className="block max-w-[220px] text-[11px] leading-[1.4] text-[#4b5563]"
+        >
+          This run includes both a personal rate and a vehicle extra
+        </span>
+      ) : null}
+    </>
   );
 }
 
@@ -499,6 +566,11 @@ function RunRows({
               />
             </td>
             {needs ? null : (
+              <td className={cn(TD, s.chgFee && CHG)} data-payroll-vehicle>
+                <VehicleCell run={run} s={s} />
+              </td>
+            )}
+            {needs ? null : (
               <td className={cn(TD, s.chgExtras && CHG)}>
                 <ExtrasCell
                   run={run}
@@ -556,24 +628,40 @@ function RunRows({
 
 type PersonSum = {
   fee: number;
+  /** G363：车型补贴合计（人员表 Fees 后面的 Vehicle extras 列，跟 CSV 对得上）。 */
+  vx: number;
   extras: number;
   tips: number;
   total: number;
 };
 
 function sumRuns(runs: PayrollRun[], drafts: Drafts): PersonSum {
-  const out = { fee: 0, extras: 0, tips: 0, total: 0 };
+  const out = { fee: 0, vx: 0, extras: 0, tips: 0, total: 0 };
   for (const r of runs) {
     const s = shownOf(
       r,
       r.assignment_id !== null ? drafts[r.assignment_id] : undefined,
     );
     out.fee += s.fee;
+    out.vx += s.vx;
     out.extras += s.extrasTotal;
     out.tips += s.tipsNum;
     out.total += s.total;
   }
   return out;
+}
+
+const POSITION_LABEL: Record<string, string> = {
+  driver: "Driver",
+  guide: "Guide",
+  both: "Driver + Guide",
+};
+
+/** G363：人名后面的灰字 = 这个人在 HR 的 Position（每人一次；手打名字的没有）。 */
+function positionOf(p: PayrollPerson): string {
+  if (!p.in_hr) return "";
+  const pos = p.runs.find((r) => r.guide_position)?.guide_position ?? "";
+  return POSITION_LABEL[pos] ?? "";
 }
 
 /** 钉住第一列（手机上表格左右滑，题 4 甲）。 */
@@ -584,16 +672,19 @@ export const PAYROLL_HOW_TO = [
   "Each tour run pays one fee. A guide gets the Guide fee; a driver who also guides the run gets the Driver + Guide fee. Two tours on one day pay two fees. Relay runs and bus tours without a guide are not on this page.",
   "Days are counted up to today. A day marked Not completed has not been marked Completed on Dispatch yet; it is still counted, so check it before paying.",
   "Which price a run gets: the newest price for that guide that covers the day; if there is none, the newest price for everyone that covers it. A price with no end date keeps going, so a price for November 1–30 wins only in November. The line under the fee says when a date-range price or a price for that guide was used.",
-  "Click a name to see that person's runs. Click a run’s fee to type a different fee for that run only, then click Done; it shows edited, with the price under it. Use the price puts the price back. Extras and tips are still added on top.",
+  "Vehicle extra: a driver who also guides a run gets an extra when that day's vehicle is a model listed under Pay rates › Vehicle extras for that tour. Add: the amount is paid on top of the Driver + Guide fee. Total: the run pays that total; if that day's Driver + Guide price for everyone is higher, the run gets the price. There is no vehicle extra on Private Tour runs, runs with no price, or runs whose fee was typed by hand.",
+  "The Vehicle column shows the vehicle number and its model on that day, with the vehicle extra under it; Vehicle extras in the list of people adds them up. When a run has both a price or extra amount for that guide and a vehicle extra, both are paid, and the run says This run includes both a personal rate and a vehicle extra.",
+  "The grey word after a name is that person's Position in Human Resource.",
+  "Click a name to see that person's runs. Click a run’s fee to type a different fee for that run only, then click Done; it shows edited, with the price under it. Use the price puts the price back. A typed fee is the whole fee: it replaces the price and the vehicle extra. Extras and tips are still added on top.",
   "Extras are paid per ticked run. ANT relay can be ticked only on tours whose price has ANT relay; other extras, like Long day, can be ticked on any run. On Private Tour runs, type the tips; they are paid to that run's guide.",
   "Changes stay on the page until you click Save payroll changes. If you leave the page or change the period first, you are asked whether to save.",
   "The Status column is blank for runs that are counted in the total. Runs on locked days show Paid · locked. No rate, No guide and Not completed need a look.",
   "Needs review lists runs that are left out of the period total: No rate (no price covers that run — add a price under Pay rates, or type a fee for the run) and No guide (nobody is picked as guide on Dispatch).",
   "A guide whose name was typed by hand on Dispatch is paid under that name and shows Not in HR. Add the person in Human Resource so their details are on file, and pick them from the list on Dispatch next time. The same person typed with two spellings shows as two people.",
-  "Pay rates: click + Add price to add a price for a tour from a start date, with or without an end date, for everyone or only for some people: pick Only these people, click Choose people…, tick them and click Done; type in Search name to find someone. For a tour name typed on Dispatch, pick Type a tour name… and type it the same way. Click + Add extra for a new extra or a new amount for an existing one; like prices, an extra amount can be for everyone or only for some people. Click Edit on a price or an extra to change its dates, amount or who it applies to. Nothing is kept until you click Save rates.",
-  "Locked dates: once pay for some days is final, pick the dates, add a note if you like, and click Lock dates. Fees, extras and tips on locked days can’t be changed, and prices or extra amounts that cover them can’t be changed or removed — add a new price that starts after the locked days instead. Click Edit on a lock to change its dates or note, or Unlock to change pay on those days again. Locking, editing a lock and unlocking are saved right away. When Auto-lock is on, the 1st–15th lock by themselves on the 20th at 11:59 PM and the 16th–end of month on the 5th of the next month at 11:59 PM (Los Angeles time); those locks show Auto under Locked by and can be unlocked like any other.",
-  "Change history lists every change to prices, extras, fees, tips and locks: when, who, what, before and after.",
-  "Export CSV downloads the period: each person's runs with a total line, then the runs that need review. It shows whether a fee was changed by hand and which extras were ticked.",
+  "Pay rates: click + Add price to add a price for a tour from a start date, with or without an end date, for everyone or only for some people: pick Only these people, click Choose people…, tick them and click Done; type in Search name to find someone. For a tour name typed on Dispatch, pick Type a tour name… and type it the same way. Click + Add extra for a new extra or a new amount for an existing one; like prices, an extra amount can be for everyone or only for some people. Click Edit on a price or an extra to change its dates, amount or who it applies to. Click + Add vehicle extra to add an amount for a vehicle model on a tour: pick the model and the tour, choose Add to the driver-guide fee or Total for the run, type the amount and the dates, then click Add. Edit changes how it is paid, the amount and the dates; Remove takes it off. Nothing is kept until you click Save rates.",
+  "Locked dates: once pay for some days is final, pick the dates, add a note if you like, and click Lock dates. Fees, extras and tips on locked days can’t be changed, and prices, extra amounts or vehicle extras that cover them can’t be changed or removed — add a new one that starts after the locked days instead. Click Edit on a lock to change its dates or note, or Unlock to change pay on those days again. Locking, editing a lock and unlocking are saved right away. When Auto-lock is on, the 1st–15th lock by themselves on the 20th at 11:59 PM and the 16th–end of month on the 5th of the next month at 11:59 PM (Los Angeles time); those locks show Auto under Locked by and can be unlocked like any other.",
+  "Change history lists every change to prices, extras, vehicle extras, fees, tips and locks: when, who, what, before and after.",
+  "Export CSV downloads the period: each person's runs with a total line, then the runs that need review. It shows whether a fee was changed by hand and which extras were ticked. The last five columns are Position, Vehicle, Model, Vehicle extra and Note.",
   "Only Admin accounts given Payroll on the Team page can open this page. Payroll: View can look, export and see the change history; Payroll: Edit can also change prices, extras, fees and tips, and lock or unlock dates.",
 ];
 
@@ -783,11 +874,12 @@ export function Payroll({
   const tot = sums.reduce(
     (a, s) => ({
       fee: a.fee + s.fee,
+      vx: a.vx + s.vx,
       extras: a.extras + s.extras,
       tips: a.tips + s.tips,
       total: a.total + s.total,
     }),
-    { fee: 0, extras: 0, tips: 0, total: 0 },
+    { fee: 0, vx: 0, extras: 0, tips: 0, total: 0 },
   );
   const keyOf = (p: PayrollPerson) =>
     p.in_hr ? `hr:${p.hr_id}` : `typed:${p.name.trim().toLowerCase()}`;
@@ -979,12 +1071,13 @@ export function Payroll({
               </span>
             </div>
             <div className="overflow-x-auto px-4 pt-3 pb-3">
-              <table className={cn(TABLE, "max-sm:min-w-[620px]")}>
+              <table className={cn(TABLE, "max-sm:min-w-[720px]")}>
                 <thead>
                   <tr>
                     <th className={cn(TH, STICKY)}>Person</th>
                     <th className={cn(TH, NUM)}>Runs</th>
                     <th className={cn(TH, NUM)}>Fees</th>
+                    <th className={cn(TH, NUM)}>Vehicle extras</th>
                     <th className={cn(TH, NUM)}>Extras</th>
                     <th className={cn(TH, NUM)}>Tips</th>
                     <th className={cn(TH, NUM)}>Total</th>
@@ -1028,12 +1121,21 @@ export function Payroll({
                               {o ? "▼" : "▶"}
                             </span>
                             {p.name}
-                            {p.in_hr ? null : (
+                            {p.in_hr ? (
+                              positionOf(p) ? (
+                                <span className={NIH} data-payroll-position>
+                                  {positionOf(p)}
+                                </span>
+                              ) : null
+                            ) : (
                               <span className={NIH}>Not in HR</span>
                             )}
                           </td>
                           <td className={cn(TD, NUM)}>{p.runs.length}</td>
                           <td className={cn(TD, NUM)}>{money(s.fee)}</td>
+                          <td className={cn(TD, NUM)} data-payroll-person-vx>
+                            {dash(s.vx)}
+                          </td>
                           <td className={cn(TD, NUM)}>{dash(s.extras)}</td>
                           <td className={cn(TD, NUM)}>{dash(s.tips)}</td>
                           <td
@@ -1046,14 +1148,14 @@ export function Payroll({
                         {o ? (
                           <tr>
                             <td
-                              colSpan={6}
+                              colSpan={7}
                               className="border border-[#e1e5ea] bg-[#f6f7f9] py-2 pr-3 pl-7 max-sm:pl-3"
                             >
                               <div className="overflow-x-auto">
                                 <table
                                   className={cn(
                                     TABLE,
-                                    "bg-white max-sm:min-w-[640px]",
+                                    "bg-white max-sm:min-w-[760px]",
                                   )}
                                 >
                                   <thead>
@@ -1062,6 +1164,7 @@ export function Payroll({
                                       <th className={TH}>Tour</th>
                                       <th className={TH}>Role</th>
                                       <th className={cn(TH, NUM)}>Fee</th>
+                                      <th className={TH}>Vehicle</th>
                                       <th className={TH}>Extras</th>
                                       <th className={cn(TH, NUM)}>Tips</th>
                                       <th className={cn(TH, NUM)}>Total</th>
@@ -1072,7 +1175,7 @@ export function Payroll({
                                     {p.in_hr ? null : (
                                       <tr>
                                         <td
-                                          colSpan={8}
+                                          colSpan={9}
                                           className={cn(
                                             TD,
                                             "bg-[#f8fafc] text-[12px] text-[#4b5563]",
@@ -1108,6 +1211,15 @@ export function Payroll({
                                         )}
                                       >
                                         {money(s.fee)}
+                                      </td>
+                                      <td
+                                        className={cn(
+                                          TD,
+                                          NUM,
+                                          "border-t-[1.5px] border-t-[#9aa3af]",
+                                        )}
+                                      >
+                                        {dash(s.vx)}
                                       </td>
                                       <td
                                         className={cn(
@@ -1158,6 +1270,7 @@ export function Payroll({
                     </td>
                     <td className={cn(TD, NUM)}>{nRuns}</td>
                     <td className={cn(TD, NUM)}>{money(tot.fee)}</td>
+                    <td className={cn(TD, NUM)}>{money(tot.vx)}</td>
                     <td className={cn(TD, NUM)}>{money(tot.extras)}</td>
                     <td className={cn(TD, NUM)}>{money(tot.tips)}</td>
                     <td className={cn(TD, NUM)}>{money(tot.total)}</td>
