@@ -38,6 +38,13 @@
   - 题：设计 Q1–Q12，外加 de 新题 N1（员工改班请求放哪）、N2（4 周 28 列，推荐左右滚、停在本周）、N3（只能批假的人看到什么）。
   - Excel 由后端 52 做：C:\Users\annzh\Downloads\Annie_待答题_2026-11-24_G382_HR排班请假.xlsx。等 52 补上 preview 链接和 N1–N3 后通知 Annie 填。
   - 未核两处：Overview 标签的统计怎么合进来；已发布周 Fill gap 之后怎么通知。
+  - 52 已把表改好（15 题都带 preview 链接 + N1–N3，后端 8aa33ce0），由 03 通知 Annie。
+- Annie 问「为什么我的notice里什么都没有」（Dashboard 截图 No new notices today.）⇒ 查代码答：面板只放今天（LA）没读的通知 + 没读的同事消息 + 24 小时内的交接（notice-block.tsx:140-146）；以前的、已读的在 Check history；G380 Notice 还没上、开关默认关。问她是不是在等哪一条，要的话请后端查库。
+- G380 前端交付（0b）task/g380-unsent-orders **21cd8ab2**（未合）。
+  - 检查：man 617（+28）、ns 72（+14，顺手修 5 条旧挂的 Also allowed）、mf 375、nav 40、tsc / eslint / build；只测 mock。
+  - 截图在 C:\Users\annzh\Downloads\g380-unsent-orders\。
+  - 跟 preview 不同：> 3 单写「⚠ New orders not sent [5] Open the red pills to find them.」；红胶囊红边淡红底；Notice 链接文字「Open in Main manifest →」；Settings 卡加「Send to team」下拉（只给 SA，先选后存）。
+  - 等：1e PASS + Annie 看 team 下拉。📌 0b 提一题：> 3 单时，新单在别的日期或别的标签就看不到红胶囊 ⇒ A 不变 / B 标签加红点 / C 红数字后写日期可点，推荐 B + C，已问 Annie。
 
 ## 2026-11-23 晚 收工交接：前端主窗口 `npe-ops-frontend-96`[ef47ac]（家里；Annie「好了，你应该没有什么要我确认了了，我睡觉去了」）
 - **今晚上 main**：半屏适配 37e529bb；Day timeline 刻度 ca50d015；G320 Sample pickup bb2eaddb + 灰字 e13483fe（ba PASS）；G373 Quick Stats 72daaa36（Annie「不用改，很好」，等她线上验收 + 6d 对数）；G374 门票显示名 + Add 键 29f19b29（75 PASS）；G369 7b WhatsApp 号码 ea1d15f2（92 PASS）。
