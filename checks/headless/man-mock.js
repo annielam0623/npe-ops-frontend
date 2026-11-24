@@ -393,6 +393,12 @@ function adminFeePage(url, date) {
   return [200, { date, tab: "admin_fee", is_admin: ctl.role === "admin", tabs, pills, pill, catalog: ADMIN_FEE_CATALOG, groups: GROUPS, default_fields: ADMIN_FEE_DEFAULTS, fields, denied: [], unknown: [], sections: [], rows }];
 }
 
+/** 明天、后天、大后天（洛杉矶日期）。 */
+function unsentDays() {
+  const [y, m, d] = today.split("-").map(Number);
+  return [1, 2, 3].map((n) => new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10));
+}
+
 function page(url) {
   const date = url.searchParams.get("date") || today;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return [400, { detail: "Bad date" }];
@@ -402,7 +408,8 @@ function page(url) {
   const isAdmin = ctl.role === "admin";
   // 后端 639b41b（2026-10-11）起 Money 组所有 staff 都能看；moneyAdminOnly 模拟旧行为，用来测「存着但没权限」的提示。
   const moneyOpen = isAdmin || !ctl.moneyAdminOnly;
-  const dayRows = date === today ? allRows() : [];
+  // G380 截图：ctl.unsentFuture 开着时明天 / 后天 / 大后天也有同样的行（Q1 只算这三天）。
+  const dayRows = date === today || (ctl.unsentFuture && unsentDays().includes(date)) ? allRows() : [];
   const tabRows = dayRows.filter((r) => r.tab === tab);
   const pillKeys = [...new Set(tabRows.map((r) => r.pill))].sort((a, b) =>
     a.endsWith(":none") ? 1 : b.endsWith(":none") ? -1 : PILL_LABEL[a].localeCompare(PILL_LABEL[b]),
@@ -628,13 +635,15 @@ http
     if (p === "/api/manifests/unsent") {
       if (ctl.partner || ctl.unsent403) return send(res, 403, { detail: "You do not have permission to do this." });
       const POOL = [["CHD1003", "bus", "g:7"], ["CHD2001", "tickets", "t:antelope"], ["CHD1001", "bus", "g:3"], ["CHD1004", "bus", "g:none"], ["CHD2002", "tickets", "t:none"]];
+      // ctl.unsentFuture：团期轮流放在明天 / 后天 / 大后天（同生产 Q1）；不开时都放今天（检查套用）。
       const orders = POOL.slice(0, Math.min(ctl.unsent || 0, POOL.length)).map(([o, tab, pill], i) => {
         const r = ROWS.find((x) => x.order_number === o);
-        return { order_number: o, tour_date: today, tab, pill, pill_label: PILL_LABEL[pill], product: r.v.product, pax: r.v.pax,
-          booked_at: `2026-11-24T1${i}:05:00+00:00`, row_keys: [rowKey(r, today)] };
+        const d = ctl.unsentFuture ? unsentDays()[i % 3] : today;
+        return { order_number: o, tour_date: d, tab, pill, pill_label: PILL_LABEL[pill], product: r.v.product, pax: r.v.pax,
+          booked_at: `2026-11-24T1${i}:05:00+00:00`, row_keys: [rowKey(r, d)] };
       });
       const pills = [...new Map(orders.map((o) => [`${o.tab}|${o.pill}`, { date: o.tour_date, tab: o.tab, pill: o.pill }])).values()];
-      return send(res, 200, { dates: [today], count: orders.length, orders, pills });
+      return send(res, 200, { dates: ctl.unsentFuture ? unsentDays() : [today], count: orders.length, orders, pills });
     }
     if (p === "/api/manifests") {
       if (ctl.fail) return send(res, 500, { detail: "Internal Server Error" });

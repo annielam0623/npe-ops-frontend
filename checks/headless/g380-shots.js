@@ -104,35 +104,37 @@ async function main() {
 
   let mock = startMock("man-mock.js");
   await waitMock();
-  const manUrl = `${APP}/manifests?date=${today}&tab=bus&pill=g:3`;
+  // 团期照 Q1 放在明天 / 后天 / 大后天（mock ctl.unsentFuture），截图停在明天那一页。
+  const [y, m, d] = today.split("-").map(Number);
+  const day = (n) => new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+  const manUrl = `${APP}/manifests?date=${day(1)}&tab=bus&pill=g:3`;
   const ready = "document.querySelector('thead th')";
   const alertReady = "[...document.querySelectorAll('[data-unsent-alert]')].some(e => e.offsetParent)";
+  const ticked = "document.querySelector('input[aria-label=\"Select CHD1003\"]')?.checked";
   for (const [n, label] of [[0, "0"], [1, "1"], [3, "3"], [5, "5-over3"]]) {
-    await ctl({ unsent: n });
+    await ctl({ unsent: n, unsentFuture: true });
     await open(manUrl, n ? alertReady : ready);
     await shot(`desktop-${label}-orders.png`);
     await open(manUrl, n ? alertReady : ready, { width: 390, height: 844, mobile: true });
     await shot(`phone-${label}-orders.png`, { width: 390, height: 844, mobile: true });
   }
-  // 1 单：点了以后（跳到 Grand Canyon West、勾上、标黄）。
-  await ctl({ unsent: 1 });
+  // 1 单：点了以后（跳到明天的 Grand Canyon West、勾上、标黄）。
+  await ctl({ unsent: 1, unsentFuture: true });
   await open(manUrl, alertReady);
   await evaluate("[...document.querySelectorAll('[data-unsent-alert]')].find(e => e.offsetParent).querySelector('[data-unsent-order]').click();");
-  await waitFor("document.querySelector('input[aria-label=\"Select CHD1003\"]')?.checked");
+  await waitFor(ticked);
   await sleep(800);
   await shot("desktop-1-after-click.png");
-  // Tickets 页的红胶囊。
-  await ctl({ unsent: 3 });
-  await open(`${APP}/manifests?date=${today}&tab=tickets&pill=t:none`, alertReady);
-  await shot("desktop-3-tickets-red-pill.png");
+  // Tickets 页的红胶囊（后天：CHD2001 Antelope Canyon、CHD2002 No tour type yet）。
+  await ctl({ unsent: 5, unsentFuture: true });
+  await open(`${APP}/manifests?date=${day(2)}&tab=tickets&pill=t:none`, alertReady);
+  await shot("desktop-5-tickets-red-pill.png");
   // 这一天没有单（没有勾选条）：红框单独一行。
-  await ctl({ unsent: 1 });
-  const [y, m, d] = today.split("-").map(Number);
-  const tomorrow = new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
-  await open(`${APP}/manifests?date=${tomorrow}&tab=bus`, alertReady);
+  await ctl({ unsent: 1, unsentFuture: true });
+  await open(`${APP}/manifests?date=${day(5)}&tab=bus`, alertReady);
   await shot("desktop-1-no-rows-day.png");
   // Notice 链接 ?order=。
-  await open(`${APP}/manifests?date=${today}&order=CHD1003&tab=bus&pill=g%3A7`, "document.querySelector('input[aria-label=\"Select CHD1003\"]')?.checked");
+  await open(`${APP}/manifests?date=${day(1)}&order=CHD1003&tab=bus&pill=g%3A7`, ticked);
   await shot("desktop-notice-link-order.png");
   mock.kill();
   await sleep(800);
