@@ -16,7 +16,15 @@
   - 请 Annie 开 2 个前端窗口（空闲内存 39 GB 够）。
 - 后端 03：G329 前端没活（后端脚本补发）。
 - G382：后端 52（只出设计）来要前端现状 4 题，已只读核 301f26f2 后全文回 52（文件:行）。要点：周的分界是周日到周六，周六→周日一定跨周；**手动排班完全不查 min_rest**（rule-checks.ts:42-113 只查人数和周工时，连提示都没有）；Auto-fill 读上一周不管发没发布，但只往前看不往后看（schedule-engine.ts:822），固定班 / 保留的班不过规则（:720-741）⇒ 周六 Close → 周日 8 AM 这几条路都可能产出；Schedule example 全写死（4 周竖排、要滚）；HR 页看 settings.hr.view；pto / sick / personal 在排班上都显示成 Leave；gap 有（只给 canEdit 看，没有一键填）；前端没有「调整假」。
-- G382 设计已出（后端 52，分支 task/g382-hr-schedule c32e6803，docs/g382-hr-schedule/design.md；本机 C:\Code\npe-confirmation-service-g382-hr-schedule\docs\g382-hr-schedule\design.md；第 1.4 节是前端现状，第 2.1 节是总览页布局，第 3 节是搬家表）。12 题在后端 03 手上。总览页 preview 由前端出 ⇒ 请 Annie 开第 3 个前端窗口；preview 出来前，03 先不发那 12 题。
+- G382 设计已出（后端 52，分支 task/g382-hr-schedule c32e6803，docs/g382-hr-schedule/design.md；本机 C:\Code\npe-confirmation-service-g382-hr-schedule\docs\g382-hr-schedule\design.md；第 1.4 节是前端现状，第 2.1 节是总览页布局，第 3 节是搬家表）。12 题在后端 03 手上。总览页 preview 由前端出 ⇒ 请 Annie 开第 3 个前端窗口；preview 出来前，03 先不发那 12 题。preview 链接要同时发后端 52（由它填表）和 03。
+- G380 后端上 main **03e9a574**（1e；合同 docs/interfaces/manifests-unsent-2026-11-24.md）：
+  - GET /api/manifests/unsent：要 manifests.send，partner 403。回 dates[3]、count、orders[{order_number, tour_date, tab, pill, pill_label, product, pax, booked_at, row_keys}]、pills[{date, tab, pill}]（要变红的胶囊）。判据全在后端，前端不算。
+  - 什么时候调：打开页面、换日期 / 团、发完一批，各调一次。
+  - 显示：count=0 不出；1–3 单逐单「单号 · 团期 · 团」；> 3 只出红数字。点一单 ⇒ 跳到那天那个 tab / pill，滚到 row_keys 那几行并勾上。
+  - Notice：kind unsent_order，标签建议「New order · not sent」，href 同点红框那一单；单发出 / 取消 / 出了三天窗口自动消。
+  - Settings › Notifications：开关 unsent_order_notice（group Main manifest，默认关）；加一个 team 下拉（SA），GET / PUT /api/settings/unsent-order-notice {team_id|null}，没选 team 时 Notice 发给 SA。
+  - 「整批」= 一次发送 ≥ 2 张单，单发不算。
+  - ⇒ 等新窗口派工。
 
 ## 2026-11-23 晚 收工交接：前端主窗口 `npe-ops-frontend-96`[ef47ac]（家里；Annie「好了，你应该没有什么要我确认了了，我睡觉去了」）
 - **今晚上 main**：半屏适配 37e529bb；Day timeline 刻度 ca50d015；G320 Sample pickup bb2eaddb + 灰字 e13483fe（ba PASS）；G373 Quick Stats 72daaa36（Annie「不用改，很好」，等她线上验收 + 6d 对数）；G374 门票显示名 + Add 键 29f19b29（75 PASS）；G369 7b WhatsApp 号码 ea1d15f2（92 PASS）。
