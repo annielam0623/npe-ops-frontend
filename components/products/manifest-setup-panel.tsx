@@ -648,11 +648,23 @@ function GroupEditor({
     },
   });
 
-  // G374 票名改名表整张保存（Annie 2026-11-23「同意，动手」，后端窗口 47 合同）：整张表按显示顺序 PUT，
-  // 两格都空的行不送（后端也跳过）；全清空 = {rows: []}。检查都在后端，400 的 detail 原样标红。
-  const ticketRows = tickets
-    .map((t) => ({ source: t.source.trim(), label: t.label.trim() }))
-    .filter((t) => t.source || t.label);
+  // G374 票名改名表整张保存（Annie 2026-11-23「同意，动手」，后端窗口 47 合同）：整张表按显示顺序 PUT；
+  // 全清空 = {rows: []}。检查都在后端，400 的 detail 原样标红。
+  // 中间两格都空的行照送（后端跳过它，但「row N」按送来的行数，这样和页面上的第几行对得上）；
+  // 末尾空着的行（刚加还没填）不送，也不算改动。
+  const ticketAll = tickets.map((t) => ({
+    source: t.source.trim(),
+    label: t.label.trim(),
+  }));
+  let ticketEnd = ticketAll.length;
+  while (
+    ticketEnd > 0 &&
+    !ticketAll[ticketEnd - 1].source &&
+    !ticketAll[ticketEnd - 1].label
+  )
+    ticketEnd--;
+  const ticketSend = ticketAll.slice(0, ticketEnd);
+  const ticketRows = ticketSend.filter((t) => t.source || t.label);
   const ticketsDirty =
     ticketMode &&
     JSON.stringify(ticketRows.map((t) => [t.source, t.label])) !==
@@ -667,7 +679,7 @@ function GroupEditor({
     auto: true,
     doSave: async () => {
       try {
-        const d = await saveManifestTicketLabels(group.id, ticketRows);
+        const d = await saveManifestTicketLabels(group.id, ticketSend);
         const next = { ...groupRef.current, ticket_labels: d.rows };
         groupRef.current = next;
         onGroupChange(next);

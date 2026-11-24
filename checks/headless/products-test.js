@@ -1415,18 +1415,35 @@ async function ticketChecks() {
   await waitFor(`!!$q('${T} [data-save-ok]')`);
   check("G374 全部 Remove 再 Save：PUT {\"rows\":[]}；空表只有表头和 + Add ticket name", JSON.stringify(put?.body) === '{"rows":[]}' && (await rowsNow()).length === 0 && (await evaluate(`return !!$q('${T} [data-ticket-labels] thead') && !!$q('${T} [data-ticket-add]');`)), JSON.stringify(put?.body));
 
-  // 加了两行、只填一行：两格都空的那行不送
-  await evaluate(`$q('${T} [data-ticket-add]').click();`);
-  await sleep(120);
-  await evaluate(`$q('${T} [data-ticket-add]').click();`);
-  await sleep(120);
+  // 加了三行、只填第 2 行：中间空的第 1 行照送（后端跳过，但行号按送来的数，和页面对得上），末尾空的第 3 行不送
+  for (let i = 0; i < 3; i++) {
+    await evaluate(`$q('${T} [data-ticket-add]').click();`);
+    await sleep(120);
+  }
   await evaluate(`$setValue(${src(2)}, 'ZZ Adult B'); $setValue(${lab(2)}, 'ZZ B');`);
   await sleep(150);
   before = (await mockLog()).length;
   await evaluate(`${saveBtn}.click();`);
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1/ticket-labels");
   await waitFor(`!!$q('${T} [data-save-ok]')`);
-  check("G374 加了两行只填第 2 行：两格都空的那行不送；存好后空行没了", JSON.stringify(put?.body) === JSON.stringify({ rows: [{ source: "ZZ Adult B", label: "ZZ B" }] }) && JSON.stringify(await rowsNow()) === JSON.stringify(["ZZ Adult B => ZZ B"]), JSON.stringify(put?.body) + " " + JSON.stringify(await rowsNow()));
+  check("G374 加了三行只填第 2 行：中间空行照送、末尾空行不送；存好后空行没了", JSON.stringify(put?.body) === JSON.stringify({ rows: [{ source: "", label: "" }, { source: "ZZ Adult B", label: "ZZ B" }] }) && JSON.stringify(await rowsNow()) === JSON.stringify(["ZZ Adult B => ZZ B"]), JSON.stringify(put?.body) + " " + JSON.stringify(await rowsNow()));
+
+  // 400 的「row N」= 页面上的第 N 行：第 2 行空着、第 3 行只填名字、第 4 行刚加空着
+  for (let i = 0; i < 3; i++) {
+    await evaluate(`$q('${T} [data-ticket-add]').click();`);
+    await sleep(120);
+  }
+  await evaluate(`$setValue(${lab(3)}, 'ZZ C');`);
+  await sleep(150);
+  before = (await mockLog()).length;
+  await evaluate(`${saveBtn}.click();`);
+  put = await waitPut(before, "/api/settings/manifest-setup/groups/1/ticket-labels");
+  await waitFor(`($q('${T} [data-save-error]')?.textContent ?? '').includes('row 3')`, 5000);
+  check("G374 中间有空行时 400 说「Ticket name row 3」= 页面第 3 行（只填了名字的那行）；末尾空行没送", (await err()).includes("Ticket name row 3: type the original text, or clear the name to show too.") && (await evaluate(`return ${lab(3)}.value === 'ZZ C' && !${src(3)}.value;`)) && JSON.stringify(put?.body) === JSON.stringify({ rows: [{ source: "ZZ Adult B", label: "ZZ B" }, { source: "", label: "" }, { source: "", label: "ZZ C" }] }), (await err()) + " " + JSON.stringify(put?.body));
+  // 清掉第 3 行：只剩空行，不算改动（Save 灰着），后面换页不会被拦
+  await evaluate(`$setValue(${lab(3)}, '');`);
+  await sleep(150);
+  check("G374 只剩加了没填的空行：不算改动，Save 灰着", await evaluate(`return ${saveBtn}.disabled;`));
 
   // 手机：表格在框里左右滑，整页不晃
   await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
