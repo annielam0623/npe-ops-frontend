@@ -8,7 +8,7 @@
 
 ## 2026-11-23 晚 收工交接：前端主窗口 `npe-ops-frontend-96`[ef47ac]（家里；Annie「好了，你应该没有什么要我确认了了，我睡觉去了」）
 - **今晚上 main**：半屏适配 37e529bb；Day timeline 刻度 ca50d015；G320 Sample pickup bb2eaddb + 灰字 e13483fe（ba PASS）；G373 Quick Stats 72daaa36（Annie「不用改，很好」，等她线上验收 + 6d 对数）；G374 门票显示名 + Add 键 29f19b29（75 PASS）；G369 7b WhatsApp 号码 ea1d15f2（92 PASS）。
-- **还在路上**：G374 行号小修（a7 [b8f977]，task/g374-row-numbers，空行照送让 400 的 row N 对上屏幕；样子不变，检查过直接合）。下个主窗口先 git log 看是否已上 main，上了把 SHA 发后端 75 记一下；没上就看分支。
+- ✅ G374 行号小修上 main **7b4ecde7**（a7；中间空行照送、末尾空行不送，400 的 row N = 屏幕行；products 277、nav 40；样子不变）。已发 75 核 PASS，回复没收到的话下个主窗口问 75 一句。
 - **明天公司第一件**：G380 未发新单提醒（Annie 8 题已答，见下面当天记录；等后端合同；Annie 要建 / 指定 Reservations team）。
 - **等后端 / Annie**：146 照片上传（task/farm-out-photo-upload 7ddcb143 已合最新 main，等 Annie 对后端方案动手 + 28 上 main）；G382 HR 请假改版（后端方案后出 preview）；G381 TripGuru↔Rezdy 产品对照（后端 4 题）；导游页 D（后端）；G369 How to use 补电话 AI 一句（92 建议，可选，改前给 Annie 原文）；★ Notes 撤旧、David H 账号、G318 第二部分、150 题 8 手机新设计照旧。
 - 工作窗口：a2 [3875d4]、61 [180a4b] 已收工（服务 / Chrome 关）；a7 在做行号小修。
