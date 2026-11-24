@@ -1720,7 +1720,7 @@ function GroupEditor({
           </li>
           {group.ticket_labels !== undefined ? (
             // G374（Annie 2026-11-23「同意，动手」）：第一句照后端窗口 47 建议的原文。
-            <li data-howto-tickets>
+            <li data-howto-ticket-labels>
               Ticket names on the Bus Manifest: type the ticket exactly as the
               Bus Manifest shows it today in Original text, and what you want
               instead in Name to show. Spaces and capitals do not matter.

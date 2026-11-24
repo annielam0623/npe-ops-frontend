@@ -1346,14 +1346,14 @@ async function ticketChecks() {
   // 旧后端（没带 ticket_labels）：不出这一块
   await ctl({ tickets: false });
   await openSetup();
-  check("G374 旧后端没带 ticket_labels：不出票名表、How to use 没有那句", await evaluate(`return !$q('${T}') && !document.querySelector('[data-howto-tickets]');`));
+  check("G374 旧后端没带 ticket_labels：不出票名表、How to use 没有那句", await evaluate(`return !$q('${T}') && !document.querySelector('[data-howto-ticket-labels]');`));
 
   await ctl({ tickets: true, ticketFail500: false });
   await openSetup();
   await waitFor(`$q('${T}')`, 15000);
   check("G374 在 Sections 下面、Extras 后面，当子项（↳ Ticket names on the Bus Manifest），不另给编号", await evaluate("const f = [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent); const i = f.indexOf('↳:Extras'); return i >= 0 && f[i + 1] === '↳:Ticket names on the Bus Manifest';"), await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|');"));
   check("G374 表头 Original text | Name to show；按后端顺序 3 行 + 最后一行空的（占位示例）", JSON.stringify(await rowsNow()) === JSON.stringify(["Adult +skywalk +Meal Voucher => Premium", "Adult +skywalk +Grab and Go lunch => Sky + GnG", "Adult Premium => Premium", " => "]) && (await evaluate(`return [...document.querySelectorAll('[data-ticket-labels] th')].map(t => t.textContent.trim()).slice(0, 2).join('|') === 'Original text|Name to show' && ${src(4)}.placeholder === 'Adult +skywalk +Meal Voucher' && ${lab(4)}.placeholder === 'Premium';`)), JSON.stringify(await rowsNow()));
-  check("G374 灰字说明第一句照合同原文；How to use — Bus Manifest setup 加了那条", await evaluate(`return $q('${T} p').textContent.startsWith('Type the ticket exactly as the Bus Manifest shows it today in Original text, and what you want instead in Name to show. Spaces and capitals do not matter. Tickets not listed show as they are. Counts at the bottom do not change.') && document.querySelector('[data-howto-tickets]').textContent.replace(/\\s+/g, ' ').includes('Ticket names on the Bus Manifest: type the ticket exactly as the Bus Manifest shows it today in Original text');`));
+  check("G374 灰字说明第一句照合同原文；How to use — Bus Manifest setup 加了那条", await evaluate(`return $q('${T} p').textContent.startsWith('Type the ticket exactly as the Bus Manifest shows it today in Original text, and what you want instead in Name to show. Spaces and capitals do not matter. Tickets not listed show as they are. Counts at the bottom do not change.') && document.querySelector('[data-howto-ticket-labels]').textContent.replace(/\\s+/g, ' ').includes('Ticket names on the Bus Manifest: type the ticket exactly as the Bus Manifest shows it today in Original text');`));
   check("G374 没改：Save 灰着；第 1 行 ↑ 灰、最后一行有字的 ↓ 灰；空行没有 ↑↓ / Remove", await evaluate(`return ${saveBtn}.disabled && $q('[data-ticket-row="0"] [data-ticket-up]').disabled && $q('[data-ticket-row="2"] [data-ticket-down]').disabled && !$q('[data-ticket-row="new"] button');`));
 
   let before = (await mockLog()).length;
