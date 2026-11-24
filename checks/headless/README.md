@@ -58,6 +58,7 @@ node run-all.js --keep-dev   # 跑完不关 next dev
 | products | /settings/products |
 | perm | 全部按照勾选（置顶 10c）：9 个 Settings 页整页按勾（开关开 / 关、没勾 / 勾了、admin 没勾、Super Admin）；另有单元检查 by-tick-unit.mjs |
 | qr | /settings/quick-replies（G98 司机快捷回复：增 / 改 / 开关 / ↑↓ 排序 / 页内确认删除 / 前端先挡 / 400 原话 / 403 / Action Log） |
+| qs | /settings/quick-stats（G373 Quick Stats：空 / 查询中 / 有结果 / 超 5,000 行 / 被拒 / 出错 / 400 / 404 / 503、存卡片、卡片 Run / 改名 / 删前确认、History 所有人带 By、Excel 地址和文件名、admin / staff 403 无入口、401、手机） |
 | ptt | /settings/products 的 Tour type 列（单个 / 批量 / Action Log） |
 | sales | /sales-report |
 | sheet、sheetcmp | /dispatch/work-sheet、/dispatch/guide-sheet（sheetcmp 对比旧页面版式） |

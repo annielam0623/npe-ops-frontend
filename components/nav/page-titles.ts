@@ -46,6 +46,8 @@ const PAGE_TITLES: readonly [prefix: string, title: string][] = [
   ["/settings/auto-send", "Auto Send"],
   // 145 电话 AI 调用记录（Annie 2026-11-15）。
   ["/settings/phone-ai-calls", "Phone AI Calls"],
+  // G373 Quick Stats（Annie 2026-11-23）。
+  ["/settings/quick-stats", "Quick Stats"],
   // 自动通知统一开关页（Annie 2026-10-24）。
   ["/settings/notifications", "Notifications"],
   // Team 权限 v2（Annie 2026-10-25）。
