@@ -29,6 +29,10 @@
   - **0b [b1ecd6]**：G380 前端 task/g380-unsent-orders，照合同写；交 1e 核对，PASS + Annie 看过 team 下拉截图才合 main。
   - **c1 [15df65]**：G381 TripGuru twin preview，先找后端 33 [3dc643] 要设计和 4 题，不写功能代码。
   - **de [5665c9]**：G382 总览页 preview，照 52 的设计第 2.1 / 3 节；链接发 52、03 和主窗口。
+- 📌 G381 preview（c1，未写代码）https://claude.ai/artifact/7vNEeMuiQYz52qePcxRd6m
+  - 字段草案（33）：不开新接口，GET /api/settings/products 每个产品加只读字段：Rezdy 行 tripguru_twin，TG 行 tripguru_options（含 Rezdy 编码、in_products、historical_order_only）。
+  - 7 题（后端 Q1–Q4 + 前端 F1–F3，全推荐 A，F1 推荐 C）已做成 Excel：C:\Users\annzh\Downloads\Annie_待答题_2026-11-24_G381_TripGuru对照.xlsx。
+  - ⚠️ TripGuru 的 zip 只在家里电脑（C:\Users\annzh\Downloads\Annie-NPE-Integration-20261124.zip），公司电脑没有，后端导入前要带过来。
 
 ## 2026-11-23 晚 收工交接：前端主窗口 `npe-ops-frontend-96`[ef47ac]（家里；Annie「好了，你应该没有什么要我确认了了，我睡觉去了」）
 - **今晚上 main**：半屏适配 37e529bb；Day timeline 刻度 ca50d015；G320 Sample pickup bb2eaddb + 灰字 e13483fe（ba PASS）；G373 Quick Stats 72daaa36（Annie「不用改，很好」，等她线上验收 + 6d 对数）；G374 门票显示名 + Add 键 29f19b29（75 PASS）；G369 7b WhatsApp 号码 ea1d15f2（92 PASS）。
