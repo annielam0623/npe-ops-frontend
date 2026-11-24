@@ -56,6 +56,7 @@
   - 后端 1e 回 PASS（对照合同 §1–§4 一致，不用改）。
   - Annie 在 0b 窗口答「B+C，先出preview给我看」⇒ 📌 preview https://claude.ai/artifact/QPjDQxqRiDcsZg331EbbZr （标签红点 + 超过 3 单列出哪几天；4 题推荐全 A，不用改后端），等她答题 +「动手」。
   - G380 本体先合、不等 B+C，只差 Annie 对 team 下拉说「可以」。
+  - ✅ Annie 问 Send to team 在哪，答了：Settings › Notifications 页、MAIN MANIFEST 卡、只给 SA、只管 Notice 发给谁、红框不受影响。Annie（原话）「可以，上线」⇒ 通知 0b 合最新 main、重跑、推 main。
 
 ## 2026-11-23 晚 收工交接：前端主窗口 `npe-ops-frontend-96`[ef47ac]（家里；Annie「好了，你应该没有什么要我确认了了，我睡觉去了」）
 - **今晚上 main**：半屏适配 37e529bb；Day timeline 刻度 ca50d015；G320 Sample pickup bb2eaddb + 灰字 e13483fe（ba PASS）；G373 Quick Stats 72daaa36（Annie「不用改，很好」，等她线上验收 + 6d 对数）；G374 门票显示名 + Add 键 29f19b29（75 PASS）；G369 7b WhatsApp 号码 ea1d15f2（92 PASS）。
