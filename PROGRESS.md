@@ -6,11 +6,37 @@
 
 > **下一个主窗口：先读最上面的收工交接，再读当天记录，开工照 CLAUDE.md 开工必做第 4 条先列「Annie 提过没做完的」问她。**
 
+## 2026-11-24 收工交接：前端主窗口 `npe-ops-frontend-65`[1e2990]（公司电脑；Annie「好几个重大问题，等我回家再挨个处理吧，写交接」）
+> 这个窗口在别的窗口那边显示的名字是「前端主窗口-0b」[1e2990]，容易跟工作窗口 0b 混，已请 Annie 用 /rename 改。家里开新主窗口的，照「开工必做」报名字；后端仓库在 D:\npe-confirmation-service。
+
+**今天上线（都等 Annie 线上验）**
+- G380 未发新单红框 + Notice 开关：fde603ea。Settings › Notifications 先选 Reservations team（没有就先在 Team 页建），再开开关（默认关）。
+- 最新的单排最前：6730974b。Bus / Admin fee 的 By order time，Tickets 的 By order time + By session。
+- G381 TripGuru twin 前端：074f5fe1。后端没上字段，页面不变。
+
+**进行中**
+- 0b [b1ecd6] task/new-sections-first：Bus 页所有胶囊、每天，有 NEW 的小节整节置顶，节里 NEW 在前，发完回原位（Annie「动手」）。做完合 main 报主窗口；做不完推分支、在 PROGRESS 写清做到哪一步。下一个主窗口先看 0b 报了什么。
+
+**📌 等 Annie（Excel 都在公司电脑 C:\Users\annzh\Downloads\；家里没有的，原文看下面各条和当天记录）**
+1. G380 剩 5 题：Annie_待答题_2026-11-24_G380_未发新单.xlsx。BC-1~4：红框按日期列出可点 + 标签红点（preview https://claude.ai/artifact/QPjDQxqRiDcsZg331EbbZr ），解决「11 单但没有红胶囊、点不进去」。RED-1：胶囊改成「有 NEW 就变红」（要后端 1e 出数）。全推荐 A。
+2. 全站订单排序 24 处：Annie_待答题_2026-11-24_全站订单排序.xlsx（de 只读查；订单类推荐改，按接客时间 / 车 / 酒店 / 客人行为排的推荐不改）。只有 Main manifest 有下单时间，其他要改得后端先补字段。
+3. CLAUDE.md 加「订单列表最新的单排最前」：等 Annie 说「写」。拟写原文（放「已定的决策」）：「Order lists: newest order first (Annie 2026-11-24, original words: 我整个系统里只要出现订单的地方一定是最新的单排最前…): any list of orders anywhere in the system shows the most recently booked order first; previews no longer ask about sort direction.」
+4. G381 后端 Q1–Q4：Annie_待答题_2026-11-24_G381_TripGuru对照.xlsx。TripGuru zip 在家里电脑（C:\Users\annzh\Downloads\Annie-NPE-Integration-20261124.zip），后端导入要用。
+5. G382 15 题：Annie_待答题_2026-11-24_G382_HR排班请假.xlsx（后端 52 做，preview https://claude.ai/artifact/5zikT5SiG3sxbGcV3WDQUZ ）。
+6. 导游页 D2–D13：Annie_待答题_2026-11-23_导游页D.xlsx，答案原文转后端 03。
+7. 146 Farm out 上传：前端 task/farm-out-photo-upload 已好，等 Annie 对后端方案「动手」+ 后端 SHA / PASS。
+8. G368 导游必填：等后端校验方案，前端再出 preview。
+9. 给 staff 的 short notice（Annie 要的，英文）已在对话里给她：讲 By order time 新的在前、红框、NEW 标签。整节置顶上线后补一句「Sections with NEW orders now move to the top of the list.」；BC 做完要改「More than 3」那句。
+10. ★ Notes 撤旧 Save 说明、G373 Quick Stats：陪 Annie 线上验。David H 账号：Annie 自己在 Team 页开。
+
+**窗口**：0b 在做整节置顶；c1 [15df65] 待命（留 worktree C:\Code\ops-wt-c1-g381，dev server / Chrome 已关）；de [5665c9] 待命。后端：03 主窗口、1e G380、33 G381、52 G382、64 G329。
+
 ## 📌 置顶：等 Annie 选 + 动手（G380 今天的新单）
 - **G380 今天的新单看不出来**（0b 转，Annie 直接跟 0b 说的）。原话：「比如说11/24，两个新单是沉底的，从页面上面来看我根本看不出今天有新单还没有发出去」。截图：11/24 One-way Shuttle 段在表底，CHDT2YBTE 去程、回程两行带绿色 NEW，表头上方没有任何提示。
   - 现在（0b 查代码）：红框 / 红胶囊只算明天到大后天（Q1 A；后端 docs/interfaces/manifests-unsent-2026-11-24.md:33「today is not included」）；NEW 标签（manifests-view.tsx:1971）只要没发过就标，不分哪天。
   - 0b 给了 3 种选法，推荐 B：今天也出红框，前端用当前这页带 NEW 的行来算，不改后端。等 Annie 选 +「动手」，0b 不改代码。
 - **最新的单排最前（全站）**（0b 转，Annie 原话）：「我的天啊，我整个系统里只要出现订单的地方一定是最新的单排最前，你想想把new的沉底谁看得到这里还有一个单没有发送呢」。= TOP-1b 已答（A，从晚到早），已从 Excel 移掉（剩 8 题）。动手原话（回 0b「是否现在动手」）：「马上立刻迅速给我改过来」⇒ 0b 开 task/newest-order-first：Main manifest Bus / Admin fee 的 By order time 改从晚到早，Tickets 若也是旧的在前一起改。全站订单列表排查派 de（只读，列清单给 Annie）。写进 CLAUDE.md「已定的决策」📌 等 Annie 说「写」。
+- **新单整节置顶 动手**（0b 转）：Annie 回 0b「是否现在动手：Bus 页所有胶囊、每天，有 NEW 的小节整节置顶，节里 NEW 单在前，发完回原位」⇒「动手」。= TOP-1 B、TOP-2 A、TOP-3 A，已从 G380 Excel 移出（剩 BC-1~4、RED-1 共 5 题）。0b 开 task/new-sections-first。
 - **11/25 shuttle 新单还沉底**（0b 转，Annie 原话）：「11/25号的manifest，一个没发送的新的shuttle单还是沉底」。原因：小节先后由后端定（manifest_list.py:419-423 _KIND_ORDER：团 → 去程 shuttle → 回程 shuttle），By order time 只排节内，不动小节。= G380 TOP 题。0b 已问她是否现在动手做整节置顶：所有 Bus 胶囊（TOP-1 B）、每天（TOP-2 A）、发完回原位（TOP-3 A）。她答了就从 Excel 移掉 TOP-1~3。
 - ✅ **最新的单排最前上 main 6730974b**（0b；功能 8ee71f34）。依据 Annie「马上立刻迅速给我改过来」。Bus / Admin fee By order time 每节下单晚的在前（无下单时间仍最后，hidden 行、Export CSV 同）；Tickets By order time 和 By session 组内没发的在前、各按下单晚的在前（withNewestTickets）；How to use 改 "newest booking first"。检查 tsc 0、eslint 0 error、build；man 617、mf 375（man 6 处期望改新顺序）。不改后端。排序 Excel 的 S17 已移出（剩 24 处）。📌 Annie 线上验。
 - **全站订单排序排查**（de 只读，前端 2851a57f / 后端 06b9c56e）：只有 Main manifest 有 By order time、带 booked_at；Dispatch / Tracking / Send / Forecast / Dashboard 接口都不带下单时间，要改得后端先补。Order List 按 max(created,updated) DESC（orders.py:242-246），近似新在前。25 处汇成 Excel：C:\Users\annzh\Downloads\Annie_待答题_2026-11-24_全站订单排序.xlsx（每处 A 改 / B 不改；订单类推荐改，按接客时间 / 车 / 酒店 / 客人行为排的推荐不改，由 Annie 定）。S03 红框列表（unsent_orders.py:112 早到晚）前端能改，可并进 newest-order-first。未核：Lunch 表排序。
