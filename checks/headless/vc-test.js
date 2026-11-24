@@ -107,8 +107,9 @@ async function run() {
   await openNav();
   {
     const links = await evaluate(`return ${settingsLinks};`);
-    check("Super Admin：侧栏 Settings 组最后一项是 Phone AI Calls（/settings/phone-ai-calls），在 Navigation 后面",
-      links.at(-1) === "Phone AI Calls=/settings/phone-ai-calls" && links.at(-2)?.startsWith("Navigation="), JSON.stringify(links));
+    // G373 起 Quick Stats 排在 Phone AI Calls 下面（Settings 最后）。
+    check("Super Admin：侧栏 Settings 组 Phone AI Calls（/settings/phone-ai-calls）在 Navigation 后面、Quick Stats 前面",
+      links.at(-2) === "Phone AI Calls=/settings/phone-ai-calls" && links.at(-3)?.startsWith("Navigation=") && links.at(-1) === "Quick Stats=/settings/quick-stats", JSON.stringify(links));
   }
   await evaluate(`${NAV}.querySelector('button[aria-label="Close menu"]')?.click();`);
   {

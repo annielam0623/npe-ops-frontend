@@ -452,6 +452,12 @@ export const NAV_SETTINGS: { label: string; items: NavItem[] } = {
       href: "/settings/phone-ai-calls",
       superadminOnly: true,
     },
+    // G373 Quick Stats（Annie 2026-11-23「同意推荐，动手」Q1 A：Settings 最后、Phone AI Calls 下面）：接口只给 superadmin，不加开关。
+    {
+      label: "Quick Stats",
+      href: "/settings/quick-stats",
+      superadminOnly: true,
+    },
   ],
 };
 
