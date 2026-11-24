@@ -8,7 +8,12 @@
 
 ## 2026-11-24（周二）前端主窗口 `npe-ops-frontend-65`[1e2990]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工：origin/main 127b10b3（主目录 detached；ops-74 那个 main worktree 落后 969，不用）。资源：空闲内存 39.1 / 61.8 GB，node 0、chrome 42。工作窗口：无。后端主窗口 `npe-confirmation-service-03`[2e30db]，已把 7 天清单发给它（12 条）。
-- 7 天清单（11-17 至 11-23，Annie 提过的）已列给 Annie，等她选今天做哪几件：G380 未发新单提醒（等后端合同 + Res team）；146 上传（等 Annie 对后端方案动手 + 28）；导游页 D2–D13；G382；G381；第 11 件导游必填；G361；页面慢；★ Notes 撤旧；David H 账号。后端 03 回：7a 8 句已随 G369 449755f3 上后端 main、Annie 已跑 SQL ⇒ 划掉；「页面慢」后端没登记，已把 11-18 4d 那条出处（Morning Tracking 打开约 10 秒、前端核过不是前端）发 03 登记。
+- 7 天清单（11-17 至 11-23，Annie 提过的）已列给 Annie，等她选今天做哪几件：G380 未发新单提醒（等后端合同 + Res team）；146 上传（等 Annie 对后端方案动手 + 28）；导游页 D2–D13；G382；G381；第 11 件导游必填；G361；页面慢；★ Notes 撤旧；David H 账号。后端 03 回：7a 8 句已随 G369 449755f3 上后端 main、Annie 已跑 SQL ⇒ 划掉；「页面慢」后端没登记，已把 11-18 4d 那条出处（Morning Tracking 打开约 10 秒、前端核过不是前端）发 03 登记。03 回：后端交接 11-18 已记，数据库 / 前端都已排除，在等 Annie 的 Railway Metrics、HTTP 日志截图，后端接着跟。
+- ✅ Annie（原话）「1-8全部」（后端 03 那边也转「全部」今天完成，顺序 G380、G329、G381 优先，然后 146 / 导游页 D / G382，其余按最快能完成排）⇒ 今天必须做完，过 21:30 也做。前端分工：
+  - G380 未发新单提醒：11-23 已答 8 题 + 说「明天到公司第一件做」= 动手。先照 preview 8YtCoE8VWFXjV6iCt3pZTk + 答案（Q1 明天 / 后天 / 大后天；Q2 A + 其他团胶囊变红；Q3 B 只算最近一次整批发送后的新单；Q4 A 单号 · 团期 · 团，点了跳到那行并勾上；Q5 不做 Show 下拉，> 3 单只出红数字；Q6–Q8 A，页面红框不加开关）用 mock 搭页面，How to use 折叠；后端 1e 做接口，合同直接发前端 ⇒ 要 1 个窗口。
+  - G381 TripGuru twin：Products 只读显示（Rezdy 行带对应 TG 产品 + 选项，TG 行带选项和各自 Rezdy 码），前端先出 preview（新显示）⇒ 要 1 个窗口；后端 33 等 Annie 答 4 题后发合同。
+  - 146：前端分支已好，等 Annie 对后端方案「动手」+ 后端 SHA。导游页 D：等 Annie 填 D2–D13，原文转后端 03。G382 / G368 导游必填：等后端设计 / 校验方案后前端出 preview。★ Notes 撤旧、G373：陪 Annie 线上验收。
+  - 请 Annie 开 2 个前端窗口（空闲内存 39 GB 够）。
 
 ## 2026-11-23 晚 收工交接：前端主窗口 `npe-ops-frontend-96`[ef47ac]（家里；Annie「好了，你应该没有什么要我确认了了，我睡觉去了」）
 - **今晚上 main**：半屏适配 37e529bb；Day timeline 刻度 ca50d015；G320 Sample pickup bb2eaddb + 灰字 e13483fe（ba PASS）；G373 Quick Stats 72daaa36（Annie「不用改，很好」，等她线上验收 + 6d 对数）；G374 门票显示名 + Add 键 29f19b29（75 PASS）；G369 7b WhatsApp 号码 ea1d15f2（92 PASS）。
