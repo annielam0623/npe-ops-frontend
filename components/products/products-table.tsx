@@ -67,6 +67,146 @@ function SourceTags({ source }: { source: Product["source"] }) {
   ));
 }
 
+/** G381 对照小字的样子：TripGuru 蓝（同 TRIPGURU 标签），名字格里的第二行。 */
+const TWIN_LINE_CLASS =
+  "mt-[3px] block text-[11px] leading-[1.45] text-[#4a5560] night:text-white/45";
+const TWIN_LABEL_CLASS = "font-semibold text-[#185FA5] night:text-sky-300";
+const TWIN_CODE_CLASS =
+  "cursor-pointer font-mono text-[11px] font-semibold text-[#185FA5] underline underline-offset-2 hover:text-[#0f4a85] night:text-sky-300 night:hover:text-sky-200";
+
+/** 「historical orders only」灰色小标（historical_order_only = TripGuru 只为老订单保留这个编码）。 */
+function HistoricalTag() {
+  return (
+    <span
+      data-twin-historical
+      className="ml-1 inline-block rounded-[4px] bg-[#ececea] px-[5px] align-[1px] text-[9px] font-semibold whitespace-nowrap text-[#6b6b6b] night:bg-white/[.05] night:text-white/40"
+    >
+      historical orders only
+    </span>
+  );
+}
+
+/** 能点的编码：跳到 Products 里那一行并黄色高亮（Annie 2026-11-24 F2 选 A）。 */
+function TwinCode({
+  code,
+  onJump,
+}: {
+  code: string;
+  onJump: (code: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      data-twin-jump={code}
+      title={`Go to ${code}`}
+      onClick={() => onJump(code)}
+      className={TWIN_CODE_CLASS}
+    >
+      {code}
+    </button>
+  );
+}
+
+/** Products 里还没有行的编码：灰字「(not in Products)」，不能点。 */
+function NotInProducts({ code, title }: { code: string; title: string }) {
+  return (
+    <span
+      data-twin-not-in-products={code}
+      title={title}
+      className="font-mono text-[11px] text-[#8a8f94] night:text-white/30"
+    >
+      {code} (not in Products)
+    </span>
+  );
+}
+
+/**
+ * G381 TripGuru twin（Annie 2026-11-24：F1 选 C、F2 A、F3 A，「动手」；样稿 https://claude.ai/artifact/7vNEeMuiQYz52qePcxRd6m）。
+ * 只读：Rezdy 行名字下一行小字「TripGuru twin: 编码 产品名 › 选项名」；TG 行收起成「▸ N TripGuru options · M Rezdy codes」，
+ * 点开每个选项一行「选项名 → Rezdy 编码 · …」。Products 里没有的 Rezdy 编码灰字「(not in Products)」不能点。
+ * 两个字段都空 / 不存在（后端没上）⇒ 什么都不出，跟以前一样。
+ */
+function TripGuruTwinLines({
+  product: p,
+  onJump,
+}: {
+  product: Product;
+  onJump: (code: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const twin = p.tripguru_twin;
+  const options = p.tripguru_options ?? [];
+  if (!twin && options.length === 0) return null;
+  const codeCount = options.reduce((n, o) => n + o.rezdy.length, 0);
+  return (
+    <>
+      {twin ? (
+        <span data-tripguru-twin className={TWIN_LINE_CLASS}>
+          <span className={TWIN_LABEL_CLASS}>TripGuru twin:</span>{" "}
+          {twin.in_products === false ? (
+            <NotInProducts
+              code={twin.product_code}
+              title="This TripGuru code has no row in Products yet"
+            />
+          ) : (
+            <TwinCode code={twin.product_code} onJump={onJump} />
+          )}
+          {twin.product_name ? <> {twin.product_name}</> : null}
+          {twin.option_name || twin.option_code ? (
+            <> › {twin.option_name || twin.option_code}</>
+          ) : null}
+          {twin.historical_order_only ? <HistoricalTag /> : null}
+        </span>
+      ) : null}
+      {options.length > 0 ? (
+        <>
+          <button
+            type="button"
+            data-tripguru-options-toggle
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
+            className={cn(
+              TWIN_LINE_CLASS,
+              TWIN_LABEL_CLASS,
+              "cursor-pointer text-left",
+            )}
+          >
+            {open ? "▾" : "▸"} {options.length} TripGuru{" "}
+            {options.length === 1 ? "option" : "options"} · {codeCount} Rezdy{" "}
+            {codeCount === 1 ? "code" : "codes"}
+          </button>
+          {open ? (
+            <span data-tripguru-options className={TWIN_LINE_CLASS}>
+              {options.map((o) => (
+                <span
+                  key={o.option_id || o.option_code}
+                  className="mt-0.5 block pl-2.5"
+                >
+                  {o.option_name || o.option_code} →{" "}
+                  {o.rezdy.map((r, i) => (
+                    <Fragment key={r.product_code}>
+                      {i > 0 ? " · " : null}
+                      {r.in_products ? (
+                        <TwinCode code={r.product_code} onJump={onJump} />
+                      ) : (
+                        <NotInProducts
+                          code={r.product_code}
+                          title="This Rezdy code has no row in Products yet"
+                        />
+                      )}
+                      {r.historical_order_only ? <HistoricalTag /> : null}
+                    </Fragment>
+                  ))}
+                </span>
+              ))}
+            </span>
+          ) : null}
+        </>
+      ) : null}
+    </>
+  );
+}
+
 /** 一格的样子：改了没存（琥珀）/ 已保存（绿）/ 存不上（红）。 */
 export type CellState = "saving" | "saved" | "failed";
 
@@ -107,6 +247,7 @@ export function ProductsTable({
   renderBulkBar,
   busTourLabel,
   highlightId,
+  onJumpToCode,
 }: {
   sections: ProductSection[];
   groups: ProductGroup[];
@@ -135,6 +276,8 @@ export function ProductsTable({
   busTourLabel: (p: Product) => string | undefined;
   /** 顶部提醒区点了某个产品跳过来（Annie 2026-10-23）：这一行亮起来并在挂载时滚过去。 */
   highlightId?: number | null;
+  /** G381：点 TripGuru 对照里的编码，跳到 Products 里那一行（Annie 2026-11-24 F2 选 A）。 */
+  onJumpToCode: (code: string) => void;
 }) {
   const showTour = !!(tourTypes || busTourTypes);
   const colSpan = showTour ? 8 : 7;
@@ -244,6 +387,7 @@ export function ProductsTable({
                       busTourLabel={busTourLabel(p)}
                       onToggleActive={() => onToggleActive(p)}
                       highlighted={p.id === highlightId}
+                      onJumpToCode={onJumpToCode}
                     />
                     {barAfterId === p.id && renderBulkBar ? (
                       <BulkBarRow colSpan={colSpan}>
@@ -276,6 +420,7 @@ function ProductRow({
   onToggleActive,
   busTourLabel,
   highlighted,
+  onJumpToCode,
 }: {
   product: Product;
   groups: ProductGroup[];
@@ -290,6 +435,7 @@ function ProductRow({
   onToggleActive: () => void;
   busTourLabel: string | undefined;
   highlighted?: boolean;
+  onJumpToCode: (code: string) => void;
 }) {
   const need = needsCategory(p);
   const rowRef = useRef<HTMLTableRowElement>(null);
@@ -375,6 +521,7 @@ function ProductRow({
           <i className="text-[#1a1a1a] night:text-white/35">(no name yet)</i>
         )}
         <SourceTags source={p.source} />
+        <TripGuruTwinLines product={p} onJump={onJumpToCode} />
       </td>
       <td className={PROD_TD_CLASS}>
         <input

@@ -431,6 +431,21 @@ function ProductsPage() {
     }
   }
 
+  /**
+   * G381：点 TripGuru 对照里的编码跳到那一行（Annie 2026-11-24 F2 选 A）。同一行再点一次也要再滚过去：
+   * 先清掉高亮、下一拍再设（行的 useEffect 只在 highlighted 变了时滚）。
+   */
+  function jumpToCode(code: string) {
+    const p = products.find((x) => x.product_code === code);
+    if (!p) return;
+    if (highlightProductId === p.id) {
+      setHighlightProductId(null);
+      window.setTimeout(() => jumpToProduct(p.id), 0);
+      return;
+    }
+    jumpToProduct(p.id);
+  }
+
   if (view.kind !== "ready") {
     return (
       <Shell>
@@ -804,6 +819,7 @@ function ProductsPage() {
           busTourLabel={(p) => sectionTourTypeLabel(setupData, p)}
           onToggleActive={(p) => void toggleActive(p)}
           highlightId={highlightProductId}
+          onJumpToCode={jumpToCode}
         />
       </section>
 
@@ -944,6 +960,19 @@ function HowToUse() {
         when you set a product&rsquo;s group. Products already in it, and their
         guests, keep showing everywhere, and Reactivate brings it back. Groups
         cannot be deleted.
+      </li>
+      {/* G381 TripGuru twin（Annie 2026-11-24「F1 选 C，F2 A，F3 A，动手」，原文同样稿 7vNEeMuiQYz52qePcxRd6m）。 */}
+      <li data-howto-tripguru-twin>
+        TripGuru twin: a Rezdy product that TripGuru also sells shows its
+        TripGuru product and option under the name (&ldquo;TripGuru twin:
+        PVYMNM4E Adventurous Antelope Canyon Tours › Upper Antelope
+        (AACT)&rdquo;). A TripGuru product shows how many options it has; click
+        the line to see each option and its Rezdy codes. Click a code to jump
+        to that row. A grey code marked &ldquo;not in Products&rdquo; has no
+        row here yet. &ldquo;historical orders only&rdquo; means TripGuru
+        keeps that code only for old orders. This list comes from
+        TripGuru&rsquo;s export and cannot be changed on this page; if a pair
+        looks wrong, tell Leon.
       </li>
       <li>
         If a list is wider than the window, scroll it sideways to see the

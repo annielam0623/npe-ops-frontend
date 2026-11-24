@@ -42,13 +42,27 @@ export function needsCategory(p: Product): boolean {
   return p.is_active && !p.booking_type;
 }
 
-/** 搜索：代码 + Rezdy 名 + 内部名 + 组名，不分大小写。 */
+/** 搜索：代码 + Rezdy 名 + 内部名 + 组名 + TripGuru 对照（G381），不分大小写。 */
 export function matchesSearch(p: Product, search: string): boolean {
   const q = search.trim().toLowerCase();
   if (!q) {
     return true;
   }
-  return [p.product_code, p.product_name, p.internal_name, p.group_name]
+  // G381（Annie 2026-11-24 F3 选 A）：也搜 TripGuru 对照里的编码和名字，搜 PVYMNM4E 同时出它对应的 Rezdy 行。
+  const twin = p.tripguru_twin;
+  return [
+    p.product_code,
+    p.product_name,
+    p.internal_name,
+    p.group_name,
+    twin?.product_code,
+    twin?.product_name,
+    twin?.option_name,
+    ...(p.tripguru_options ?? []).flatMap((o) => [
+      o.option_name,
+      ...o.rezdy.map((r) => r.product_code),
+    ]),
+  ]
     .join(" ")
     .toLowerCase()
     .includes(q);

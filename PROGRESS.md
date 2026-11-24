@@ -25,6 +25,37 @@
   - Settings › Notifications：开关 unsent_order_notice（group Main manifest，默认关）；加一个 team 下拉（SA），GET / PUT /api/settings/unsent-order-notice {team_id|null}，没选 team 时 Notice 发给 SA。
   - 「整批」= 一次发送 ≥ 2 张单，单发不算。
   - ⇒ 等新窗口派工。
+- Annie 开了 3 个前端窗口，已派（派工消息都带了背景、Annie 原话和验收标准）：
+  - **0b [b1ecd6]**：G380 前端 task/g380-unsent-orders，照合同写；交 1e 核对，PASS + Annie 看过 team 下拉截图才合 main。
+  - **c1 [15df65]**：G381 TripGuru twin preview，先找后端 33 [3dc643] 要设计和 4 题，不写功能代码。
+  - **de [5665c9]**：G382 总览页 preview，照 52 的设计第 2.1 / 3 节；链接发 52、03 和主窗口。
+- 📌 G381 preview（c1，未写代码）https://claude.ai/artifact/7vNEeMuiQYz52qePcxRd6m
+  - 字段草案（33）：不开新接口，GET /api/settings/products 每个产品加只读字段：Rezdy 行 tripguru_twin，TG 行 tripguru_options（含 Rezdy 编码、in_products、historical_order_only）。
+  - 7 题（后端 Q1–Q4 + 前端 F1–F3，全推荐 A，F1 推荐 C）已做成 Excel：C:\Users\annzh\Downloads\Annie_待答题_2026-11-24_G381_TripGuru对照.xlsx。
+  - ✅ Annie 在 c1 窗口答（原话）「F1 选 C，F2 A，F3 A，动手」⇒ c1 开 task/g381-tg-twin（worktree C:\Code\ops-wt-c1-g381），照 33 的字段草案写，字段都当可选；等 33 合同对过字段名、33 回 PASS 才合 main。后端 Q1–Q4 还没答，Excel 里只剩这 4 题。
+  - c1 交 task/g381-tg-twin **62b4c78d**（未合）：products 291（+14）、tsc / eslint / build。跟 preview 不同：How to use 单独一条（放在「If a list is wider…」前），不塞进门票折叠段，因为巴士团也有 twin；文字同原文。后端没上字段时页面不变。卡在 33 合同 + PASS。
+  - ✅ **G381 前端上 main 074f5fe1**（c1，功能 62b4c78d + 补丁 127c30cd）。
+    - 后端 33 对 62b4c78d 回 PASS，要求补一处：tripguru_twin.in_products=false 时编码灰字、不能点；product_name / option_code / option_name 可以为 null。已补。
+    - 合同：后端分支 task/g381-tg-product-map 的 docs/interfaces/tripguru-product-map-2026-11-24.md，还是 DRAFT（后端 Q1–Q4 未答）。
+    - 检查：products 292（+15）、tsc / lint 0 错 / build。
+    - 线上现在：后端没给字段，页面不变。📌 等后端上线 + v185 + 对照表导入（zip 在家里）之后，Annie 再验收。
+    - worktree C:\Code\ops-wt-c1-g381 留着修验收问题用。
+  - ⚠️ TripGuru 的 zip 只在家里电脑（C:\Users\annzh\Downloads\Annie-NPE-Integration-20261124.zip），公司电脑没有，后端导入前要带过来。
+- 📌 G382 总览页 preview（de，未写代码）https://claude.ai/artifact/5zikT5SiG3sxbGcV3WDQUZ
+  - 内容：总览 1440 / 950 / 390、七个弹框、改后的 Staff Schedule（只读）、搬家表、数据流、「现在」逐条文件:行、跟设计的 9 条出入。
+  - 题：设计 Q1–Q12，外加 de 新题 N1（员工改班请求放哪）、N2（4 周 28 列，推荐左右滚、停在本周）、N3（只能批假的人看到什么）。
+  - Excel 由后端 52 做：C:\Users\annzh\Downloads\Annie_待答题_2026-11-24_G382_HR排班请假.xlsx。等 52 补上 preview 链接和 N1–N3 后通知 Annie 填。
+  - 未核两处：Overview 标签的统计怎么合进来；已发布周 Fill gap 之后怎么通知。
+  - 52 已把表改好（15 题都带 preview 链接 + N1–N3，后端 8aa33ce0），由 03 通知 Annie。
+- Annie 问「为什么我的notice里什么都没有」（Dashboard 截图 No new notices today.）⇒ 查代码答：面板只放今天（LA）没读的通知 + 没读的同事消息 + 24 小时内的交接（notice-block.tsx:140-146）；以前的、已读的在 Check history；G380 Notice 还没上、开关默认关。问她是不是在等哪一条，要的话请后端查库。
+- G380 前端交付（0b）task/g380-unsent-orders **21cd8ab2**（未合）。
+  - 检查：man 617（+28）、ns 72（+14，顺手修 5 条旧挂的 Also allowed）、mf 375、nav 40、tsc / eslint / build；只测 mock。
+  - 截图在 C:\Users\annzh\Downloads\g380-unsent-orders\。
+  - 跟 preview 不同：> 3 单写「⚠ New orders not sent [5] Open the red pills to find them.」；红胶囊红边淡红底；Notice 链接文字「Open in Main manifest →」；Settings 卡加「Send to team」下拉（只给 SA，先选后存）。
+  - 等：1e PASS + Annie 看 team 下拉。📌 0b 提一题：> 3 单时，新单在别的日期或别的标签就看不到红胶囊 ⇒ A 不变 / B 标签加红点 / C 红数字后写日期可点，推荐 B + C，已问 Annie。
+  - 后端 1e 回 PASS（对照合同 §1–§4 一致，不用改）。
+  - Annie 在 0b 窗口答「B+C，先出preview给我看」⇒ 📌 preview https://claude.ai/artifact/QPjDQxqRiDcsZg331EbbZr （标签红点 + 超过 3 单列出哪几天；4 题推荐全 A，不用改后端），等她答题 +「动手」。
+  - G380 本体先合、不等 B+C，只差 Annie 对 team 下拉说「可以」。
 
 ## 2026-11-23 晚 收工交接：前端主窗口 `npe-ops-frontend-96`[ef47ac]（家里；Annie「好了，你应该没有什么要我确认了了，我睡觉去了」）
 - **今晚上 main**：半屏适配 37e529bb；Day timeline 刻度 ca50d015；G320 Sample pickup bb2eaddb + 灰字 e13483fe（ba PASS）；G373 Quick Stats 72daaa36（Annie「不用改，很好」，等她线上验收 + 6d 对数）；G374 门票显示名 + Add 键 29f19b29（75 PASS）；G369 7b WhatsApp 号码 ea1d15f2（92 PASS）。
