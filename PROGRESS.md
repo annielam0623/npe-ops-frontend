@@ -4,7 +4,13 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读「2026-11-20 收工交接：5e」，再读 11-20 当天记录，开工照 CLAUDE.md 开工必做第 4 条先列「Annie 提过没做完的」问她。**
+> **下一个主窗口：先读最上面的收工交接，再读当天记录，开工照 CLAUDE.md 开工必做第 4 条先列「Annie 提过没做完的」问她。**
+
+## 2026-11-23 晚 家里：前端主窗口 `npe-ops-frontend-96`[ef47ac]（只分工和汇报，不写代码）
+- 开工：origin/main 9edcd729。资源：空闲内存 14.3 / 31.7 GB，node 1、chrome 28。后端 `npe-confirmation-service-16`[f18737] 来要 7 天清单，已发（12 条，同给 Annie 的）。
+- 7 天清单已列给 Annie：① 半屏适配（代码写完差合 / 检查 / 截图 / 推）；等后端 G374、146、7a / 7b、第 9 件 G320、第 11 件导游必填、G361、页面慢、G363 收尾；等 Annie 导游页 D2–D13、未发新单提醒 8 题、★ Notes 撤旧、David H 账号；拿不准 G318 第二部分、150 第 4 版题 8 手机新设计。
+- ✅ Annie（原话）「你是主窗口，先做1」⇒ 今晚必做第 1 件半屏适配；Annie 开新窗口 a2 [3875d4]，派过去。
+- ✅ **半屏适配上 main 37e529bb**（a2，worktree D:\ops-wt-a2-half；29b5b0db 合 main 9edcd729，orders-list-view.tsx Mirror 列 vs Created 列冲突两边都留）。tsc 0、eslint 0 error、build；sch 546/546（检查套里 Anita counts_for_coverage 改完还原，页面没动）、mf 375/375、man 586、orders 188、fr 31、olog 24、sales 63、nav 40。950 宽六页都不滑；760 宽 Schedule / Order Log / Farm out Report 不滑，Order List 多 43px（13 列，单号 / 标签 / 日期 / Source 不折）、Sales Report 多 54px（数字列）、Bus Manifest 编辑页多 113px（输入框格），都不再撑 900–1080，整页不晃。截图 C:\Users\annzh\Downloads\half-screen-fit\（6 页 × 1920 / 950 / 760 / 390），96 看过 schedule-950 七天全见。📌 Annie 线上半屏看这 6 页。
 
 ## 2026-11-23 收工交接：前端主窗口 `今天前端主窗口-5e`[54a3a7]（公司电脑，14:30 下班）
 - **今天上 main**：第 8 件 Farm out 每家一页 451d4497；第 13 件 Main manifest 手机收键 8fc13aca；7c–e 快捷回复搬 Content Studio 9a3ae1fc；G363 按车型算导游工资前端 aad89428；Order List 搜索提示加 product code 197616f1；Products How to use 门票设置节 c826f333；nav-test 时序修复 34374a6f。✅ Tracking 不限日期搜索 **01f53bc5**（bb，功能 5a85de19 + 404 改中性句「No order X found on any date.」；47 PASS；tt 249、tk 164、nav 40）。📌 Annie 线上试：Tour Tracking 别的日子输 CHDWQLV4Z 按 Enter ⇒ 跳 11-26、Also 列 Admin fee；CHDXQYEQG ⇒ 带到 Tickets Tracking 11-16。
