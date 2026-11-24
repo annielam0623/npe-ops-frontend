@@ -1,5 +1,14 @@
 // 模拟后端：Products 页。控制：POST /__ctl {fail401, staff, failMissing}；GET /__log。
 const http = require("http");
+// G374：每团的票名改名表（manifest_id → rows）。
+const ticketLabels = {
+  1: [
+    { id: 1, source: "Adult +skywalk +Meal Voucher", label: "Premium" },
+    { id: 2, source: "Adult +skywalk +Grab and Go lunch", label: "Sky + GnG" },
+    { id: 3, source: "Adult Premium", label: "Premium" },
+  ],
+};
+let nextTicketId = 10;
 const ctl = { fail401: false, staff: false, failMissing: false, slowNextProductPut: 0, slowNextGroupPut: 0, noRelay: false, relayFail: false, failSection: 0, categories: false, forecastSettings: false, forecastFail: "", g198: false, cfmSections: ["UPPER"], g199: false };
 let busOrder = [];
 // task/relay-print：Short name（团 + 节）。
@@ -218,6 +227,38 @@ http.createServer(async (req, res) => {
     return send(res, 200, { success: true, is_active: body.active });
   }
   const S = "/api/settings/manifest-setup";
+  // G374 票名改名表（后端窗口 47 合同 g374-ticket-labels-2026-11-23）：ctl.tickets ⇒ groups[] 带 ticket_labels；默认不带 = 后端没上线（不出这一块）。
+  // 第一个团（Upper Antelope）先有 3 行，其余空；PUT 照合同校验（文字照后端原话）。ctl.ticketFail500 ⇒ 500。
+  if (p === S && ctl.tickets && req.method === "GET")
+    return send(res, 200, { ...setup, groups: setup.groups.map((g) => ({ ...g, ticket_labels: ticketLabels[g.id] ?? [] })) });
+  m = p.match(/^\/api\/settings\/manifest-setup\/groups\/(\d+)\/ticket-labels$/);
+  if (m && req.method === "PUT") {
+    const body = await readBody(req);
+    entry.body = body;
+    if (ctl.ticketFail500) return send(res, 500, { detail: "Could not save. Nothing was changed - try again." });
+    if (!body || !Array.isArray(body.rows)) return send(res, 400, { detail: "The ticket names could not be read. Please reload the page." });
+    const norm = (v) => String(v ?? "").trim().split(/\s+/).filter(Boolean).join(" ");
+    const rows = [];
+    let n = 0;
+    const seen = new Map();
+    for (const r of body.rows) {
+      n++;
+      const source = norm(r.source), label = norm(r.label);
+      if (!source && !label) continue;
+      if (!source) return send(res, 400, { detail: `Ticket name row ${n}: type the original text, or clear the name to show too.` });
+      if (!label) return send(res, 400, { detail: `"${source}": type the name to show.` });
+      if (label.startsWith("=")) return send(res, 400, { detail: `"${label}": the name to show cannot start with =.` });
+      if (source.length > 200) return send(res, 400, { detail: `Ticket name row ${n}: the original text is ${source.length} characters - the limit is 200.` });
+      if (label.length > 60) return send(res, 400, { detail: `Ticket name row ${n}: the name to show is ${label.length} characters - the limit is 60.` });
+      const k = source.toLowerCase().replace(/\s+/g, "");
+      if (seen.has(k)) return send(res, 400, { detail: `"${source}" is listed twice (rows ${seen.get(k)} and ${n}). Keep one.` });
+      seen.set(k, n);
+      rows.push({ source, label });
+    }
+    if (rows.length > 100) return send(res, 400, { detail: "At most 100 ticket names per tour." });
+    ticketLabels[Number(m[1])] = rows.map((r) => ({ id: ++nextTicketId, ...r }));
+    return send(res, 200, { ok: true, rows: ticketLabels[Number(m[1])] });
+  }
   if (ctl.shortReset) {
     shortNames = { group: "Antelope", sections: { LOWER: "Lower", "Canyon X": "" } };
     ctl.shortReset = false;
