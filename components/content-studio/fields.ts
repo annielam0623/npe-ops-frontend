@@ -11,7 +11,8 @@ export interface TextField {
   vars?: string[];
   /** 短信：算字数、不能换行、超 1600 不让存。 */
   sms?: boolean;
-  type?: "text" | "dynamic_lines";
+  /** phone：单行电话号码（G369 客人短信 / WhatsApp 号码），提示写在输入框下面。 */
+  type?: "text" | "dynamic_lines" | "phone";
   /** dynamic_lines 最多几行。 */
   max?: number;
   hint?: string;
@@ -205,7 +206,19 @@ const g = (k: string) => `tmpl__global__${k}`;
  */
 export const MTLV_GUEST_ENABLED = false;
 
+/**
+ * G369 7b（Annie Excel 11-20「A」「动手」；后端 92 契约）：客人发短信 / WhatsApp 求助的号码，种子 725-777-1698。
+ * 后端用在早班短信「Text or WhatsApp {n} for help.」、早班邮件页脚（wa.me 链接）、客人 Bus Tracker 5 处。空 = 那句话不出。
+ */
+export const GUEST_TEXT_NUMBER_KEY = g("guest_text_number");
+
 export const TC_GLOBAL_FIELDS: TextField[] = [
+  {
+    key: GUEST_TEXT_NUMBER_KEY,
+    label: "Guest text / WhatsApp number",
+    type: "phone",
+    hint: "Guests text or WhatsApp this number for help. Leave empty to hide the help line.",
+  },
   {
     key: g("tc_guest_pickup_box_title"),
     label: "Pickup box section title",
