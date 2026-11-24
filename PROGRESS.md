@@ -6,6 +6,13 @@
 
 > **下一个主窗口：先读最上面的收工交接，再读当天记录，开工照 CLAUDE.md 开工必做第 4 条先列「Annie 提过没做完的」问她。**
 
+## 2026-11-23 晚 收工交接：前端主窗口 `npe-ops-frontend-96`[ef47ac]（家里；Annie「好了，你应该没有什么要我确认了了，我睡觉去了」）
+- **今晚上 main**：半屏适配 37e529bb；Day timeline 刻度 ca50d015；G320 Sample pickup bb2eaddb + 灰字 e13483fe（ba PASS）；G373 Quick Stats 72daaa36（Annie「不用改，很好」，等她线上验收 + 6d 对数）；G374 门票显示名 + Add 键 29f19b29（75 PASS）；G369 7b WhatsApp 号码 ea1d15f2（92 PASS）。
+- **还在路上**：G374 行号小修（a7 [b8f977]，task/g374-row-numbers，空行照送让 400 的 row N 对上屏幕；样子不变，检查过直接合）。下个主窗口先 git log 看是否已上 main，上了把 SHA 发后端 75 记一下；没上就看分支。
+- **明天公司第一件**：G380 未发新单提醒（Annie 8 题已答，见下面当天记录；等后端合同；Annie 要建 / 指定 Reservations team）。
+- **等后端 / Annie**：146 照片上传（task/farm-out-photo-upload 7ddcb143 已合最新 main，等 Annie 对后端方案动手 + 28 上 main）；G382 HR 请假改版（后端方案后出 preview）；G381 TripGuru↔Rezdy 产品对照（后端 4 题）；导游页 D（后端）；G369 How to use 补电话 AI 一句（92 建议，可选，改前给 Annie 原文）；★ Notes 撤旧、David H 账号、G318 第二部分、150 题 8 手机新设计照旧。
+- 工作窗口：a2 [3875d4]、61 [180a4b] 已收工（服务 / Chrome 关）；a7 在做行号小修。
+
 ## 2026-11-23 晚 家里：前端主窗口 `npe-ops-frontend-96`[ef47ac]（只分工和汇报，不写代码）
 - 开工：origin/main 9edcd729。资源：空闲内存 14.3 / 31.7 GB，node 1、chrome 28。后端 `npe-confirmation-service-16`[f18737] 来要 7 天清单，已发（12 条，同给 Annie 的）。
 - 7 天清单已列给 Annie：① 半屏适配（代码写完差合 / 检查 / 截图 / 推）；等后端 G374、146、7a / 7b、第 9 件 G320、第 11 件导游必填、G361、页面慢、G363 收尾；等 Annie 导游页 D2–D13、未发新单提醒 8 题、★ Notes 撤旧、David H 账号；拿不准 G318 第二部分、150 第 4 版题 8 手机新设计。
@@ -22,7 +29,9 @@
   - Annie（原话）「G374的preview我看了，很好，就记得要留可以添加的键给我就好了」⇒ 样子认可，要加「添加」键（现在是表尾自动补空行、没有键）。已问 Annie 键的做法 + 是否动手（非动手）：A 表下灰绿「+ Add ticket name」、去掉自动空行（推荐）/ B 两种都留。
   - a7 交 task/g374-ticket-labels-fe **80cdca1c**：对真合同无差、没改；截图页 https://claude.ai/artifact/E8H2Sz31eLo94iBuyFBbtU （本地 mock 照 v183 West Rim 8 行，原截图文件夹家里没有）；线上没登录没看真页面（v183 执行记录 75 只读核过 8 行）；How to use 第 5 条和灰字前四句同后端建议句，后面补了同名同色 / 各页都变，不改。products 272、nav 40。等 Annie 选 A / B + 动手。✅ Annie（原话）「A动手」⇒ 派 a7：灰绿「+ Add ticket name」、去掉自动空行（空表只有表头 + 键）、灰字和 How to use 第 5 条跟着改、重截图更新 artifact，推分支，96 看过截图后推 main → 75 PASS。
   - a7 交 d6434e27（功能 41f86c6a）：灰绿 #6b8e74「+ Add ticket name」、加行描橙光标进去、空行不算改动不送、100 行键变灰、首行 ↑ 末行 ↓ 灰；灰字 / How to use 第 5 条末句改「Click + Add ticket name to add one, Remove to take one off, then click Save.」。products 275（+3）、nav 40。artifact v2 同链接。96 看过 West Rim / 空表截图 ⇒ 让 a7 推 main。✅ **G374 上 main 29f19b29**（a7），后端 75 回 PASS。小 bug：400 里「row N」按送出的行数，中间有空行时比屏幕上的小 ⇒ 派 a7 task/g374-row-numbers（空行照送、后端会跳过），样子不变，直接合。📌 Annie 线上：Settings › Products › Bus Manifest setup › West Rim 8 行 +「+ Add ticket name」。
-- G369 7b：Annie「v184已经跑了」；后端 92 上 main 449755f3（合并 e3b89098，四审 PASS，线上值 725-777-1698）⇒ a2 合 main 中。
+- 未发新单提醒 = 后端 G380（后端 16 转，Annie 在家填了 8 题，原话）：Q1「明天，后天，大后天」（不含今天）；Q2 A +「在其他团上的话，这个团的胶囊就变红色」；Q3 B；Q4 A；Q5「我们的排单原则本来就是新单排最前，所以几张新单如果是同一个页面的话会排在一起，如果没在一起，就点击变红了的胶囊进去就好了」（不做 Show 下拉，>3 只出红数字，靠红胶囊进去）；Q6 A；Q7 A；Q8 A。Annie 确认方案「明天到公司第一件做」。Res = Reservations，线上还没有这个 team，Annie 明天建或指定。后端明天发合同，前端照 preview 8YtCoE8VWFXjV6iCt3pZTk + 这些答案做。
+- 后端另登记：G382 HR 请假改版（只设计，后端方案后前端出 preview）；G381 TripGuru↔Rezdy 产品对照（后端方案 4 题未答，以后 Products 显示要前端小改）。
+- G369 7b：Annie「v184已经跑了」；后端 92 上 main 449755f3（合并 e3b89098，四审 PASS，线上值 725-777-1698）⇒ ✅ **G369 7b 上 main ea1d15f2**（a2，功能 d1c9b341；cs 266、nav 40、tsc / eslint / build），后端 92 回 PASS。92 两点非阻塞（没改，下次碰到再说）：① 电话 AI 给 +886 / +81 来电的 WhatsApp 回复也读这个键，How to use 可补「and the phone AI's WhatsApp reply」（改文字要先给 Annie 原文）；② save() 先 setDraft(trimmed) 再马上 save，可能送出没去空格的值，后端 strip 后校验、读时也 trim，无害。📌 Annie 线上：Content Studio › Tour Confirmation › Global 第一格 725-777-1698。
 - 后端 16 转 Annie（原话）「新订单的new标签怎么没放进去，然后还有放在页面的提醒呢，都是今天在公司做的」⇒ 查 git：NEW 标签 11-21 已上 main c6b25dfc（manifests-view.tsx:1857-1867，Tickets / Bus Tours，勾选框旁，只在有勾选框的行出现，Admin fee 不标）；页面「未发新单」提醒只有 preview 8YtCoE8VWFXjV6iCt3pZTk，8 题没答、没代码、后端汇总接口 / Notice / 开关都没做。已回 16。
 - G373 Quick Stats 后端上 main 86ae0933（6d；Annie 11-20 在 bb「动手」：开放式问、只 Super Admin、不加开关、按 send_log 状态原样列、表 + Excel + SQL + 说明、存卡重跑、记历史）。新页面 ⇒ 先 preview：派 61（只出样稿，题全文给 96）。上线时告诉 6d 同时跑对数。
   - 📌 61 交 G373 preview v1 https://claude.ai/artifact/ULDTQ1GevPbDGgKEQhKF1S （无代码；10 种状态电脑 + 手机；How to use 9 条；数据从哪来到哪去，Excel 重跑同一条 SQL、也是 5,000 行上限）。4 题等 Annie：Q1 侧栏位置 A Settings 最后（推荐，同现有 SA 专用项）/ B Reports；Q2 页面顺序 A 问 → 结果 → 卡 → 历史（推荐）/ B 卡在最上；Q3 历史 A 两人都看、带 By 列（推荐，接口本来就回全部）/ B 默认只看自己；Q4 删卡 A 先确认（推荐，删了页面上恢复不了）/ B 直接删。✅ Annie（原话）「同意推荐，动手」⇒ Q1–Q4 全 A；派 61 task/g373-quick-stats（/settings/quick-stats，后端已上，检查过直接合 main；上线后通知 6d 对数）。
