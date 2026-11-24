@@ -168,6 +168,8 @@ async function main() {
       if (w === 760) check("半屏适配 Staff Schedule 760px：时间照样一行，字缩到 6px 起（不换行）", m.min >= 6 && m.max < 8 && m.twoLine === 0, JSON.stringify(m));
     }
     await cdp("Emulation.clearDeviceMetricsOverride");
+    // 还原：Anita 照旧算人头，不然 runTicks 用的 2026-09-27 会多出空档、Publish 变灰。
+    await fetch(`${MOCK}/api/schedule/employees/5`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ counts_for_coverage: true }) });
     await runTicks();
   } finally {
     ws.close();
