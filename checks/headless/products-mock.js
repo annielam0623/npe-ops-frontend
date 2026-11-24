@@ -124,7 +124,9 @@ http.createServer(async (req, res) => {
     // UAC02 是 TG 产品，两个选项：A → UAC01 + PZ81AB（不在 Products、historical）；B → SHT01。其余 twin=null、options=[]。
     const TWIN = {
       UAC01: { product_id: "tg-1", product_code: "UAC02", product_name: "ZZ Test TG Antelope", option_id: "opt-a", option_code: "OA", option_name: "ZZ Option A", is_primary: true, historical_order_only: false },
-      SHT01: { product_id: "tg-1", product_code: "UAC02", product_name: "ZZ Test TG Antelope", option_id: "opt-b", option_code: "OB", option_name: "ZZ Option B", is_primary: true, historical_order_only: true },
+      SHT01: { product_id: "tg-1", product_code: "UAC02", product_name: "ZZ Test TG Antelope", option_id: "opt-b", option_code: "OB", option_name: "ZZ Option B", is_primary: true, historical_order_only: true, in_products: true },
+      // TG 编码在 Products 里没有行（合同补 in_products）；产品名 / 选项名空着 ⇒ 用 option_code。
+      PFYF01: { product_id: "tg-9", product_code: "PT92S6CJ", product_name: null, option_id: "opt-c", option_code: "OC", option_name: null, is_primary: true, historical_order_only: false, in_products: false },
     };
     const OPTS = {
       UAC02: [

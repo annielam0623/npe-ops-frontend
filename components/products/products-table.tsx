@@ -107,6 +107,19 @@ function TwinCode({
   );
 }
 
+/** Products 里还没有行的编码：灰字「(not in Products)」，不能点。 */
+function NotInProducts({ code, title }: { code: string; title: string }) {
+  return (
+    <span
+      data-twin-not-in-products={code}
+      title={title}
+      className="font-mono text-[11px] text-[#8a8f94] night:text-white/30"
+    >
+      {code} (not in Products)
+    </span>
+  );
+}
+
 /**
  * G381 TripGuru twin（Annie 2026-11-24：F1 选 C、F2 A、F3 A，「动手」；样稿 https://claude.ai/artifact/7vNEeMuiQYz52qePcxRd6m）。
  * 只读：Rezdy 行名字下一行小字「TripGuru twin: 编码 产品名 › 选项名」；TG 行收起成「▸ N TripGuru options · M Rezdy codes」，
@@ -130,9 +143,18 @@ function TripGuruTwinLines({
       {twin ? (
         <span data-tripguru-twin className={TWIN_LINE_CLASS}>
           <span className={TWIN_LABEL_CLASS}>TripGuru twin:</span>{" "}
-          <TwinCode code={twin.product_code} onJump={onJump} />{" "}
-          {twin.product_name}
-          {twin.option_name ? <> › {twin.option_name}</> : null}
+          {twin.in_products === false ? (
+            <NotInProducts
+              code={twin.product_code}
+              title="This TripGuru code has no row in Products yet"
+            />
+          ) : (
+            <TwinCode code={twin.product_code} onJump={onJump} />
+          )}
+          {twin.product_name ? <> {twin.product_name}</> : null}
+          {twin.option_name || twin.option_code ? (
+            <> › {twin.option_name || twin.option_code}</>
+          ) : null}
           {twin.historical_order_only ? <HistoricalTag /> : null}
         </span>
       ) : null}
@@ -167,13 +189,10 @@ function TripGuruTwinLines({
                       {r.in_products ? (
                         <TwinCode code={r.product_code} onJump={onJump} />
                       ) : (
-                        <span
-                          data-twin-not-in-products
+                        <NotInProducts
+                          code={r.product_code}
                           title="This Rezdy code has no row in Products yet"
-                          className="font-mono text-[11px] text-[#8a8f94] night:text-white/30"
-                        >
-                          {r.product_code} (not in Products)
-                        </span>
+                        />
                       )}
                       {r.historical_order_only ? <HistoricalTag /> : null}
                     </Fragment>

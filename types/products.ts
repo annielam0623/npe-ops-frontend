@@ -49,20 +49,26 @@ export interface Product {
 export interface TripGuruTwin {
   product_id: string;
   product_code: string;
-  product_name: string;
+  /** 导出里空着时为 null（后端 33 合同）。 */
+  product_name: string | null;
   option_id: string;
-  option_code: string;
-  option_name: string;
+  option_code: string | null;
+  option_name: string | null;
   is_primary: boolean;
   /** TripGuru 只为老订单保留这个编码 ⇒ 挂「historical orders only」小标。 */
   historical_order_only: boolean;
+  /**
+   * 这个 TG 产品编码在 Products 里有没有自己的行（后端 33 合同补）：false ⇒ 灰字「(not in Products)」不能点。
+   * 字段不存在（早期后端）⇒ 当 true；页面上找不到那一行时点了也不动。
+   */
+  in_products?: boolean;
 }
 
 /** G381：TG 行的一个选项和它的 Rezdy 编码（最多 10 个）。 */
 export interface TripGuruOption {
   option_id: string;
-  option_code: string;
-  option_name: string;
+  option_code: string | null;
+  option_name: string | null;
   rezdy: TripGuruRezdyCode[];
 }
 
