@@ -33,6 +33,45 @@ export interface Product {
    * 没有这个字段（旧后端）⇒ 不出标签（以前写死 REZDY，TripGuru 的 PHSU5Q6F / PPU4WY9C 也标成 REZDY，Annie 2026-11-21 发现）。
    */
   source?: "rezdy" | "tripguru" | "both" | null;
+  /**
+   * G381 TripGuru twin（后端 33，tripguru_product_map 表，只读）：这一行的 product_code 是某个 TG 选项的 Rezdy 别名时 = 那个
+   * TG 产品 + 选项，否则 null。每个 Rezdy 编码只对一个 TG 选项。后端没上时字段不存在（undefined）⇒ 不显示。
+   */
+  tripguru_twin?: TripGuruTwin | null;
+  /**
+   * G381：这一行的 product_code 是 TG 产品编码时 = 它在对照表里的各个选项（每个选项列出全部 Rezdy 编码），否则 []。
+   * 后端没上时字段不存在 ⇒ 不显示。
+   */
+  tripguru_options?: TripGuruOption[];
+}
+
+/** G381：Rezdy 行对应的 TripGuru 产品 + 选项。 */
+export interface TripGuruTwin {
+  product_id: string;
+  product_code: string;
+  product_name: string;
+  option_id: string;
+  option_code: string;
+  option_name: string;
+  is_primary: boolean;
+  /** TripGuru 只为老订单保留这个编码 ⇒ 挂「historical orders only」小标。 */
+  historical_order_only: boolean;
+}
+
+/** G381：TG 行的一个选项和它的 Rezdy 编码（最多 10 个）。 */
+export interface TripGuruOption {
+  option_id: string;
+  option_code: string;
+  option_name: string;
+  rezdy: TripGuruRezdyCode[];
+}
+
+export interface TripGuruRezdyCode {
+  product_code: string;
+  /** false = 这个 Rezdy 编码在 Products 里还没有行（照样列出，灰字，不能点）。 */
+  in_products: boolean;
+  is_primary: boolean;
+  historical_order_only: boolean;
 }
 
 export interface ProductGroup {

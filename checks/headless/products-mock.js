@@ -120,7 +120,23 @@ http.createServer(async (req, res) => {
     const sorted = [...products].map(withGroup).sort((a, b) => (a.group_sort ?? 99) - (b.group_sort ?? 99) || a.product_name.localeCompare(b.product_name));
     // 产品来源标签（后端 95 加 source）：ctl.source ⇒ UAC01 rezdy、UAC02 tripguru、SHT01 both，其余不带（看缺字段不出标签）。
     const SRC = { UAC01: "rezdy", UAC02: "tripguru", SHT01: "both" };
-    return send(res, 200, { products: ctl.source ? sorted.map((x) => (SRC[x.product_code] ? { ...x, source: SRC[x.product_code] } : x)) : sorted });
+    // G381 TripGuru twin（后端 33 草案）：ctl.twin ⇒ UAC01、SHT01 是 TG 产品 UAC02 选项的 Rezdy 别名（SHT01 historical）；
+    // UAC02 是 TG 产品，两个选项：A → UAC01 + PZ81AB（不在 Products、historical）；B → SHT01。其余 twin=null、options=[]。
+    const TWIN = {
+      UAC01: { product_id: "tg-1", product_code: "UAC02", product_name: "ZZ Test TG Antelope", option_id: "opt-a", option_code: "OA", option_name: "ZZ Option A", is_primary: true, historical_order_only: false },
+      SHT01: { product_id: "tg-1", product_code: "UAC02", product_name: "ZZ Test TG Antelope", option_id: "opt-b", option_code: "OB", option_name: "ZZ Option B", is_primary: true, historical_order_only: true },
+    };
+    const OPTS = {
+      UAC02: [
+        { option_id: "opt-a", option_code: "OA", option_name: "ZZ Option A", rezdy: [
+          { product_code: "UAC01", in_products: true, is_primary: true, historical_order_only: false },
+          { product_code: "PZ81AB", in_products: false, is_primary: false, historical_order_only: true }] },
+        { option_id: "opt-b", option_code: "OB", option_name: "ZZ Option B", rezdy: [
+          { product_code: "SHT01", in_products: true, is_primary: true, historical_order_only: true }] },
+      ],
+    };
+    const withTwin = (x) => (ctl.twin ? { ...x, tripguru_twin: TWIN[x.product_code] ?? null, tripguru_options: OPTS[x.product_code] ?? [] } : x);
+    return send(res, 200, { products: (ctl.source ? sorted.map((x) => (SRC[x.product_code] ? { ...x, source: SRC[x.product_code] } : x)) : sorted).map(withTwin) });
   }
   // Categories（后端 G141 实际形状）：清单随 GET /groups 下发（见下）；code 正则同后端；内置四个不能停用；没有删除。
   if (p === `${B}/categories` && req.method === "POST") {
