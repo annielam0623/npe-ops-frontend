@@ -74,9 +74,10 @@ function Num({
 }
 
 const TD =
-  "border-b-[0.5px] border-black/10 px-2.5 py-[5px] text-right whitespace-nowrap";
+  "border-b-[0.5px] border-black/10 px-2.5 py-[5px] text-right whitespace-nowrap sm:max-xl:px-1.5";
+// 半屏适配（Annie 2026-11-23）：640–1279px 宽时第一列最窄 130px（原 230px）、Count 那格可以换行、数字格边距收一点；全屏和手机照旧。
 const LBL =
-  "sticky left-0 z-[1] min-w-[230px] max-w-[300px] whitespace-normal border-b-[0.5px] border-black/10 px-2.5 py-[5px] text-left align-top shadow-[1px_0_0_rgba(0,0,0,.1)]";
+  "sticky left-0 z-[1] min-w-[230px] max-w-[300px] whitespace-normal sm:max-xl:min-w-[130px] border-b-[0.5px] border-black/10 px-2.5 py-[5px] text-left align-top shadow-[1px_0_0_rgba(0,0,0,.1)]";
 const TOT = "border-l-[0.5px] border-black/10 font-semibold";
 
 type RowKind =
@@ -204,7 +205,7 @@ function EntityRows({
             className={cn(
               TD,
               bg,
-              "min-w-[118px] text-left text-[11px] text-[#6b5e57]",
+              "min-w-[118px] text-left text-[11px] text-[#6b5e57] sm:max-xl:min-w-[90px] sm:max-xl:whitespace-normal",
               kind === "grand" && "text-white/70",
             )}
           >
@@ -276,7 +277,7 @@ export function BreakdownTable({
         : 2 + periods.length + 1;
 
   const TH =
-    "sticky top-0 z-[2] border-b border-black/[.08] bg-[#faf8f5] px-2.5 py-[7px] text-right font-semibold whitespace-nowrap text-[#1a1a1a]";
+    "sticky top-0 z-[2] border-b border-black/[.08] bg-[#faf8f5] px-2.5 py-[7px] text-right font-semibold whitespace-nowrap text-[#1a1a1a] sm:whitespace-normal sm:max-xl:px-1.5";
   const periodHead = (p: BreakdownPeriod) => p.label;
 
   return (

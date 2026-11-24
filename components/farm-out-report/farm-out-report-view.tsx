@@ -30,8 +30,8 @@ import type { FarmOutPartner, FarmOutReportRow } from "@/types/farm-out";
 import { reportRows } from "./report-rows";
 
 const TH =
-  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-paper night:bg-white/[.03] px-3 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#1a1a1a] night:text-white/35";
-const TD = "px-3 py-2 align-middle whitespace-nowrap";
+  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-paper night:bg-white/[.03] px-3 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#1a1a1a] sm:whitespace-normal night:text-white/35";
+const TD = "px-3 py-2 align-middle whitespace-nowrap sm:whitespace-normal";
 
 type LoadState =
   | { kind: "loading"; previous: FarmOutReportRow[] | null }
@@ -242,7 +242,8 @@ export function FarmOutReportView() {
             <div className="overflow-x-auto">
               <table
                 className={cn(
-                  "w-full min-w-[1080px] border-collapse text-[12px] tabular-nums",
+                  // 半屏适配（Annie 2026-11-23）：640–1279px 宽时最窄 650px、格子边距收一点；全屏和手机照旧。
+                  "w-full min-w-[1080px] border-collapse text-[12px] tabular-nums sm:min-w-[650px] sm:max-xl:[&_td]:px-2 sm:max-xl:[&_th]:px-2",
                   state.kind === "loading" && rows && "opacity-60",
                 )}
               >

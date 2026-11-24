@@ -104,6 +104,7 @@ export type {
   OrderPatch,
   OrderRefreshResult,
   OrderRow,
+  OrderMirror,
 } from "./orders";
 export type {
   ChannelStats,

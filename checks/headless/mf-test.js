@@ -1,6 +1,7 @@
 // 用 Chrome DevTools 协议驱动 headless Chrome，检查 /tickets-reminder/tracking。
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
+const { halfScreenChecks } = require("./half-screen-checks");
 const path = require("path");
 const { SELECT_HELPERS } = require("./select-menu-helper");
 
@@ -113,6 +114,7 @@ async function main() {
 
   try {
     await run();
+    await halfScreenChecks({ cdp, evaluate, openPage, check, sleep, url: `${APP}/dispatch/manifest?date=2026-10-05&tour=3`, sel: "table", label: "Bus Manifest 编辑页", fitAt: [1920, 950], narrowAt: [{ width: 760, max: 800 }], scrollAt: [640] });
     await runLayout();
     await runHotelColour();
     await runLayoutText();
@@ -1723,8 +1725,8 @@ async function runPhoneFit() {
   await waitFor("document.querySelector('section[aria-label^=\"Bus\"] table')", 60000);
   await sleep(600);
   const desk = await evaluate(`const t = document.querySelector('section[aria-label^="Bus"] table'); const td = t.querySelector('tbody tr[data-guest] td'); return { heads: ${heads}, minW: getComputedStyle(t).minWidth, fit: t.getAttribute('data-mf-fit'), html: document.documentElement.dataset.mfFit ?? null, fs: !!document.querySelector('[data-mf-fullscreen]'), td: getComputedStyle(td).fontSize };`);
-  check("151 电脑：照旧全部列（含 Order Number / Bus / ASSIST）、表最小宽 980px、字 16.5px、没有 Full screen 键、html 没有 data-mf-fit",
-    desk.heads.length >= 12 && desk.heads.includes("Order Number") && desk.heads.includes("Bus") && desk.heads.includes("ASSIST") && desk.minW === "980px" && desk.fit === null && desk.html === null && !desk.fs && desk.td === "16.5px", JSON.stringify(desk));
+  check("151 电脑：照旧全部列（含 Order Number / Bus / ASSIST）、屏幕上表最小宽 650px（半屏适配 2026-11-23；打印照旧 980px）、字 16.5px、没有 Full screen 键、html 没有 data-mf-fit",
+    desk.heads.length >= 12 && desk.heads.includes("Order Number") && desk.heads.includes("Bus") && desk.heads.includes("ASSIST") && desk.minW === "650px" && desk.fit === null && desk.html === null && !desk.fs && desk.td === "16.5px", JSON.stringify(desk));
   await shot("desktop-1600x1000.png");
 
   // 竖屏 390×844

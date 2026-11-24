@@ -1,7 +1,7 @@
 "use client";
 
 import type { HoursOf } from "@/lib/schedule-work-hours";
-import { useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 
 import { laToday, shiftYmd } from "@/lib/la-date";
 import { gapRangeShort } from "@/lib/schedule-gaps";
@@ -114,7 +114,8 @@ interface WeekGridProps {
   onSaveRules?: (next: Rule[]) => Promise<unknown>;
 }
 
-const COLS = "grid-cols-[130px_repeat(7,minmax(118px,1fr))]";
+// 半屏适配（Annie 2026-11-23，Q2 A）：每天一列最窄 72px（原 118px）、整张表最窄 650px，窄于它才左右滑；手机照旧 960px（Q3 A）。
+const COLS = "grid-cols-[130px_repeat(7,minmax(72px,1fr))]";
 const SLOT_MIME = "text/slot";
 const ROW_MIME = "text/sch-row";
 
@@ -318,7 +319,12 @@ export function WeekGrid({
           onClose={() => setDayRule(null)}
         />
       ) : null}
-      <div className={cn("grid min-w-[960px] gap-[2px]", COLS)}>
+      <div
+        className={cn(
+          "grid min-w-[650px] gap-[2px] max-sm:min-w-[960px]",
+          COLS,
+        )}
+      >
         <div
           className={cn(
             "pb-1.5 text-[11px] font-bold tracking-[.06em] text-white/90 uppercase",
@@ -645,10 +651,17 @@ function PersonRow({
             className="h-2.5 w-2.5 shrink-0 rounded-full"
             style={{ backgroundColor: personDotColor(employee.id) }}
           />
-          <span className="min-w-0 break-words">{employee.name}</span>
-          {employee.is_test ? <TestTag /> : null}
-          {notCounted ? <NotCountedTag /> : null}
+          <span className="min-w-0 [overflow-wrap:normal]">
+            {employee.name}
+          </span>
         </span>
+        {/* 半屏适配 Q5 A：Test / Not counted 放到名字下面一行，名字永远整个显示（原来挤在一行，名字被压成一列字母）。 */}
+        {employee.is_test || notCounted ? (
+          <span className="flex flex-wrap gap-1 pl-[17px]">
+            {employee.is_test ? <TestTag /> : null}
+            {notCounted ? <NotCountedTag /> : null}
+          </span>
+        ) : null}
         {overHours != null ? (
           <span
             data-over-hours={employee.id}
@@ -921,7 +934,7 @@ function SlotCard({
       data-slot-error={error || undefined}
       data-slot-over-cap={overCap || undefined}
       className={cn(
-        "group/card flex flex-1 flex-col justify-center gap-0.5 rounded-[6px] border px-2 py-1 text-[11px] leading-tight",
+        "group/card @container flex flex-1 flex-col justify-center gap-0.5 rounded-[6px] border px-2 py-1 text-[11px] leading-tight",
         // 没人的班：整张卡不上色，只有白色虚线框 + 白字（Annie 2026-11-04「是卡片整个不上色，只是个虚线白框然后里头有文字」）；
         // 派给人以后才按班次颜色。
         needs
@@ -987,12 +1000,23 @@ function SlotCard({
       <button
         type="button"
         disabled={!live}
+        data-slot-time
+        style={
+          {
+            "--tlen": (
+              `${formatClock(slot.start_time)} – ${formatClock(slot.end_time)}`
+                .length * 0.55
+            ).toFixed(2),
+          } as CSSProperties
+        }
         onClick={(e) => {
           e.stopPropagation();
           if (live) onStartEdit(cardRef.current);
         }}
         className={cn(
-          "w-fit text-left font-mono text-[10.5px] font-semibold whitespace-nowrap",
+          // 半屏适配 Q4 B（Annie 2026-11-23「Staff Schedule 时间选B，动手」）：时间永远一行，卡片窄了字跟着缩
+          // （等宽字每字约 0.55 个字号，--tlen = 字数 × 0.55），最小 6px，不换行。全屏宽照旧 10.5px；手机（< 640px）照旧（Q3 A）。
+          "w-fit text-left font-mono text-[10.5px] font-semibold whitespace-nowrap sm:text-[clamp(6px,calc(100cqi/var(--tlen)),10.5px)]",
           deleted ? "text-white/40 line-through" : "text-white",
           live && "cursor-text hover:text-sky-200 hover:underline",
         )}

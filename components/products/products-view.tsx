@@ -949,6 +949,58 @@ function HowToUse() {
         If a list is wider than the window, scroll it sideways to see the
         columns on the right.
       </li>
+      {/* Annie 2026-11-23（后端窗口）「写进 Products 页面的 How to use 吧」：门票产品怎么设，折叠起来；后端事实 bb 核过。 */}
+      <li className="list-none" data-howto-tickets>
+        <details className="mt-1">
+          <summary className="cursor-pointer font-semibold">
+            Setting up a ticket product (Antelope etc.)
+          </summary>
+          <ol className="mt-1 list-decimal pl-5">
+            <li>
+              Find the product&rsquo;s Code in All Products (a new code shows
+              first in the orange &ldquo;Not in this list yet&rdquo; card). Set
+              its Category to Ticket and pick its Group.
+            </li>
+            <li>
+              On the same row, pick its Tour type: which ticket tour it is (for
+              example U-Antelope (Tsosie), U-Antelope (Brenda), U-Antelope
+              (Hogan Hiking), L-Antelope (Ken&rsquo;s), L-Antelope
+              (Dixie&rsquo;s), Canyon X), then click Save. The Tickets -
+              SelfDrive pill on Manifests, Tickets Tracking and Auto Send all
+              follow this tour type, and so do which Rezdy confirmation field
+              is read and whether a waiver link is needed. With no tour type,
+              Auto Send skips the order (&ldquo;No ticket tour type set for
+              this product&rdquo;).
+            </li>
+            <li>
+              Cfm #: Canyon X tickets read the Rezdy field &ldquo;Antelope
+              Canyon X Confirmation #&rdquo;; the other Antelope tickets read
+              &ldquo;Antelope Confirmation #&rdquo;; tours with No Cfm # needed
+              ticked (the Hogan tours) need none. If the other field has a
+              number instead, the row turns red and Auto Send skips it. Fix it
+              in Rezdy.
+            </li>
+            <li>
+              Brenda tickets need a waiver link on each order: on Manifests,
+              fill the Waiver link column. Without it the reminder is not sent.
+            </li>
+            <li>
+              TripGuru products have their own codes (for example PHSU5Q6F).
+              Each one needs its own row here, set up the same way. TripGuru
+              orders have no confirmation field, so staff type the Cfm #.
+            </li>
+            <li>
+              The tour types themselves are in Content Studio › Tickets
+              Reminder › Guest Page: + New tour adds one (name and key); ✎ Edit
+              tour renames it, sets No Cfm # needed, or turns it off by
+              unticking Active. Tour types are never deleted. A new tour type
+              does not read either Antelope confirmation field and does not
+              get a waiver link by itself; ask the office or Max to set that
+              up.
+            </li>
+          </ol>
+        </details>
+      </li>
     </LegacyHowTo>
   );
 }

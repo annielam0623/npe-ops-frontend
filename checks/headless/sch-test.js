@@ -3,6 +3,7 @@
 // 原生 HTML5 拖拽在 headless 里不好可靠模拟，这里主要测「点人再点格子」——跟手机走的是同一套逻辑
 // （见 components/schedule/week-grid.tsx 的 onPlace），测这条就等于两条路径都测了。
 const { spawn } = require("child_process");
+const { halfScreenChecks } = require("./half-screen-checks");
 const STANDARD_SUP = require("./role-standard").STANDARD.supervisor;
 const path = require("path");
 const { SELECT_HELPERS } = require("./select-menu-helper");
@@ -147,6 +148,29 @@ async function main() {
 
   try {
     await run();
+    // run() 最后几段可能把 mock 留在别的状态（员工身份 / 401）：先回到默认的 supervisor。
+    await ctl({ role: "supervisor", fail401: false, rulesMissing: false, tick: null });
+    await halfScreenChecks({ cdp, evaluate, openPage, check, sleep, url: `${APP}/schedule?week=2026-10-04`, sel: "[data-slot-id]", label: "Staff Schedule", fitAt: [1920, 950, 760], scrollAt: [640, 390] });
+    // 半屏适配（Annie 2026-11-23）：名字永远整个显示、Test / Not counted 标签在名字下面一行（Q5 A）；
+    // 时间永远一行、窄了字跟着缩，最小 6px（Q4 B「Staff Schedule 时间选B，动手」）；全屏照旧 10.5px。
+    await fetch(`${MOCK}/api/schedule/employees/5`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ counts_for_coverage: false }) });
+    for (const [w, mobile] of [[1920, false], [950, false], [760, false], [390, true]]) {
+      await cdp("Emulation.setDeviceMetricsOverride", { width: w, height: mobile ? 844 : 1000, deviceScaleFactor: 1, mobile });
+      await openPage(`${APP}/schedule?week=2026-10-04`);
+      await waitFor("!!document.querySelector('[data-slot-id]')", 20000);
+      await sleep(500);
+      const m = await evaluate(`const tag = document.querySelector('[data-not-counted-tag]'); const row = tag?.closest('[class*="sticky"]'); const name = row ? [...row.querySelectorAll('span')].find((s) => s.textContent === 'Anita') : null;
+        const times = [...document.querySelectorAll('[data-slot-time]')].map((b) => ({ fs: parseFloat(getComputedStyle(b).fontSize), lines: Math.round(b.getBoundingClientRect().height / (parseFloat(getComputedStyle(b).lineHeight) || parseFloat(getComputedStyle(b).fontSize) * 1.25)) }));
+        return { nameH: name ? Math.round(name.getBoundingClientRect().height) : null, tagBelow: !!tag && !!name && tag.getBoundingClientRect().top >= name.getBoundingClientRect().bottom - 1, min: Math.min(...times.map((t) => t.fs)), max: Math.max(...times.map((t) => t.fs)), twoLine: times.filter((t) => t.lines > 1).length, n: times.length };`);
+      check(`半屏适配 Staff Schedule ${w}px：Anita 整个名字一行（不再一个字母一行），Not counted 在名字下面`, m.nameH !== null && m.nameH < 30 && m.tagBelow, JSON.stringify(m));
+      if (w === 1920) check("半屏适配 Staff Schedule 1920px：时间照旧 10.5px、一行", m.min === 10.5 && m.max === 10.5 && m.twoLine === 0, JSON.stringify(m));
+      if (w === 950) check("半屏适配 Staff Schedule 950px：时间一行，字缩小（约 8–9px）", m.min >= 8 && m.max <= 10.5 && m.min < 10.5 && m.twoLine === 0, JSON.stringify(m));
+      if (w === 760) check("半屏适配 Staff Schedule 760px：时间照样一行，字缩到 6px 起（不换行）", m.min >= 6 && m.max < 8 && m.twoLine === 0, JSON.stringify(m));
+    }
+    await cdp("Emulation.clearDeviceMetricsOverride");
+    // 还原：Anita 照旧算人头，不然 runTicks 用的 2026-09-27 会多出空档、Publish 变灰。
+    await fetch(`${MOCK}/api/schedule/employees/5`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ counts_for_coverage: true }) });
+    await axisLabelChecks();
     await runTicks();
   } finally {
     ws.close();
@@ -2854,6 +2878,45 @@ async function run() {
 }
 
 main();
+
+// ── Day timeline 刻度不叠（Annie 2026-11-23「时间刻度重叠那个修一下」：950 宽时「8 PM」和「9:30 PM」叠成「8 P9:30 PM」）──
+// 各种 Working hours × 各种屏宽：看得见的刻度字两两不碰，两头的开始 / 结束字一定在。
+async function axisLabelChecks() {
+  const put = (start_time, end_time) =>
+    fetch(`${MOCK}/api/settings/schedule/work-window`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ start_time, end_time }) });
+  await ctl({ role: "superadmin" });
+  const WINDOWS = [
+    ["02:00", "21:30", "2 AM", "9:30 PM"],
+    ["02:00", "21:00", "2 AM", "9 PM"],
+    ["06:30", "20:00", "6:30 AM", "8 PM"],
+    ["05:30", "22:30", "5:30 AM", "10:30 PM"],
+    ["07:00", "08:30", "7 AM", "8:30 AM"],
+  ];
+  for (const [s, e, startLabel, endLabel] of WINDOWS) {
+    await put(s, e);
+    for (const [w, mobile] of [[1920, false], [950, false], [760, false], [390, true]]) {
+      await cdp("Emulation.setDeviceMetricsOverride", { width: w, height: mobile ? 844 : 1000, deviceScaleFactor: 1, mobile });
+      await openPage(`${APP}/schedule?week=2026-10-04`);
+      await waitFor("[...document.querySelectorAll('[data-axis-step]')].some((r) => r.offsetWidth > 0)", 20000);
+      await sleep(500);
+      const m = await evaluate(`
+        const row = [...document.querySelectorAll('[data-axis-step]')].find((r) => r.offsetWidth > 0);
+        const vis = [...row.querySelectorAll('span')].filter((x) => getComputedStyle(x).visibility !== 'hidden');
+        const boxes = vis.map((x) => { const r = x.getBoundingClientRect(); return { t: x.textContent, l: Math.round(r.left * 10) / 10, r: Math.round(r.right * 10) / 10 }; }).sort((a, b) => a.l - b.l);
+        const bumps = [];
+        for (let i = 1; i < boxes.length; i++) if (boxes[i].l < boxes[i - 1].r + 2) bumps.push(boxes[i - 1].t + '|' + boxes[i].t);
+        const rr = row.getBoundingClientRect();
+        return { labels: boxes.map((b) => b.t), bumps, start: row.querySelector('[data-axis-start]')?.textContent, end: row.querySelector('[data-axis-end]')?.textContent, inside: boxes.every((b) => b.l >= rr.left - 1 && b.r <= rr.right + 1) };`);
+      check(`Day timeline 刻度不叠 · Working hours ${s}–${e} · ${w}px：看得见的字两两不碰，两头写 ${startLabel} / ${endLabel}`,
+        m.bumps.length === 0 && m.inside && m.start === startLabel && m.end === endLabel && m.labels[0] === startLabel && m.labels[m.labels.length - 1] === endLabel, JSON.stringify(m));
+      if (s === "02:00" && e === "21:30" && w === 1920)
+        check("Day timeline 刻度 1920px：照旧每 2 小时一个整点（2 AM … 8 PM、9:30 PM 都写）", JSON.stringify(m.labels) === JSON.stringify(["2 AM", "4 AM", "6 AM", "8 AM", "10 AM", "12 PM", "2 PM", "4 PM", "6 PM", "8 PM", "9:30 PM"]), JSON.stringify(m.labels));
+    }
+  }
+  await put("02:00", "21:30");
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await ctl({ role: "supervisor" });
+}
 
 // ── 全部按照勾选（Annie 2026-10-30 置顶 10c）B 类：Staff Schedule 开关开着按勾，关着照旧按角色，Super Admin 全过 ──
 // 改 = Auto-fill 键（schedule.edit）；加人 = + Add employee（team.staff_add 和 schedule.edit 都要）；发布 = Publish 键能点（schedule.publish）。

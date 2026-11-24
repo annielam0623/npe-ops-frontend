@@ -61,6 +61,8 @@ const TH =
   "relative border-b-[1.5px] border-[#d0dae6] px-2.5 py-2 text-left text-[12px] font-bold tracking-[.4px] whitespace-nowrap uppercase select-none";
 
 export interface TicketsTableProps {
+  /** 搜索不限日期跳过来的那一单（整行描黄，Q6 A）；null = 没有。 */
+  hitOrder?: string | null;
   rows: TicketsTrackingRow[];
   columns: ColumnKey[];
   /** 拖动系统列换位置（上传列固定在最右，不参与拖动）。 */
@@ -82,6 +84,13 @@ export interface TicketsTableProps {
   placeholder: string | null;
 }
 
+/** 搜索不限日期跳过来的那一单：整行淡黄 + 橙黄描边（同 Tour Tracking）。 */
+const HIT_ROW_STYLE = {
+  background: "#fff7e0",
+  outline: "2px solid #f59e0b",
+  outlineOffset: "-2px",
+} as const;
+
 export function TicketsTable({
   rows,
   columns,
@@ -95,6 +104,7 @@ export function TicketsTable({
   busyId,
   now,
   placeholder,
+  hitOrder = null,
 }: TicketsTableProps) {
   const [dragging, setDragging] = useState<SystemColumnKey | null>(null);
   const [dropTarget, setDropTarget] = useState<SystemColumnKey | null>(null);
@@ -210,8 +220,13 @@ export function TicketsTable({
                 key={row.id}
                 // G281 题 4 A：还没发提醒的整行灰底（同 Tour Tracking），不跟 even 斑马纹。
                 data-unsent={isUnsent(row) ? "" : undefined}
+                data-anydate-hit={hitOrder && row.order_number.trim().toUpperCase() === hitOrder.trim().toUpperCase() ? "" : undefined}
                 style={
-                  isUnsent(row) ? { background: UNSENT_ROW_BG } : undefined
+                  hitOrder && row.order_number.trim().toUpperCase() === hitOrder.trim().toUpperCase()
+                    ? HIT_ROW_STYLE
+                    : isUnsent(row)
+                      ? { background: UNSENT_ROW_BG }
+                      : undefined
                 }
                 className={cn(
                   "group [&:last-child>*]:border-b-0",

@@ -1,5 +1,6 @@
 // 模拟后端：Tickets Tracking 页用到的接口。控制：POST /__ctl {fail401, bump}；GET /__log。
 const http = require("http");
+const anyDate = require("./anydate-mock");
 const staffPerm = require("./staff-perm-mock");
 
 const today = new Intl.DateTimeFormat("en-CA", {
@@ -94,6 +95,8 @@ http.createServer(async (req, res) => {
     const mode = ctl.syncMode || "off";
     return send(res, 200, { mode, enabled: mode !== "off" });
   }
+  // Tracking 搜索不限日期（anydate-mock.js）：/api/tracking/find-order、/api/tracking/search-orders。
+  if (anyDate(p, url, res, send)) return;
   if (p === "/api/notifications/tickets-reminder/tracking") {
     // extraRow：多一行 CHDZZ6（测群发弹窗开着时表格重拉）。
     let out = ctl.extraRow ? [...rows, row({ id: 16, order_number: "CHDZZ6", guest_name: "ZZ Test Foxtrot", sms_status: "sent" })] : rows;
