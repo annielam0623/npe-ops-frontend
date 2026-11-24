@@ -483,7 +483,7 @@ export function TcGuestEditor({
         {samplePickups.length && !list ? (
           <div
             data-sample-pickup
-            className="flex flex-wrap items-center gap-x-2 gap-y-1 max-sm:w-full"
+            className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1 max-sm:w-full max-sm:justify-start sm:max-w-[340px]"
           >
             <span
               id="tc-sample-pickup-label"
@@ -517,6 +517,12 @@ export function TcGuestEditor({
               }}
               className="h-7 max-w-[260px] min-w-0 truncate rounded-[8px] border border-white/15 bg-white/[.04] px-2.5 text-[12.5px] text-white max-sm:max-w-full"
             />
+            <span
+              data-sample-pickup-hint
+              className="basis-full text-right text-[11.5px] text-white/45 max-sm:text-left"
+            >
+              From Settings › Pickup locations. Only changes this sample.
+            </span>
             {pickupError ? (
               <span
                 role="alert"
