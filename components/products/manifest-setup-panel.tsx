@@ -269,7 +269,10 @@ const toExtraDrafts = (list: ManifestExtra[]): ExtraDraft[] => [
   { key: ++extraKey, id: null, name: "", seats: "" },
 ];
 
-/** G374 票名改名表的一行草稿。最后总有一行空的（填上就是新加一行）。 */
+/**
+ * G374 票名改名表的一行草稿。加行用表下面的「+ Add ticket name」（Annie 2026-11-23「A动手」：
+ * 灰绿 Add 键，不再自动留一行空的）。
+ */
 interface TicketDraft {
   key: number;
   source: string;
@@ -281,17 +284,13 @@ const emptyTicket = (): TicketDraft => ({
   source: "",
   label: "",
 });
-const toTicketDrafts = (list: ManifestTicketLabel[]): TicketDraft[] => [
-  ...list.map((t) => ({ key: ++ticketKey, source: t.source, label: t.label })),
-  emptyTicket(),
-];
-/** 末尾保证有一行空的（打了字的空行变成正常行时，下面再补一行）。 */
-const withTrailingEmpty = (rows: TicketDraft[]): TicketDraft[] => {
-  const last = rows[rows.length - 1];
-  return !last || last.source.trim() || last.label.trim()
-    ? [...rows, emptyTicket()]
-    : rows;
-};
+const toTicketDrafts = (list: ManifestTicketLabel[]): TicketDraft[] =>
+  list.map((t) => ({ key: ++ticketKey, source: t.source, label: t.label }));
+/** 后端一个团最多 100 行（合同 g374-ticket-labels-2026-11-23）。 */
+const MAX_TICKET_ROWS = 100;
+/** 先加在页面上、按 Save 才存的 Add：灰绿 #6b8e74 白字（Annie 2026-10-30）。 */
+const TICKET_ADD_CLASS =
+  "cursor-pointer rounded-[6px] border border-[#6b8e74] bg-[#6b8e74] px-2.5 py-[3px] text-[12px] font-semibold text-white hover:bg-[#5d7d66] disabled:cursor-not-allowed disabled:opacity-50";
 
 /** 产品的 Type 下拉的值：挂了 Extra 的是 "extra:<id>"，否则是 kind（同旧页面 typeValue）。 */
 const typeValue = (p: ManifestSetupProduct) =>
@@ -1446,13 +1445,13 @@ function GroupEditor({
               {...field("tickets")}
               sub
               title="Ticket names on the Bus Manifest"
-              hint="Type the ticket exactly as the Bus Manifest shows it today in Original text, and what you want instead in Name to show. Spaces and capitals do not matter. Tickets not listed show as they are. Counts at the bottom do not change. Rows with the same name share the colour of the top one, so use ↑ ↓ to change the order. To add one, fill in the empty last row and click Save."
+              hint="Type the ticket exactly as the Bus Manifest shows it today in Original text, and what you want instead in Name to show. Spaces and capitals do not matter. Tickets not listed show as they are. Counts at the bottom do not change. Rows with the same name share the colour of the top one, so use ↑ ↓ to change the order. Click + Add ticket name to add one, Remove to take one off, then click Save."
             >
               <TicketNamesTable
                 rows={tickets}
                 saved={group.ticket_labels ?? []}
                 disabled={ticketsBlock.state.kind === "saving"}
-                onChange={(next) => setTicketsEdit(withTrailingEmpty(next))}
+                onChange={setTicketsEdit}
               />
               <SaveControl block={ticketsBlock} />
             </MapField>
@@ -1726,10 +1725,10 @@ function GroupEditor({
               instead in Name to show. Spaces and capitals do not matter.
               Tickets not listed show as they are. Counts at the bottom do not
               change. Rows with the same name share the colour of the top one,
-              so use ↑ ↓ to change the order. Fill in the empty last row to add
-              one, click Remove to take one off, then click Save. The Bus
-              Manifest, its printout and Excel, and the Driver and Guide pages
-              all show the new name.
+              so use ↑ ↓ to change the order. Click + Add ticket name to add
+              one, Remove to take one off, then click Save. The Bus Manifest,
+              its printout and Excel, and the Driver and Guide pages all show
+              the new name.
             </li>
           ) : null}
           <li>
@@ -1997,8 +1996,8 @@ function SectionRow({
 }
 
 /**
- * G374 票名改名表：Original text | Name to show | ↑ ↓ | Remove；最后一行空的用来加。
- * 改动都只在页面上（↑↓ 换顺序、Remove 拿掉一行、打字），按这一项的 Save 才 PUT 整张表。
+ * G374 票名改名表：Original text | Name to show | ↑ ↓ | Remove；表下面「+ Add ticket name」加一行空的。
+ * 改动都只在页面上（加行、↑↓ 换顺序、Remove 拿掉一行、打字），按这一项的 Save 才 PUT 整张表。
  * 同名的几行在 Bus Manifest 上用最上面那行的颜色，所以顺序要保留、可以挪。
  */
 function TicketNamesTable({
@@ -2012,9 +2011,18 @@ function TicketNamesTable({
   disabled: boolean;
   onChange: (rows: TicketDraft[]) => void;
 }) {
-  const filledCount = rows.filter(
-    (r) => r.source.trim() || r.label.trim(),
-  ).length;
+  const boxRef = useRef<HTMLDivElement>(null);
+  /** 刚加的那行：画出来以后把光标放进它的 Original text。 */
+  const focusKey = useRef<number | null>(null);
+  useEffect(() => {
+    if (focusKey.current === null) return;
+    boxRef.current
+      ?.querySelector<HTMLInputElement>(
+        `[data-ticket-key="${focusKey.current}"] input`,
+      )
+      ?.focus();
+    focusKey.current = null;
+  }, [rows]);
   const set = (key: number, patch: Partial<TicketDraft>) =>
     onChange(rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   const move = (i: number, by: -1 | 1) => {
@@ -2022,60 +2030,62 @@ function TicketNamesTable({
     [next[i], next[i + by]] = [next[i + by], next[i]];
     onChange(next);
   };
+  const add = () => {
+    const row = emptyTicket();
+    focusKey.current = row.key;
+    onChange([...rows, row]);
+  };
   return (
-    <div className="overflow-x-auto">
-      <table
-        data-ticket-labels
-        className="w-full border-collapse text-[12.5px]"
-      >
-        <thead>
-          <tr>
-            <th className={TH}>Original text</th>
-            <th className={TH}>Name to show</th>
-            <th className={cn(TH, "w-[1%]")}>
-              <span className="sr-only">Order and remove</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => {
-            const empty = !r.source.trim() && !r.label.trim();
-            const isAdd = empty && i === rows.length - 1;
-            const was = saved[i];
-            const changed = isAdd
-              ? false
-              : !was ||
+    <div ref={boxRef}>
+      <div className="overflow-x-auto">
+        <table
+          data-ticket-labels
+          className="w-full border-collapse text-[12.5px]"
+        >
+          <thead>
+            <tr>
+              <th className={TH}>Original text</th>
+              <th className={TH}>Name to show</th>
+              <th className={cn(TH, "w-[1%]")}>
+                <span className="sr-only">Order and remove</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => {
+              const was = saved[i];
+              const changed =
+                !was ||
                 was.source !== r.source.trim() ||
                 was.label !== r.label.trim();
-            const ring = changed && CHANGED_RING;
-            return (
-              <tr key={r.key} data-ticket-row={isAdd ? "new" : i}>
-                <td className={cn(TD, "min-w-[180px]")}>
-                  <input
-                    type="text"
-                    aria-label={`Original text, row ${i + 1}`}
-                    value={r.source}
-                    maxLength={200}
-                    placeholder={isAdd ? "Adult +skywalk +Meal Voucher" : ""}
-                    disabled={disabled}
-                    onChange={(e) => set(r.key, { source: e.target.value })}
-                    className={cn(INPUT, "w-full", ring)}
-                  />
-                </td>
-                <td className={cn(TD, "min-w-[120px]")}>
-                  <input
-                    type="text"
-                    aria-label={`Name to show, row ${i + 1}`}
-                    value={r.label}
-                    maxLength={60}
-                    placeholder={isAdd ? "Premium" : ""}
-                    disabled={disabled}
-                    onChange={(e) => set(r.key, { label: e.target.value })}
-                    className={cn(INPUT, "w-full", ring)}
-                  />
-                </td>
-                <td className={cn(TD, "whitespace-nowrap")}>
-                  {isAdd ? null : (
+              const ring = changed && CHANGED_RING;
+              return (
+                <tr key={r.key} data-ticket-row={i} data-ticket-key={r.key}>
+                  <td className={cn(TD, "min-w-[180px]")}>
+                    <input
+                      type="text"
+                      aria-label={`Original text, row ${i + 1}`}
+                      value={r.source}
+                      maxLength={200}
+                      placeholder="Adult +skywalk +Meal Voucher"
+                      disabled={disabled}
+                      onChange={(e) => set(r.key, { source: e.target.value })}
+                      className={cn(INPUT, "w-full", ring)}
+                    />
+                  </td>
+                  <td className={cn(TD, "min-w-[120px]")}>
+                    <input
+                      type="text"
+                      aria-label={`Name to show, row ${i + 1}`}
+                      value={r.label}
+                      maxLength={60}
+                      placeholder="Premium"
+                      disabled={disabled}
+                      onChange={(e) => set(r.key, { label: e.target.value })}
+                      className={cn(INPUT, "w-full", ring)}
+                    />
+                  </td>
+                  <td className={cn(TD, "whitespace-nowrap")}>
                     <span className="inline-flex items-center gap-1">
                       <button
                         type="button"
@@ -2091,7 +2101,7 @@ function TicketNamesTable({
                         type="button"
                         data-ticket-down
                         aria-label={`Move row ${i + 1} down`}
-                        disabled={disabled || i >= filledCount - 1}
+                        disabled={disabled || i === rows.length - 1}
                         onClick={() => move(i, 1)}
                         className={cn(BUTTON, "h-7 px-2")}
                       >
@@ -2113,13 +2123,27 @@ function TicketNamesTable({
                         Remove
                       </button>
                     </span>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <button
+        type="button"
+        data-ticket-add
+        disabled={disabled || rows.length >= MAX_TICKET_ROWS}
+        title={
+          rows.length >= MAX_TICKET_ROWS
+            ? "At most 100 ticket names per tour."
+            : undefined
+        }
+        onClick={add}
+        className={cn(TICKET_ADD_CLASS, "mt-2")}
+      >
+        + Add ticket name
+      </button>
     </div>
   );
 }

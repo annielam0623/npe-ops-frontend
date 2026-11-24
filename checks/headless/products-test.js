@@ -1352,19 +1352,23 @@ async function ticketChecks() {
   await openSetup();
   await waitFor(`$q('${T}')`, 15000);
   check("G374 在 Sections 下面、Extras 后面，当子项（↳ Ticket names on the Bus Manifest），不另给编号", await evaluate("const f = [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent); const i = f.indexOf('↳:Extras'); return i >= 0 && f[i + 1] === '↳:Ticket names on the Bus Manifest';"), await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|');"));
-  check("G374 表头 Original text | Name to show；按后端顺序 3 行 + 最后一行空的（占位示例）", JSON.stringify(await rowsNow()) === JSON.stringify(["Adult +skywalk +Meal Voucher => Premium", "Adult +skywalk +Grab and Go lunch => Sky + GnG", "Adult Premium => Premium", " => "]) && (await evaluate(`return [...document.querySelectorAll('[data-ticket-labels] th')].map(t => t.textContent.trim()).slice(0, 2).join('|') === 'Original text|Name to show' && ${src(4)}.placeholder === 'Adult +skywalk +Meal Voucher' && ${lab(4)}.placeholder === 'Premium';`)), JSON.stringify(await rowsNow()));
-  check("G374 灰字说明第一句照合同原文；How to use — Bus Manifest setup 加了那条", await evaluate(`return $q('${T} p').textContent.startsWith('Type the ticket exactly as the Bus Manifest shows it today in Original text, and what you want instead in Name to show. Spaces and capitals do not matter. Tickets not listed show as they are. Counts at the bottom do not change.') && document.querySelector('[data-howto-ticket-labels]').textContent.replace(/\\s+/g, ' ').includes('Ticket names on the Bus Manifest: type the ticket exactly as the Bus Manifest shows it today in Original text');`));
-  check("G374 没改：Save 灰着；第 1 行 ↑ 灰、最后一行有字的 ↓ 灰；空行没有 ↑↓ / Remove", await evaluate(`return ${saveBtn}.disabled && $q('[data-ticket-row="0"] [data-ticket-up]').disabled && $q('[data-ticket-row="2"] [data-ticket-down]').disabled && !$q('[data-ticket-row="new"] button');`));
+  check("G374 表头 Original text | Name to show；按后端顺序 3 行，不再自动留空行", JSON.stringify(await rowsNow()) === JSON.stringify(["Adult +skywalk +Meal Voucher => Premium", "Adult +skywalk +Grab and Go lunch => Sky + GnG", "Adult Premium => Premium"]) && (await evaluate(`return [...document.querySelectorAll('[data-ticket-labels] th')].map(t => t.textContent.trim()).slice(0, 2).join('|') === 'Original text|Name to show';`)), JSON.stringify(await rowsNow()));
+  check("G374 表下面「+ Add ticket name」：灰绿 #6b8e74 白字（Annie 2026-11-23「A动手」）", await evaluate(`const b = $q('${T} [data-ticket-add]'); const c = getComputedStyle(b); return !!b && b.textContent.trim() === '+ Add ticket name' && c.backgroundColor === 'rgb(107, 142, 116)' && c.color === 'rgb(255, 255, 255)' && !b.disabled && !b.closest('table');`));
+  check("G374 灰字说明第一句照合同原文；How to use — Bus Manifest setup 加了那条", await evaluate(`return $q('${T} p').textContent.startsWith('Type the ticket exactly as the Bus Manifest shows it today in Original text, and what you want instead in Name to show. Spaces and capitals do not matter. Tickets not listed show as they are. Counts at the bottom do not change.') && document.querySelector('[data-howto-ticket-labels]').textContent.replace(/\\s+/g, ' ').includes('Ticket names on the Bus Manifest: type the ticket exactly as the Bus Manifest shows it today in Original text') && $q('${T} p').textContent.includes('Click + Add ticket name to add one, Remove to take one off, then click Save.') && document.querySelector('[data-howto-ticket-labels]').textContent.replace(/\\s+/g, ' ').includes('Click + Add ticket name to add one, Remove to take one off, then click Save.') && !/empty last row/.test($q('${T} p').textContent + document.querySelector('[data-howto-ticket-labels]').textContent);`));
+  check("G374 没改：Save 灰着；第 1 行 ↑ 灰、最后一行 ↓ 灰", await evaluate(`return ${saveBtn}.disabled && $q('[data-ticket-row="0"] [data-ticket-up]').disabled && $q('[data-ticket-row="2"] [data-ticket-down]').disabled && !$q('[data-ticket-row="1"] [data-ticket-down]').disabled;`));
 
   let before = (await mockLog()).length;
+  await evaluate(`$q('${T} [data-ticket-add]').click();`);
+  await sleep(200);
+  check("G374 点 + Add ticket name：加一行空的、光标在它的 Original text；空行还不算改动（Save 灰着）、没发请求", JSON.stringify(await rowsNow()) === JSON.stringify(["Adult +skywalk +Meal Voucher => Premium", "Adult +skywalk +Grab and Go lunch => Sky + GnG", "Adult Premium => Premium", " => "]) && (await evaluate(`return document.activeElement === ${src(4)} && ${saveBtn}.disabled && ${src(4)}.placeholder === 'Adult +skywalk +Meal Voucher' && ${lab(4)}.placeholder === 'Premium';`)) && (await since(before, (e) => e.path.endsWith("/ticket-labels"))).length === 0, JSON.stringify(await rowsNow()));
   await evaluate(`$setValue(${src(4)}, 'ZZ Adult A'); $setValue(${lab(4)}, 'ZZ A');`);
   await sleep(200);
-  check("G374 在空行打字：下面再多一行空的、这一行描橙、Save 变可按，没发请求（先选后存）", (await rowsNow()).length === 5 && (await evaluate(`return !${saveBtn}.disabled && ${src(4)}.className.includes('outline-[#f59e0b]');`)) && (await since(before, (e) => e.path.endsWith("/ticket-labels"))).length === 0, JSON.stringify(await rowsNow()));
+  check("G374 在新行打字：不再自动多一行、这一行描橙、Save 变可按，没发请求（先选后存）", (await rowsNow()).length === 4 && (await evaluate(`return !${saveBtn}.disabled && ${src(4)}.className.includes('outline-[#f59e0b]');`)) && (await since(before, (e) => e.path.endsWith("/ticket-labels"))).length === 0, JSON.stringify(await rowsNow()));
   await evaluate("$q('[data-ticket-row=\"3\"] [data-ticket-up]').click();");
   await sleep(150);
   await evaluate("$q('[data-ticket-row=\"0\"] [data-ticket-remove]').click();");
   await sleep(150);
-  check("G374 ↑ 把新行挪到第 3、Remove 拿掉第 1 行：只在页面上", JSON.stringify(await rowsNow()) === JSON.stringify(["Adult +skywalk +Grab and Go lunch => Sky + GnG", "ZZ Adult A => ZZ A", "Adult Premium => Premium", " => "]) && (await since(before, (e) => e.path.endsWith("/ticket-labels"))).length === 0, JSON.stringify(await rowsNow()));
+  check("G374 ↑ 把新行挪到第 3、Remove 拿掉第 1 行：只在页面上", JSON.stringify(await rowsNow()) === JSON.stringify(["Adult +skywalk +Grab and Go lunch => Sky + GnG", "ZZ Adult A => ZZ A", "Adult Premium => Premium"]) && (await since(before, (e) => e.path.endsWith("/ticket-labels"))).length === 0, JSON.stringify(await rowsNow()));
 
   // leave-guard：有没存的票名，点站内链接先问，列出这一项
   await evaluate("const a = [...document.querySelectorAll('a[href^=\"/\"]')].find((x) => !x.target && x.getAttribute('href') !== location.pathname); a.click();");
@@ -1372,14 +1376,14 @@ async function ticketChecks() {
   check("G374 没存就点站内链接：弹 Leave without saving?，列出 Upper Antelope: Ticket names", await evaluate("const d = document.querySelector('[data-leave-dialog]'); return !!d && d.textContent.includes('Upper Antelope: Ticket names');"), await evaluate("return document.querySelector('[data-leave-dialog]')?.textContent;"));
   await evaluate("$btn('Cancel', document.querySelector('[data-leave-dialog]')).click();");
   await sleep(300);
-  check("G374 Cancel：还在这一页，改动还在", (await evaluate("return location.pathname;")) === "/settings/products" && (await rowsNow()).length === 4);
+  check("G374 Cancel：还在这一页，改动还在", (await evaluate("return location.pathname;")) === "/settings/products" && (await rowsNow()).length === 3);
 
   before = (await mockLog()).length;
   await evaluate(`${saveBtn}.click();`);
   let put = await waitPut(before, "/api/settings/manifest-setup/groups/1/ticket-labels");
   await waitFor(`!!$q('${T} [data-save-ok]')`);
-  check("G374 Save：PUT 整张表、照页面顺序、空行不送；绿字 Saved、Save 又灰", JSON.stringify(put?.body) === JSON.stringify({ rows: [{ source: "Adult +skywalk +Grab and Go lunch", label: "Sky + GnG" }, { source: "ZZ Adult A", label: "ZZ A" }, { source: "Adult Premium", label: "Premium" }] }) && (await evaluate(`return ${saveBtn}.disabled && getComputedStyle($q('${T} [data-save-ok]')).color === 'rgb(30, 107, 67)' || ${saveBtn}.disabled;`)), JSON.stringify(put?.body));
-  check("G374 存好：顺序照后端回的、描橙没了", JSON.stringify(await rowsNow()) === JSON.stringify(["Adult +skywalk +Grab and Go lunch => Sky + GnG", "ZZ Adult A => ZZ A", "Adult Premium => Premium", " => "]) && (await evaluate(`return !${src(1)}.className.includes('outline-[#f59e0b]');`)));
+  check("G374 Save：PUT 整张表、照页面顺序；绿字 Saved、Save 又灰", JSON.stringify(put?.body) === JSON.stringify({ rows: [{ source: "Adult +skywalk +Grab and Go lunch", label: "Sky + GnG" }, { source: "ZZ Adult A", label: "ZZ A" }, { source: "Adult Premium", label: "Premium" }] }) && (await evaluate(`return ${saveBtn}.disabled && getComputedStyle($q('${T} [data-save-ok]')).color === 'rgb(30, 107, 67)' || ${saveBtn}.disabled;`)), JSON.stringify(put?.body));
+  check("G374 存好：顺序照后端回的、描橙没了", JSON.stringify(await rowsNow()) === JSON.stringify(["Adult +skywalk +Grab and Go lunch => Sky + GnG", "ZZ Adult A => ZZ A", "Adult Premium => Premium"]) && (await evaluate(`return !${src(1)}.className.includes('outline-[#f59e0b]');`)));
 
   // 400：后端原话原样标红，草稿留着
   const try400 = async (setup, want) => {
@@ -1398,7 +1402,7 @@ async function ticketChecks() {
   await ctl({ ticketFail500: true });
   check("G374 500：原话「Could not save. Nothing was changed - try again.」", await try400(`$setValue(${src(2)}, 'ZZ Adult A'); $setValue(${lab(2)}, 'ZZ A2');`, "Could not save. Nothing was changed - try again."), await err());
   await ctl({ ticketFail500: false });
-  check("G374 存不上时表格照旧是草稿（没被冲掉）", JSON.stringify(await rowsNow()) === JSON.stringify(["Adult +skywalk +Grab and Go lunch => Sky + GnG", "ZZ Adult A => ZZ A2", "Adult Premium => Premium", " => "]), JSON.stringify(await rowsNow()));
+  check("G374 存不上时表格照旧是草稿（没被冲掉）", JSON.stringify(await rowsNow()) === JSON.stringify(["Adult +skywalk +Grab and Go lunch => Sky + GnG", "ZZ Adult A => ZZ A2", "Adult Premium => Premium"]), JSON.stringify(await rowsNow()));
 
   // 全清空：Remove 三行 ⇒ PUT {rows: []}，只剩空行
   for (let i = 0; i < 3; i++) {
@@ -1409,7 +1413,20 @@ async function ticketChecks() {
   await evaluate(`${saveBtn}.click();`);
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1/ticket-labels");
   await waitFor(`!!$q('${T} [data-save-ok]')`);
-  check("G374 全部 Remove 再 Save：PUT {\"rows\":[]}，表里只剩一行空的", JSON.stringify(put?.body) === '{"rows":[]}' && JSON.stringify(await rowsNow()) === JSON.stringify([" => "]), JSON.stringify(put?.body));
+  check("G374 全部 Remove 再 Save：PUT {\"rows\":[]}；空表只有表头和 + Add ticket name", JSON.stringify(put?.body) === '{"rows":[]}' && (await rowsNow()).length === 0 && (await evaluate(`return !!$q('${T} [data-ticket-labels] thead') && !!$q('${T} [data-ticket-add]');`)), JSON.stringify(put?.body));
+
+  // 加了两行、只填一行：两格都空的那行不送
+  await evaluate(`$q('${T} [data-ticket-add]').click();`);
+  await sleep(120);
+  await evaluate(`$q('${T} [data-ticket-add]').click();`);
+  await sleep(120);
+  await evaluate(`$setValue(${src(2)}, 'ZZ Adult B'); $setValue(${lab(2)}, 'ZZ B');`);
+  await sleep(150);
+  before = (await mockLog()).length;
+  await evaluate(`${saveBtn}.click();`);
+  put = await waitPut(before, "/api/settings/manifest-setup/groups/1/ticket-labels");
+  await waitFor(`!!$q('${T} [data-save-ok]')`);
+  check("G374 加了两行只填第 2 行：两格都空的那行不送；存好后空行没了", JSON.stringify(put?.body) === JSON.stringify({ rows: [{ source: "ZZ Adult B", label: "ZZ B" }] }) && JSON.stringify(await rowsNow()) === JSON.stringify(["ZZ Adult B => ZZ B"]), JSON.stringify(put?.body) + " " + JSON.stringify(await rowsNow()));
 
   // 手机：表格在框里左右滑，整页不晃
   await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
