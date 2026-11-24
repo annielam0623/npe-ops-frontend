@@ -595,6 +595,40 @@ export function withNewestTickets(page: ManifestPage): ManifestPage {
   };
 }
 
+/**
+ * Bus 标签：有 NEW 单（团确认没发过，同 NEW 标签）的小节整节移到最上面，节里 NEW 单排最前
+ * （Annie 2026-11-24「只要有新单的小节，连小节和新单一起置顶」；范围：所有 Bus 胶囊、每天、两种看法都排；
+ * 发完 NEW 没了就回原位——重新拿单后自然回去。答「动手」）。
+ * 几节都有 NEW ⇒ 照原来的先后；节里 NEW 和不是 NEW 的各自照原来的先后（By order time 已是晚的在前）。
+ * 没分节（sections 为空）时整张表 NEW 单在前。只排显示，不改数据；藏起来的行不动。
+ */
+export function withNewSectionsFirst(page: ManifestPage): ManifestPage {
+  if (page.tab !== "bus" || !page.rows.length) return page;
+  const isNew = (r: ManifestRow) => !sentAt(r, "bus");
+  if (!page.rows.some(isNew)) return page;
+  const sections = page.sections ?? [];
+  const newSecs = new Set(
+    page.rows.filter(isNew).map((r) => r.section ?? ""),
+  );
+  const secOrder = sections.length
+    ? [
+        ...sections.filter((s) => newSecs.has(s.key)),
+        ...sections.filter((s) => !newSecs.has(s.key)),
+      ]
+    : sections;
+  const rank = new Map(secOrder.map((s, i) => [s.key, i]));
+  const rows = page.rows
+    .map((r, i) => ({
+      r,
+      i,
+      sec: rank.get(r.section ?? "") ?? 0,
+      fresh: isNew(r) ? 0 : 1,
+    }))
+    .sort((a, b) => a.sec - b.sec || a.fresh - b.fresh || a.i - b.i)
+    .map((x) => x.r);
+  return { ...page, sections: sections.length ? secOrder : page.sections, rows };
+}
+
 export function withBookedOrder(page: ManifestPage): ManifestPage {
   if (page.tab === "tickets") return page;
   return {

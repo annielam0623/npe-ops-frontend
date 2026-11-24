@@ -2301,7 +2301,8 @@ async function busViewChecks() {
   const counts = "return [...document.querySelectorAll('tbody [data-count]')].map((x) => x.textContent.trim()).join(',');";
   const PICKUP = "CHD1011,CHD1001,CHD1012,CHD1012,CHD1013,CHD1002";
   // Annie 2026-11-24「最新的单排最前」：节里下单晚的在前（原来早的在前），没有下单时间的仍在节尾。
-  const ORDER = "CHD1011,CHD1001,CHD1012,CHD1012,CHD1002,CHD1013";
+  // 11-24 有 NEW 的小节置顶：UPPER 和 Shuttle 两节都有 NEW ⇒ 节的先后不变；Shuttle 里 CHD1002 前面的检查发过了，NEW 的 CHD1013 排它前面。
+  const ORDER = "CHD1011,CHD1001,CHD1012,CHD1012,CHD1013,CHD1002";
   await ctl({ role: "staff", sessions: false, rezdyTix: false, cfmMix: false, sections: true, busOrder: true, adminFee: false, hiddenMode: "today", prefs: { bus: JSON.stringify(["order_number", "guest_name", "pickup_time", "pax"]), tickets: null } });
   await openPage(BUS);
   await evaluate("localStorage.removeItem('ops.manifests.busView.v1'); localStorage.removeItem('ops.manifests.ticketsView.v2'); return true;");
@@ -2359,6 +2360,20 @@ async function busViewChecks() {
   await waitFor(`${sw}.dataset.busView === 'pickup'`);
   check("Admin fee：By pickup time = 后端原序", (await evaluate(seq)) === "CHD-88041,CHD-88057,CHD-88063,CHD-88102,CHD-88110", await evaluate(seq));
   check("How to use 加了两种看法那一句（原文）", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return [...d.querySelectorAll('li')].some(l => l.textContent.replace(/\\s+/g, ' ').trim() === 'On Bus Tours and Admin fees, switch between By pickup time (the default: earliest pickup first) and By order time (newest booking first; orders with no booking time go last). Sections stay the same in both views. Ticked orders stay ticked when you switch. This computer remembers your choice.');"));
+  // 有 NEW 的小节置顶（Annie 2026-11-24「只要有新单的小节，连小节和新单一起置顶」「动手」）：
+  // UPPER 全发过、Shuttle 里 CHD1013 没发、CHD1002 发过 ⇒ Shuttle 节移到最上，节里 CHD1013 在前；两种看法都这样。
+  await ctl({ adminFee: false, sentPreset: ["CHD1011", "CHD1001", "CHD1012", "CHD1002"] });
+  await evaluate("localStorage.setItem('ops.manifests.busView.v1', 'pickup'); return true;");
+  await openPage(BUS);
+  await waitFor(`${sw}?.dataset.busView === 'pickup' && document.querySelectorAll('tr[data-row]').length === 6`, 20000);
+  const secSeq = "return [...document.querySelectorAll('tr[data-section]')].map((t) => t.dataset.section.split(':')[0]).join(',');";
+  check("11-24 置顶：By pickup time 下 Shuttle 节（有 NEW）移到最上，NEW 单在节里第一个，UPPER 节（全发过）在后", (await evaluate(seq)) === "CHD1013,CHD1002,CHD1011,CHD1001,CHD1012,CHD1012" && (await evaluate(secSeq)) === "outbound,tour", (await evaluate(seq)) + " / " + (await evaluate(secSeq)));
+  check("11-24 置顶：# 照新顺序每节从 1 排", (await evaluate(counts)) === "1,2,1,2,3,", await evaluate(counts));
+  await evaluate(`${swBtn("By order time")}.click();`);
+  await waitFor(`${sw}.dataset.busView === 'order'`);
+  check("11-24 置顶：By order time 下也一样（Shuttle 节在上、NEW 在前；UPPER 节里晚的在前）", (await evaluate(seq)) === "CHD1013,CHD1002,CHD1011,CHD1001,CHD1012,CHD1012" && (await evaluate(secSeq)) === "outbound,tour", await evaluate(seq));
+  check("How to use 加了置顶那一句（原文）", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return [...d.querySelectorAll('li')].some(l => l.textContent.replace(/\\s+/g, ' ').trim() === 'On Bus Tours, sections with NEW orders (not sent yet) move to the top of the list, with the NEW orders first in them. Once they are sent, the section goes back to its usual place.');"));
+  await ctl({ sentPreset: null });
   // 旧后端（行上没有 booked_at）：By order time 不报错，照原序。
   await ctl({ adminFee: false, busOrder: false });
   await evaluate("localStorage.setItem('ops.manifests.busView.v1', 'order'); return true;");

@@ -92,6 +92,7 @@ import {
   withWaiverColumn,
   withBookedOrder,
   withNewestTickets,
+  withNewSectionsFirst,
   withTicketSessions,
   rememberMarkChoice,
   withMarkColumns,
@@ -708,9 +709,9 @@ export function ManifestsView() {
       ? ticketView === "session"
         ? withTicketSessions(withNewestTickets(shownBase))
         : withNewestTickets(shownBase)
-      : busView === "order"
-        ? withBookedOrder(shownBase)
-        : shownBase;
+      : withNewSectionsFirst(
+          busView === "order" ? withBookedOrder(shownBase) : shownBase,
+        );
   // 搜索跳过来的行到了：滚到屏幕中间（每次跳转只滚一次，后面重拉不再拽视线）。
   const highlightShown =
     !!highlight && !!shown?.rows.some((r) => r.row_key === highlight);
@@ -2973,6 +2974,12 @@ function ManifestsHowToUse() {
           orders have red pills; click a red pill to find them. The box goes away
           once they are sent. Reservations team staff on shift can also get a
           Notice for each one.
+        </>,
+        // 有 NEW 的小节置顶（Annie 2026-11-24「只要有新单的小节，连小节和新单一起置顶」「动手」）。
+        <>
+          On <b>Bus Tours</b>, sections with <b>NEW</b> orders (not sent yet)
+          move to the top of the list, with the NEW orders first in them. Once
+          they are sent, the section goes back to its usual place.
         </>,
       ]}
     />

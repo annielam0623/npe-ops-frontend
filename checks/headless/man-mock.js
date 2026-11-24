@@ -436,7 +436,8 @@ function page(url) {
       const key = rowKey(r, date);
       const c = cfm.get(key);
       const all = { ...r.v, order_number: r.order_number, staff_cfm: c?.confirmation_no ?? null, staff_cfm_by: c?.updated_by ?? null, staff_cfm_at: c?.updated_at ?? null,
-        sent_tour_at: sentTour.get(key) ?? null, sent_tickets_at: sentTickets.get(key) ?? null,
+        // ctl.sentPreset：这些单的团确认当作已经发过（11-24 有 NEW 的小节置顶检查用）。
+        sent_tour_at: sentTour.get(key) ?? (ctl.sentPreset?.includes(r.order_number) ? "2026-11-23T10:00:00+00:00" : null), sent_tickets_at: sentTickets.get(key) ?? null,
         sent_tour_by: sentTour.has(key) ? "ZZ Test Staff" : null, sent_tickets_by: sentTickets.has(key) ? "ZZ Test Staff" : null,
         special_requirements: G364[r.order_number]?.sr ?? null,
         guest_pickup_time: minus15(r.v.pickup_time, r.order_number), bus_tour_type: ctl.busTour[r.order_number] ?? "",
