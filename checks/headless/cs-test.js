@@ -992,6 +992,37 @@ window.$gtype = (v) => { const ta = $gp().querySelector('textarea'); Object.getO
     check("128 看的状态：点字没反应（不弹框）", await evaluate("$gk('" + G("pu_sms_head") + "').click(); await new Promise(r => setTimeout(r, 200)); return !$gp();"));
     check("128 SA-1：存的字里的 <img onerror> 在沙箱里不跑（Bryce & Zion 稍后再查一次）", await evaluate("return window.__pwned === undefined;"));
 
+    // ── 149 / G320 Sample pickup（后端 a8f0ce4a；Annie 11-20 9-1 A / 9-2 A，11-23「同意，动手」）──
+    {
+      const SP = "document.querySelector('[data-sample-pickup-select]')";
+      const frameHas = (js) => waitFor(`(() => { const d = ${GD}; return !!d && (${js}); })()`, 20000);
+      check("G320 Sample pickup 下拉：在团按钮那一行、不在 Tour 按钮组里，用全站下拉（不是原生 select）", await waitFor(`!!${SP}`) && (await evaluate(`const b = ${SP}; return $isSelectMenu(b) && !b.closest('[aria-label=Tour]') && document.querySelector('[data-sample-pickup]').textContent.includes('Sample pickup');`)));
+      check("G320 选项顺序：Default (出发站) / — Show as variable — / 各地点", JSON.stringify(await evaluate(`return (await $selOptions(${SP})).map(o => o.value + '=' + o.label);`)) === JSON.stringify(["=Default (Treasure Island)", "variable=— Show as variable —", "14=Treasure Island", "3=Aria", "23=Park MGM Hotel"]), JSON.stringify(await evaluate(`return (await $selOptions(${SP})).map(o => o.value + '=' + o.label);`)));
+      check("G320 默认：显示 Default (Treasure Island)；请求带 pickup_location \"\"；客人页是 TI + 真时间 6:14 AM、订单值是紫色虚线标签", (await evaluate(`return ${SP}.dataset.value === '' && ${SP}.textContent.includes('Default (Treasure Island)');`)) && pv && pv.pickup_location === "" && (await frameHas("d.querySelector('[data-sample-loc]')?.textContent === 'Treasure Island' && d.body.textContent.includes('6:14 AM') && !!d.querySelector('.gf-var[data-sample-var=order_number]') && getComputedStyle(d.querySelector('.gf-var')).borderStyle === 'dashed'")));
+      b4 = (await mockLog()).length;
+      await evaluate(`return $sel(${SP}, '23');`);
+      check("G320 选 Park MGM：重拉一次（pickup_location \"23\"），客人页换成 Park MGM 的 Where to meet + 地图，时间变成标签", await frameHas("d.querySelector('[data-sample-loc]')?.textContent === 'Park MGM Hotel' && d.body.textContent.includes('Park MGM main lobby') && !!d.querySelector('[data-sample-map]') && !!d.querySelector('[data-sample-var=pickup_time]')") && (await lastPreview(b4))?.pickup_location === "23", JSON.stringify(await lastPreview(b4)));
+      check("G320 换示例不算改动：没有 Not saved yet、没有 Save", await evaluate("return !$gstatus().includes('Not saved') && !$gbtn('Save');"));
+      b4 = (await mockLog()).length;
+      await evaluate(`return $sel(${SP}, 'variable');`);
+      check("G320 — Show as variable —：接客地点 / 时间 / Where to meet 都是标签，地图是虚线框", await frameHas("!d.querySelector('[data-sample-loc]') && ['pickup_location','pickup_time','where_to_meet'].every(n => !!d.querySelector('.gf-var[data-sample-var=' + n + ']')) && !!d.querySelector('div.gf-var-box[data-sample-var=map]')") && (await lastPreview(b4))?.pickup_location === "variable");
+      // Edit 状态点紫色标签：不弹编辑框（G299 只认 data-tmpl-key）
+      await evaluate("$gbtn('Edit').click();");
+      await frameReady(`${GD}.documentElement.getAttribute('data-cs-mode') === 'edit'`);
+      check("G320 Edit 状态点紫色标签：不弹编辑框；标签不带 data-tmpl-key", await evaluate("const d = $gd(); const v = d.querySelector('[data-sample-var=pickup_location]'); v.dispatchEvent(new MouseEvent('click', { bubbles: true })); await new Promise(r => setTimeout(r, 250)); return !$gp() && ![...d.querySelectorAll('[data-sample-var]')].some(n => n.hasAttribute('data-tmpl-key'));"));
+      await evaluate("$gbtn('Discard').click();");
+      // 400 原话红字
+      await ctl({ pickupGone: [3] });
+      await evaluate(`return $sel(${SP}, '3');`);
+      check("G320 选的地点已停用：400 原话红字写在下拉旁边（That pickup location is no longer in the list. Reload the page.）", await waitFor("document.querySelector('[data-sample-pickup-error]')?.textContent === 'That pickup location is no longer in the list. Reload the page.'") && (await evaluate("return getComputedStyle(document.querySelector('[data-sample-pickup-error]')).color === 'rgb(248, 113, 113)';")));
+      await ctl({ pickupGone: [] });
+      await evaluate(`return $sel(${SP}, '');`);
+      check("G320 改回 Default：红字消失、回到 TI", await frameHas("d.querySelector('[data-sample-loc]')?.textContent === 'Treasure Island'") && (await waitFor("!document.querySelector('[data-sample-pickup-error]')")));
+      check("G320 List view：不出 Sample pickup", await evaluate("$gbtn('List view').click(); await new Promise(r => setTimeout(r, 200)); const none = !document.querySelector('[data-sample-pickup]'); $gbtn('Page view').click(); return none;"));
+      check("G320 How to use：Sample pickup 那句原话", await evaluate(`const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Content Studio')); return [...d.querySelectorAll('li')].some(l => l.textContent === "The sample uses the tour bus departure stop with this tour's real pickup time. Pick another place in Sample pickup to see its directions and map, or Show as variable to see which parts change for each guest (purple tags). The choice is not saved.");`));
+      await frameReady();
+    }
+
     // ── Edit ──
     await evaluate("$gbtn('Edit').click();");
     await frameReady(`${GD}.documentElement.getAttribute('data-cs-mode') === 'edit'`);
@@ -1153,6 +1184,7 @@ window.$gtype = (v) => { const ta = $gp().querySelector('textarea'); Object.getO
     await waitFor("$gp()");
     check("128 手机：整页不左右晃、小框在屏幕里", await evaluate("const r = $gp().getBoundingClientRect(); return document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1 && r.left >= 0 && r.right <= innerWidth + 1;"), await evaluate("const r = $gp().getBoundingClientRect(); return document.documentElement.scrollWidth + ' ' + r.left + ' ' + r.right;"));
     await evaluate("$gpBtn('Cancel').click();");
+    check("G320 手机：Sample pickup 换到团按钮下面一行、不超出屏幕", await evaluate("const r = document.querySelector('[data-sample-pickup]').getBoundingClientRect(); const g = document.querySelector('[data-tc-guest-editor] [aria-label=Tour]').getBoundingClientRect(); return r.top >= g.bottom - 1 && r.left >= 0 && r.right <= innerWidth + 1 && document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1;"), await evaluate("return JSON.stringify(document.querySelector('[data-sample-pickup]')?.getBoundingClientRect());"));
     await evaluate("$gbtn('Discard').click();");
     await cdp("Emulation.clearDeviceMetricsOverride");
     await sleep(300);

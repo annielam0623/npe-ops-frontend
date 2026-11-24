@@ -3,8 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { describeError, isStatus } from "@/lib/api-errors";
-import { previewTcGuestPage } from "@/lib/template-settings-api";
+import {
+  previewTcGuestPage,
+  type TcSamplePickup,
+} from "@/lib/template-settings-api";
 import { cn } from "@/lib/utils";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 import {
   PU_DEFAULT_ORDER,
@@ -173,6 +177,11 @@ export function TcGuestEditor({
   const [retry, setRetry] = useState(0);
   /** 页面上出现过、但不在 GET 清单里的键（没种）：也算进改动里，存的时候后端会说清楚。 */
   const [touched, setTouched] = useState<string[]>([]);
+  /** G320 Sample pickup：只换这一张示例，不存（"" = 默认出发站，"variable" = 全部变量，id = 那家酒店）。 */
+  const [samplePickup, setSamplePickup] = useState("");
+  const [samplePickups, setSamplePickups] = useState<TcSamplePickup[]>([]);
+  /** 选了以后后端 400（不在清单里 / 已停用）：原话红字，写在下拉旁边。 */
+  const [pickupError, setPickupError] = useState<string | null>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const docRef = useRef<Document | null>(null);
 
@@ -213,15 +222,20 @@ export function TcGuestEditor({
       previewTcGuestPage({
         tourType: tour,
         overrides: JSON.parse(overridesJson) as Record<string, string>,
+        pickupLocation: samplePickup,
         signal: controller.signal,
       })
-        .then((h) => {
-          setHtml(h);
+        .then((r) => {
+          setHtml(r.html);
+          if (r.sample_pickups.length) setSamplePickups(r.sample_pickups);
           setLoadError(null);
+          setPickupError(null);
         })
         .catch((e: unknown) => {
           if (controller.signal.aborted) return;
           if (isStatus(e, 401)) onUnauthorizedRef.current();
+          else if (samplePickup && isStatus(e, 400))
+            setPickupError(describeError(e));
           else setLoadError(describeError(e));
         });
     }, 250);
@@ -229,7 +243,7 @@ export function TcGuestEditor({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [tour, overridesJson, retry]);
+  }, [tour, overridesJson, retry, samplePickup]);
 
   // 换团：旧团的页先拿掉（不显示别的团的字）。
   useEffect(() => {
@@ -357,6 +371,11 @@ export function TcGuestEditor({
         });
         return;
       }
+      // G320：紫色虚线变量（每位客人不同的值）不是模板文字，点了不打开编辑框。
+      if (t.closest("[data-sample-var]")) {
+        setPopup(null);
+        return;
+      }
       const el = t.closest("[data-tmpl-key]");
       if (el) {
         openFor(el, {
@@ -438,27 +457,77 @@ export function TcGuestEditor({
   const n = dirty.length;
   return (
     <div data-tc-guest-editor>
-      <div
-        role="group"
-        aria-label="Tour"
-        className="mb-3 flex flex-wrap items-start gap-1.5"
-      >
-        {TC_TOURS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            aria-pressed={tour === t.key}
-            onClick={() => askTour(t.key)}
-            className={cn(
-              "cursor-pointer rounded-[20px] border px-[11px] py-1 text-[11px] font-medium transition-all",
-              tour === t.key
-                ? "border-[#3a8c45] bg-[#3a8c45] text-white"
-                : "border-white/10 bg-white/[.04] text-white/75 hover:border-white/40 hover:text-white/90",
-            )}
+      <div className="mb-3 flex flex-wrap items-start gap-x-3 gap-y-2">
+        <div
+          role="group"
+          aria-label="Tour"
+          className="flex min-w-0 flex-1 flex-wrap items-start gap-1.5"
+        >
+          {TC_TOURS.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              aria-pressed={tour === t.key}
+              onClick={() => askTour(t.key)}
+              className={cn(
+                "cursor-pointer rounded-[20px] border px-[11px] py-1 text-[11px] font-medium transition-all",
+                tour === t.key
+                  ? "border-[#3a8c45] bg-[#3a8c45] text-white"
+                  : "border-white/10 bg-white/[.04] text-white/75 hover:border-white/40 hover:text-white/90",
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        {samplePickups.length && !list ? (
+          <div
+            data-sample-pickup
+            className="flex flex-wrap items-center gap-x-2 gap-y-1 max-sm:w-full"
           >
-            {t.label}
-          </button>
-        ))}
+            <span
+              id="tc-sample-pickup-label"
+              className="text-[12px] font-semibold text-white/75"
+            >
+              Sample pickup
+            </span>
+            <SelectMenu
+              tone="dark"
+              aria-labelledby="tc-sample-pickup-label"
+              data-sample-pickup-select
+              value={samplePickup}
+              searchThreshold={12}
+              options={[
+                {
+                  value: "",
+                  label: `Default (${
+                    (samplePickups.find((p) => p.departure) ?? samplePickups[0])
+                      .name
+                  })`,
+                },
+                { value: "variable", label: "— Show as variable —" },
+                ...samplePickups.map((p) => ({
+                  value: String(p.id),
+                  label: p.name,
+                })),
+              ]}
+              onChange={(next) => {
+                setPickupError(null);
+                setSamplePickup(next);
+              }}
+              className="h-7 max-w-[260px] min-w-0 truncate rounded-[8px] border border-white/15 bg-white/[.04] px-2.5 text-[12.5px] text-white max-sm:max-w-full"
+            />
+            {pickupError ? (
+              <span
+                role="alert"
+                data-sample-pickup-error
+                className="text-[12.5px] font-semibold text-[#f87171]"
+              >
+                {pickupError}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <div
