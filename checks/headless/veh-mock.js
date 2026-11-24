@@ -37,7 +37,12 @@ http.createServer(async (req, res) => {
   log.push(entry);
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
   if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.staff ? "staff" : "admin", is_admin: !ctl.staff, is_superadmin: false });
-  if (p === "/api/settings/vehicles" && req.method === "GET") return send(res, 200, { vehicles, columns });
+  // G363：ctl.g363 ⇒ 多一列 Model（is_model: true，合同 guide-pay-vehicle-extra-2026-11-22.md），768 = Sprinter、Sienna Van = Mini Van。
+  if (p === "/api/settings/vehicles" && req.method === "GET") {
+    if (!ctl.g363) return send(res, 200, { vehicles, columns });
+    for (const [id, m] of [[1, "Sprinter"], [3, "Mini Van"]]) { const v = vehicles.find((x) => x.id === id); if (v && v.custom["9"] === undefined) v.custom["9"] = m; }
+    return send(res, 200, { vehicles, columns: [...columns, { id: 9, label: "Model", is_hidden: false, is_model: true }] });
+  }
   if (p === "/api/settings/vehicles" && req.method === "PUT") {
     const b = await readBody(req); entry.body = b;
     const errors = {};

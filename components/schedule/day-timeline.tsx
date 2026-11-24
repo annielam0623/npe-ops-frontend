@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 import {
   coversGaps,
@@ -77,6 +77,116 @@ function axisTicks(
     out.push(m);
   }
   return out;
+}
+
+/** 刻度字之间至少留这么宽（px），再近就当叠在一起。 */
+const AXIS_LABEL_GAP = 6;
+
+/**
+ * 刻度那一行。两头（Working hours 的开始 / 结束）和「now」一定写；中间的整点照实际量出来的位置，
+ * 离两头、now 或前一个整点太近就藏起来（Annie 2026-11-23「时间刻度重叠那个修一下」：半屏时「8 PM」和「9:30 PM」叠成「8 P9:30 PM」）。
+ * 藏用 visibility，不占别的位置；窗口宽度变了重新量。
+ */
+function AxisRow({
+  stepHours,
+  className,
+  windowStart,
+  windowEnd,
+  nowMin,
+}: {
+  stepHours: number;
+  className: string;
+  windowStart: number;
+  windowEnd: number;
+  nowMin: number | null;
+}) {
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [hidden, setHidden] = useState<number[]>([]);
+  const ticks = axisTicks(windowStart, windowEnd, stepHours, nowMin);
+  const ticksKey = ticks.join(",");
+
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    if (!row) return;
+    const measure = () => {
+      if (row.offsetWidth === 0) return; // 这一行在这个屏宽下藏着（电脑 / 手机各一行）
+      const box = (el: Element | null) => {
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return { left: r.left, right: r.right };
+      };
+      const fixed = [
+        box(row.querySelector("[data-axis-start]")),
+        box(row.querySelector("[data-axis-end]")),
+        box(row.querySelector("[data-now-label]")),
+      ].filter((b): b is { left: number; right: number } => b !== null);
+      const hit = (
+        a: { left: number; right: number },
+        b: { left: number; right: number },
+      ) =>
+        a.left < b.right + AXIS_LABEL_GAP && b.left < a.right + AXIS_LABEL_GAP;
+      const shown: { left: number; right: number }[] = [];
+      const next: number[] = [];
+      row.querySelectorAll<HTMLElement>("[data-axis-tick]").forEach((el) => {
+        const b = box(el)!;
+        if (fixed.some((f) => hit(b, f)) || shown.some((s) => hit(b, s))) {
+          next.push(Number(el.dataset.axisTick));
+        } else {
+          shown.push(b);
+        }
+      });
+      setHidden((prev) => (prev.join(",") === next.join(",") ? prev : next));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(row);
+    return () => ro.disconnect();
+  }, [ticksKey, windowStart, windowEnd, nowMin]);
+
+  const label =
+    "font-mono text-[10.5px] leading-4 whitespace-nowrap text-white/55";
+  return (
+    <div
+      ref={rowRef}
+      data-axis-step={stepHours}
+      className={cn("relative h-4 flex-1", className)}
+    >
+      <span data-axis-start className={cn("absolute left-0", label)}>
+        {axisLabel(windowStart)}
+      </span>
+      {ticks.map((m) => {
+        const off = hidden.includes(m);
+        return (
+          <span
+            key={m}
+            data-axis-tick={m}
+            data-axis-hidden={off ? "" : undefined}
+            aria-hidden={off || undefined}
+            className={cn(
+              "absolute -translate-x-1/2",
+              label,
+              off && "invisible",
+            )}
+            style={{ left: `${percentOf(m, windowStart, windowEnd)}%` }}
+          >
+            {axisLabel(m)}
+          </span>
+        );
+      })}
+      <span data-axis-end className={cn("absolute right-0", label)}>
+        {axisLabel(windowEnd)}
+      </span>
+      {nowMin != null ? (
+        <span
+          data-now-label
+          className="absolute -translate-x-1/2 bg-[#111a2a] px-1 font-mono text-[10.5px] leading-4 font-bold whitespace-nowrap text-amber-300"
+          style={{ left: `${percentOf(nowMin, windowStart, windowEnd)}%` }}
+        >
+          now {axisLabel(nowMin)}
+        </span>
+      ) : null}
+    </div>
+  );
 }
 
 /** 每一行底下每小时一条淡竖线，对着上面的刻度看。 */
@@ -181,35 +291,14 @@ export function DayTimeline({
     </div>
   );
   const axisRow = (stepHours: number, className: string) => (
-    <div
-      data-axis-step={stepHours}
-      className={cn("relative h-4 flex-1", className)}
-    >
-      <span className="absolute left-0 font-mono text-[10.5px] leading-4 whitespace-nowrap text-white/55">
-        {axisLabel(windowStart)}
-      </span>
-      {axisTicks(windowStart, windowEnd, stepHours, nowMin).map((m) => (
-        <span
-          key={m}
-          className="absolute -translate-x-1/2 font-mono text-[10.5px] leading-4 whitespace-nowrap text-white/55"
-          style={{ left: `${percentOf(m, windowStart, windowEnd)}%` }}
-        >
-          {axisLabel(m)}
-        </span>
-      ))}
-      <span className="absolute right-0 font-mono text-[10.5px] leading-4 whitespace-nowrap text-white/55">
-        {axisLabel(windowEnd)}
-      </span>
-      {nowMin != null ? (
-        <span
-          data-now-label
-          className="absolute -translate-x-1/2 bg-[#111a2a] px-1 font-mono text-[10.5px] leading-4 font-bold whitespace-nowrap text-amber-300"
-          style={{ left: `${percentOf(nowMin, windowStart, windowEnd)}%` }}
-        >
-          now {axisLabel(nowMin)}
-        </span>
-      ) : null}
-    </div>
+    <AxisRow
+      key={stepHours}
+      stepHours={stepHours}
+      className={className}
+      windowStart={windowStart}
+      windowEnd={windowEnd}
+      nowMin={nowMin}
+    />
   );
 
   return (

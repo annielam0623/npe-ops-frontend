@@ -67,12 +67,38 @@ export async function previewTixPrepare(input: {
  * ⚠️ 安全要求 SA-1：只能放进 sandbox="allow-same-origin" 的 iframe（srcdoc），不加 allow-scripts / allow-popups / allow-forms；
  *    绝不把 html 或任何 tmpl__ 值当 HTML 放进父页面（编辑框用 textContent / value）。
  */
+export interface TcSamplePickup {
+  id: number;
+  name: string;
+  /** 「Tour bus departure」那一站（排第一个，Default 用它）。 */
+  departure: boolean;
+}
+
+export interface TcGuestPagePreview {
+  html: string;
+  /** G320：Sample pickup 下拉的地点（启用中的 Pickup locations，出发站排第一）。旧后端没有 = []。 */
+  sample_pickups: TcSamplePickup[];
+  /** 这次用的是哪个：choice = "" / "variable" / id 字符串。 */
+  sample_pickup: {
+    choice: string;
+    location_id: number | null;
+    pickup_time: string | null;
+  } | null;
+}
+
+/**
+ * G320（后端 a8f0ce4a，契约 docs/interfaces/g320-guest-sample-2026-11-23.md）：pickupLocation 只影响这一张示例，不存。
+ * "" = 默认（出发站 + 这个团真的接客时间）；"variable" = 全部紫色虚线变量；"<id>" = 那家酒店。
+ * 每位客人不同的值（日期、单号、名字、人数、电话、接客地点 / 时间、Where to meet、地图）在 html 里是
+ * span.gf-var / div.gf-var-box（data-sample-var，不带 data-tmpl-key，点击编辑不理它们）。
+ */
 export async function previewTcGuestPage(input: {
   tourType: string;
   overrides: Record<string, string>;
+  pickupLocation?: string;
   signal?: AbortSignal;
-}): Promise<string> {
-  const result = await apiFetch<{ html: string }>(
+}): Promise<TcGuestPagePreview> {
+  const result = await apiFetch<Partial<TcGuestPagePreview> & { html: string }>(
     "/api/template-settings/preview",
     {
       method: "POST",
@@ -82,8 +108,15 @@ export async function previewTcGuestPage(input: {
         tab: "guest_page",
         tour_type: input.tourType,
         overrides: input.overrides,
+        pickup_location: input.pickupLocation ?? "",
       },
     },
   );
-  return result.html;
+  return {
+    html: result.html,
+    sample_pickups: Array.isArray(result.sample_pickups)
+      ? result.sample_pickups
+      : [],
+    sample_pickup: result.sample_pickup ?? null,
+  };
 }

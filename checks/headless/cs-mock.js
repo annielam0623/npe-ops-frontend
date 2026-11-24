@@ -241,7 +241,14 @@ function guestPageProblem(key, value) {
   return null;
 }
 /** 照后端 guest._render(preview=True) 的标记拼一份客人页（不是真样式，够前端测）。 */
-function guestPreviewHtml(t, overrides) {
+// G320：Sample pickup 下拉的地点（出发站排第一）。
+const SAMPLE_PICKUPS = [
+  { id: 14, name: "Treasure Island", departure: true, meet: "North valet, by the bus loop." },
+  { id: 3, name: "Aria", departure: false, meet: "Aria tour bus lobby, level 1." },
+  { id: 23, name: "Park MGM Hotel", departure: false, meet: "Park MGM main lobby, by the bus loop exit." },
+];
+const VAR = (name, label) => `<span class="gf-var" data-sample-var="${name}">${label}</span>`;
+function guestPreviewHtml(t, overrides, sample = { used: SAMPLE_PICKUPS[0], time: "6:14 AM" }) {
   const v = (k) => (k in overrides ? String(overrides[k]) : byKey[k]?.value ?? "");
   const K = (k, html) => `<span data-tmpl-key="${k}">${html}</span>`;
   const empty = (k) => `<span data-tmpl-key="${k}" data-empty="1"></span>`;
@@ -254,7 +261,7 @@ function guestPreviewHtml(t, overrides) {
   };
   const steps = {
     sms: `<div class="gf-pu-step" data-pickup-step="sms"><div class="gf-pu-head">${g("pu_sms_head")}</div><div class="gf-pu-text">${g("pu_sms_text")}</div><div class="gf-pu-sub">${g("pu_wrong_number")}</div></div>`,
-    location: `<div class="gf-pu-step" data-pickup-step="location"><div class="gf-pu-head">${g("pu_head_head")}</div><div class="gf-pu-text">Please arrive at <strong>Excalibur</strong> by <strong>8:00 AM</strong>.</div><div class="gf-pu-warn">${g("pu_depart_warn")}</div></div>`,
+    location: `<div class="gf-pu-step" data-pickup-step="location"><div class="gf-pu-head">${g("pu_head_head")}</div><div class="gf-pu-text">Please arrive at ${sample.used ? `<strong data-sample-loc>${sample.used.name}</strong>` : VAR("pickup_location", "Pickup location")} by ${sample.time ? `<strong>${sample.time}</strong>` : VAR("pickup_time", "Pickup time")}.<br><b>Where to meet:</b> ${sample.used ? sample.used.meet : VAR("where_to_meet", "Where to meet")}</div>${sample.used ? `<div class="gf-map" data-sample-map>${sample.used.name} map</div>` : `<div class="gf-var-box" data-sample-var="map">Pickup map photo</div>`}<div class="gf-pu-warn">${g("pu_depart_warn")}</div></div>`,
     checkin: `<div class="gf-pu-step" data-pickup-step="checkin"><div class="gf-pu-head">${g("pu_checkin_head")}</div><div class="gf-pu-text">${g("pu_checkin_text")}</div></div>`,
     notsure: `<div class="gf-pu-step" data-pickup-step="notsure"><div class="gf-pu-head">${g("pu_notsure_head")}</div><div class="gf-pu-text"><a href="#" target="_blank">Excalibur Pickup Photos →</a></div></div>`,
   };
@@ -269,7 +276,7 @@ function guestPreviewHtml(t, overrides) {
     : "";
   const rem = (f) => { const li = v(T(f)).split("\n").map((x) => x.trim()).filter(Boolean).map((x) => `<li>${x}</li>`).join(""); return li ? `<ul data-tmpl-key="${T(f)}">${li}</ul>` : empty(T(f)); };
   const body = `<div class="gf-wrap"><div class="gf-card">
-<div class="gf-header"><h1>Tour Confirmation</h1><div class="gf-tour-badge" data-tour-badge>${t}</div><div class="gf-meta">Order #SAMPLE123 · John · Party of 2</div></div>
+<div class="gf-header"><h1>Tour Confirmation</h1><div class="gf-tour-badge" data-tour-badge>${t}</div><div class="gf-meta">${VAR("tour_date", "Tour date")} · Order # ${VAR("order_number", "Order #")} · ${VAR("first_name", "First name")} · Party of ${VAR("pax", "Pax")}</div></div>
 <div class="gf-pickup-box"><div class="gf-box-title">${g("pickup_box_title")}</div>${order.map((x) => steps[x]).join("")}${adds("pickup", (h) => `<div class="gf-pu-text">${h}</div>`)}</div>
 ${fee}
 ${state("already_submitted", `<div class="gf-info">${g("already_submitted")}</div>`)}
@@ -281,7 +288,7 @@ ${lunch}
 </form>
 ${state("date_modal", `<div style="padding:16px 0"><h3>${g("date_modal_title")}</h3><p>${g("date_modal_desc")}</p></div>`)}
 </div></div>`;
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Tour Confirmation</title><style>*{box-sizing:border-box;margin:0;padding:0}body{background:#f0f4f8;font-family:Arial,sans-serif;color:#333;padding:16px}.gf-wrap{max-width:580px;margin:0 auto}.gf-card{background:#fff;border-radius:16px}.gf-header{background:#1a3a5c;color:#fff;padding:22px}.gf-pickup-box,.gf-fee-box,.gf-section,.gf-reminders,.gf-submit{padding:16px 22px}.gf-pu-step{padding:10px 0}.gf-reminders ul,.gf-fee-box ul{padding-left:18px}textarea{width:100%;min-height:60px}</style></head><body>${body}</body></html>`;
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Tour Confirmation</title><style>*{box-sizing:border-box;margin:0;padding:0}body{background:#f0f4f8;font-family:Arial,sans-serif;color:#333;padding:16px}.gf-wrap{max-width:580px;margin:0 auto}.gf-card{background:#fff;border-radius:16px}.gf-header{background:#1a3a5c;color:#fff;padding:22px}.gf-pickup-box,.gf-fee-box,.gf-section,.gf-reminders,.gf-submit{padding:16px 22px}.gf-pu-step{padding:10px 0}.gf-reminders ul,.gf-fee-box ul{padding-left:18px}textarea{width:100%;min-height:60px}.gf-var{display:inline-block;background:#ede9fe;border:1px dashed #a78bfa;color:#5b21b6;border-radius:5px;padding:0 5px;font-weight:700}.gf-var-box{height:90px;border:2px dashed #a78bfa;background:#ede9fe;color:#5b21b6;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:700}.gf-map{height:90px;background:#6b7f4f;color:#fde047;border-radius:9px;padding:8px}</style></head><body>${body}</body></html>`;
 }
 const byKey = Object.fromEntries(settings.map((r) => [r.key, r]));
 function send(res, status, body) {
@@ -334,7 +341,19 @@ http.createServer(async (req, res) => {
     if (body.module === "tc" && body.tab === "guest_page") {
       if (ctl.guestPreviewFail) return send(res, 400, { detail: ctl.guestPreviewFail });
       if (!GP_TOURS.includes(body.tour_type)) return send(res, 400, { detail: "Unknown tour_type" });
-      return send(res, 200, { html: guestPreviewHtml(body.tour_type, body.overrides || {}) });
+      // G320 Sample pickup（后端 a8f0ce4a 契约）：""/没传 = 出发站 + 真时间；"variable" = 全是变量；id = 那家酒店、时间是变量。
+      const pick = body.pickup_location == null ? "" : String(body.pickup_location);
+      if (pick !== "" && pick !== "variable" && !/^[1-9]\d*$/.test(pick)) return send(res, 400, { detail: "Pick a sample pickup from the list, or Show as variable." });
+      const loc = /^\d+$/.test(pick) ? SAMPLE_PICKUPS.find((x) => String(x.id) === pick && !ctl.pickupGone?.includes(x.id)) : null;
+      if (/^\d+$/.test(pick) && !loc) return send(res, 400, { detail: "That pickup location is no longer in the list. Reload the page." });
+      const dep = SAMPLE_PICKUPS[0];
+      const used = pick === "variable" ? null : loc || dep;
+      const time = pick === "" ? "6:14 AM" : null;
+      return send(res, 200, {
+        html: guestPreviewHtml(body.tour_type, body.overrides || {}, { used, time }),
+        ...(ctl.noSamplePickups ? {} : { sample_pickups: SAMPLE_PICKUPS.filter((x) => !ctl.pickupGone?.includes(x.id)) }),
+        sample_pickup: { choice: pick, location_id: used ? used.id : null, pickup_time: time },
+      });
     }
     return send(res, 200, { html: `<div class="gf-prepare-box">${body.overrides[`tmpl__tix__${body.tour_type}__prep_1_label`] || ""}</div>` });
   }

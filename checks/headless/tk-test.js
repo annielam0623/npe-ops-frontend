@@ -782,6 +782,49 @@ async function run() {
   check("手机：⬇ CSV 不在外面、有 ⋯；拖动提示不显示", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); const out = [...document.querySelectorAll('main a, main button')].filter((b) => /⬇ CSV|⬆ Upload/.test(b.textContent) && vis(b) && !b.closest('[data-phone-more-menu]')); const drag = [...document.querySelectorAll('span')].find((s) => s.textContent.includes('Drag to reorder')); return out.length === 0 && vis(document.querySelector('[data-phone-more]')) && !vis(drag);`));
   await cdp("Emulation.clearDeviceMetricsOverride");
 
+  // ── 搜索不限日期（Annie 2026-11-23「Tracking搜索全部同意推荐，动手」；Q1–Q6 A、Q7 B）──
+  {
+    const E = "2026-01-05";
+    const box = "document.querySelector('input[aria-label=\"Search\"]')";
+    const type = (v) => evaluate(`$setValue(${box}, ${JSON.stringify(v)}); return 1;`);
+    const enter = () => evaluate(`${box}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); return 1;`);
+    const note = () => evaluate("return document.querySelector('[data-anydate-note]')?.textContent.replace(/\\s+/g, ' ').trim() ?? '';");
+    const banner = () => evaluate("return document.querySelector('[data-anydate-banner]')?.textContent.replace(/\\s+/g, ' ').trim() ?? '';");
+    const openDay = async (d) => {
+      await goto(`${APP}/tickets-reminder/tracking?date=${d}`);
+      await waitFor("document.querySelector('input[aria-label=\"Search\"]')", 30000);
+      await sleep(700);
+      await helpers();
+    };
+    const dayOf = (ymd) => new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" }).format(Date.parse(`${ymd}T12:00:00Z`));
+
+    await openDay(E);
+    const before = (await mockLog()).length;
+    await type("chdzz1");
+    await enter();
+    await waitFor("document.querySelector('[data-anydate-hit]')", 15000);
+    check("不限日期（Tickets）：别的日子的单号 chdzz1 按 Enter ⇒ 查 find-order、跳到那一天，只显示这一单、整行描黄", (await since(before, (e) => e.path === "/api/notifications/tracking/find-order")).length >= 1 && (await evaluate("return new URLSearchParams(location.search).get('date');")) === today && (await evaluate(`return ${box}.value;`)) === "CHDZZ1" && (await evaluate("const h = document.querySelector('[data-anydate-hit]'); return h.textContent.includes('CHDZZ1') && getComputedStyle(h).outlineColor === 'rgb(245, 158, 11)';")));
+    check("不限日期（Tickets）：蓝条「CHDZZ1 is on <那天> · Upper Antelope – Tsosie. Moved here from Mon, Jan 5. ← Back to Mon, Jan 5」", (await banner()) === `CHDZZ1 is on ${dayOf(today)} · Upper Antelope – Tsosie. Moved here from Mon, Jan 5. ← Back to Mon, Jan 5`, await banner());
+    check("不限日期（Tickets）：选中这单的产品胶囊（不是 Total Guests）", await evaluate("const btns = [...document.querySelectorAll('[aria-label=\"Filter by tour\"] button')]; const utc = btns.find(b => b.textContent.trim().startsWith('U-TC')); const lkt = btns.find(b => b.textContent.trim().startsWith('L-KT')); const total = btns.find(b => b.textContent.includes('Total Guests')); return !!utc && !!lkt && utc.className !== lkt.className && total.className === lkt.className;"));
+    await evaluate("document.querySelector('[data-anydate-back]').click(); return 1;");
+    await waitFor(`new URLSearchParams(location.search).get('date') === '${E}'`, 15000);
+    await sleep(300);
+    check("不限日期（Tickets）：← Back 回到 Mon, Jan 5、搜索框清空", (await evaluate(`return ${box}.value;`)) === "" && !(await banner()));
+
+    await type("CHD7001");
+    await enter();
+    await waitFor("document.querySelector('[data-anydate-note=warn]')", 15000);
+    check("不限日期（Tickets）Q5：取消了：写「… and is not on Tickets Tracking. Open in Order List →」，不跳", (await note()) === "CHD7001 is Cancelled in the Order List (Sun, Oct 11 · Grand Canyon West Rim) and is not on Tickets Tracking. Open in Order List →" && (await evaluate("return new URLSearchParams(location.search).get('date');")) === E, await note());
+
+    await type("T02");
+    await enter();
+    await waitFor("location.pathname === '/tour-confirmation/tracking'", 15000);
+    check("不限日期（Tickets）Q4：只有团的单 T02 ⇒ 带去 Tour Tracking", (await evaluate("return location.pathname;")) === "/tour-confirmation/tracking");
+
+    await openDay(today);
+    check("不限日期（Tickets）：How to use 新句（that day and product）", await evaluate("return [...document.querySelectorAll('details li')].some(li => li.textContent.replace(/\\s+/g, ' ').trim() === 'The search box finds an order #, name or phone on this day. To find an order on any day, type the whole order # and press Enter: the page moves to that day and product, shows the order and marks it. Click ← Back to return to the day you were on. If the order is cancelled or is not on this page, a line under the search box says so. For a name or phone that is not on this day, click Search all dates.');"));
+  }
+
   await ctl({ fail401: true });
   await goto(`${APP}/tickets-reminder/tracking`);
   await waitFor("location.pathname === '/auth/login'");
