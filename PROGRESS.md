@@ -34,6 +34,12 @@
   - 7 题（后端 Q1–Q4 + 前端 F1–F3，全推荐 A，F1 推荐 C）已做成 Excel：C:\Users\annzh\Downloads\Annie_待答题_2026-11-24_G381_TripGuru对照.xlsx。
   - ✅ Annie 在 c1 窗口答（原话）「F1 选 C，F2 A，F3 A，动手」⇒ c1 开 task/g381-tg-twin（worktree C:\Code\ops-wt-c1-g381），照 33 的字段草案写，字段都当可选；等 33 合同对过字段名、33 回 PASS 才合 main。后端 Q1–Q4 还没答，Excel 里只剩这 4 题。
   - c1 交 task/g381-tg-twin **62b4c78d**（未合）：products 291（+14）、tsc / eslint / build。跟 preview 不同：How to use 单独一条（放在「If a list is wider…」前），不塞进门票折叠段，因为巴士团也有 twin；文字同原文。后端没上字段时页面不变。卡在 33 合同 + PASS。
+  - ✅ **G381 前端上 main 074f5fe1**（c1，功能 62b4c78d + 补丁 127c30cd）。
+    - 后端 33 对 62b4c78d 回 PASS，要求补一处：tripguru_twin.in_products=false 时编码灰字、不能点；product_name / option_code / option_name 可以为 null。已补。
+    - 合同：后端分支 task/g381-tg-product-map 的 docs/interfaces/tripguru-product-map-2026-11-24.md，还是 DRAFT（后端 Q1–Q4 未答）。
+    - 检查：products 292（+15）、tsc / lint 0 错 / build。
+    - 线上现在：后端没给字段，页面不变。📌 等后端上线 + v185 + 对照表导入（zip 在家里）之后，Annie 再验收。
+    - worktree C:\Code\ops-wt-c1-g381 留着修验收问题用。
   - ⚠️ TripGuru 的 zip 只在家里电脑（C:\Users\annzh\Downloads\Annie-NPE-Integration-20261124.zip），公司电脑没有，后端导入前要带过来。
 - 📌 G382 总览页 preview（de，未写代码）https://claude.ai/artifact/5zikT5SiG3sxbGcV3WDQUZ
   - 内容：总览 1440 / 950 / 390、七个弹框、改后的 Staff Schedule（只读）、搬家表、数据流、「现在」逐条文件:行、跟设计的 9 条出入。
