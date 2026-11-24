@@ -8,7 +8,7 @@
 
 ## 2026-11-24（周二）前端主窗口 `npe-ops-frontend-65`[1e2990]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工：origin/main 127b10b3（主目录 detached；ops-74 那个 main worktree 落后 969，不用）。资源：空闲内存 39.1 / 61.8 GB，node 0、chrome 42。工作窗口：无。后端主窗口 `npe-confirmation-service-03`[2e30db]，已把 7 天清单发给它（12 条）。
-- 7 天清单（11-17 至 11-23，Annie 提过的）已列给 Annie，等她选今天做哪几件：G380 未发新单提醒（等后端合同 + Res team）；146 上传（等 Annie 对后端方案动手 + 28）；导游页 D2–D13；G382；G381；7a 8 句；第 11 件导游必填；G361；页面慢；★ Notes 撤旧；David H 账号。
+- 7 天清单（11-17 至 11-23，Annie 提过的）已列给 Annie，等她选今天做哪几件：G380 未发新单提醒（等后端合同 + Res team）；146 上传（等 Annie 对后端方案动手 + 28）；导游页 D2–D13；G382；G381；第 11 件导游必填；G361；页面慢；★ Notes 撤旧；David H 账号。后端 03 回：7a 8 句已随 G369 449755f3 上后端 main、Annie 已跑 SQL ⇒ 划掉；「页面慢」后端没登记，已把 11-18 4d 那条出处（Morning Tracking 打开约 10 秒、前端核过不是前端）发 03 登记。
 
 ## 2026-11-23 晚 收工交接：前端主窗口 `npe-ops-frontend-96`[ef47ac]（家里；Annie「好了，你应该没有什么要我确认了了，我睡觉去了」）
 - **今晚上 main**：半屏适配 37e529bb；Day timeline 刻度 ca50d015；G320 Sample pickup bb2eaddb + 灰字 e13483fe（ba PASS）；G373 Quick Stats 72daaa36（Annie「不用改，很好」，等她线上验收 + 6d 对数）；G374 门票显示名 + Add 键 29f19b29（75 PASS）；G369 7b WhatsApp 号码 ea1d15f2（92 PASS）。
