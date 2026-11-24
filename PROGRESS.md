@@ -10,6 +10,8 @@
 - **G380 今天的新单看不出来**（0b 转，Annie 直接跟 0b 说的）。原话：「比如说11/24，两个新单是沉底的，从页面上面来看我根本看不出今天有新单还没有发出去」。截图：11/24 One-way Shuttle 段在表底，CHDT2YBTE 去程、回程两行带绿色 NEW，表头上方没有任何提示。
   - 现在（0b 查代码）：红框 / 红胶囊只算明天到大后天（Q1 A；后端 docs/interfaces/manifests-unsent-2026-11-24.md:33「today is not included」）；NEW 标签（manifests-view.tsx:1971）只要没发过就标，不分哪天。
   - 0b 给了 3 种选法，推荐 B：今天也出红框，前端用当前这页带 NEW 的行来算，不改后端。等 Annie 选 +「动手」，0b 不改代码。
+- **G380 新单置顶**（0b 转，Annie 原话）：「今天的就把new的单列到最上方。我们需要在antelope的bus里改一下排列，只要有新单的小节，连小节和新单一起置顶。」preview https://claude.ai/artifact/JCJ1XHV9nJRcSNSJvzj9PV ，3 题都推荐 A：题 1 只排 Antelope Bus（B 所有 Bus 胶囊，C Bus + Tickets）；题 2 每天都这样排（B 只有今天）；题 3 发完 NEW 没了，小节回原位。等选 +「动手」。
+- **G380 Tickets 有新单的胶囊没变红**（0b 转，Annie 原话）：「然后ticket那边，有新单的pill根本就没有标红」。0b 查后端 app/services/unsent_orders.py:91-113、130-140：红胶囊只算明天到大后天，并且只算这颗胶囊那天整批发过（一次 2 单以上）之后进来的单；那天没整批发过的一张都不算。NEW 只看这单发没发过。两套规则不同，前端没错。0b 在问 Annie 要不要改成「有 NEW 就红」；要改得后端 1e 出数。
   - 同一处还有 B+C（QPjDQxqRiDcsZg331EbbZr，4 题推荐全 A）：红框按日期列出可点、标签红点——Annie 11/24 看到「11 单但没有红胶囊、点不进去」也是这件事。两件建议一起做一个分支。
 
 ## 2026-11-24（周二）前端主窗口 `npe-ops-frontend-65`[1e2990]（公司电脑；只分工和汇报，不写代码；14:30 下班）
