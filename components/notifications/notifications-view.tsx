@@ -29,6 +29,10 @@ import {
 } from "./config";
 import { NotificationCard } from "./notification-card";
 import { PageVisibilityList } from "./page-visibility-list";
+import {
+  UNSENT_ORDER_NOTICE_KEY,
+  UnsentTeamPicker,
+} from "./unsent-team-picker";
 
 type View =
   | { kind: "loading" }
@@ -277,6 +281,12 @@ export function NotificationsView() {
                           onSave: (t) => void saveTime(item, t),
                         }
                       : undefined
+                  }
+                  extra={
+                    // G380 Q7：发给哪个 team，只 Super Admin 看得到、能改（后端 GET / PUT 都只给 SA）。
+                    item.key === UNSENT_ORDER_NOTICE_KEY && isSuper ? (
+                      <UnsentTeamPicker onUnauthorized={redirectToLogin} />
+                    ) : undefined
                   }
                   onToggle={() => {
                     setToast("");

@@ -402,3 +402,45 @@ export async function fetchManifestSearchIndex(
   }
   return out;
 }
+
+/**
+ * G380 未发新单提醒（后端 1e 03e9a574，合同 docs/interfaces/manifests-unsent-2026-11-24.md）。
+ * 判据全在后端（明天 / 后天 / 大后天；这一颗胶囊最近一次整批发送之后进来、还没发的单），前端不另算。
+ */
+export interface UnsentOrder {
+  order_number: string;
+  tour_date: string;
+  tab: "bus" | "tickets";
+  /** 同 GET /api/manifests?pill= 的胶囊键。 */
+  pill: string;
+  pill_label: string;
+  product: string;
+  pax: number;
+  booked_at: string;
+  /** 这一单在那颗胶囊里的行（往返两段都在），点了就勾这些。 */
+  row_keys: string[];
+}
+export interface UnsentOrders {
+  dates: string[];
+  count: number;
+  orders: UnsentOrder[];
+  /** 要变红的胶囊。 */
+  pills: { date: string; tab: "bus" | "tickets"; pill: string }[];
+}
+
+/** 权限 manifests.send（partner 403），没有参数。打开页面、换日期 / 团、发完一批各调一次，不轮询。 */
+export async function fetchUnsentOrders(
+  signal?: AbortSignal,
+): Promise<UnsentOrders> {
+  const res = await apiFetch<Partial<UnsentOrders>>("/api/manifests/unsent", {
+    cache: "no-store",
+    signal,
+  });
+  const orders = Array.isArray(res.orders) ? res.orders : [];
+  return {
+    dates: Array.isArray(res.dates) ? res.dates : [],
+    count: typeof res.count === "number" ? res.count : orders.length,
+    orders,
+    pills: Array.isArray(res.pills) ? res.pills : [],
+  };
+}

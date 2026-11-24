@@ -23,8 +23,11 @@ import { mainManifestGuestLunchNote } from "@/lib/guest-lunch";
 import { isYmd, laToday, shiftYmd } from "@/lib/la-date";
 import {
   fetchManifestPage,
+  fetchUnsentOrders,
   type ManifestSearchEntry,
   saveManifestCfm,
+  type UnsentOrder,
+  type UnsentOrders,
 } from "@/lib/manifests-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { replaceUrl, useLeaveGuard } from "@/lib/use-leave-guard";
@@ -99,6 +102,7 @@ import {
 } from "./config";
 import { NoteInput } from "./note-cell";
 import { StaffNoteCell } from "./staff-note-cell";
+import { UnsentAlert } from "./unsent-alert";
 import { FieldPicker } from "./field-picker";
 import { ManifestSearch } from "./manifest-search";
 import { SectionCfm } from "./section-cfm";
@@ -111,6 +115,8 @@ import {
 } from "./send-dialogs";
 
 const NO_KEYS: ReadonlySet<string> = new Set();
+/** G380：有没发新单的胶囊用的红（同 Dashboard 红气泡 #dc3545）。 */
+const UNSENT_RED = "#dc3545";
 
 type LoadState =
   | { kind: "loading" }
@@ -222,6 +228,12 @@ export function ManifestsView() {
   const scrolledToRef = useRef<string | null>(null);
   /** 置顶 51 B：?row= 带来的行，这一页拿到后用一次（预勾 + 去掉网址里的 row / tick）。 */
   const jumpRef = useRef<{ rows: string[]; tick: boolean } | null>(null);
+  /** G380：点了红框里的一单（同一页时 shown 不变，靠它让下面的预勾再跑一次）。 */
+  const [jumpNonce, setJumpNonce] = useState(0);
+  /** G380：Notice 链接带来的 ?order=（只有单号）：这一页拿到后找这单的行，标黄、滚到、勾上，用一次。 */
+  const orderJumpRef = useRef<string | null>(null);
+  /** G380 未发新单（GET /api/manifests/unsent）；null = 没有 / 读不到 / 没有发送权限，什么都不出。 */
+  const [unsent, setUnsent] = useState<UnsentOrders | null>(null);
   const redirectingRef = useRef(false);
   /** 上一次返回已经满足的请求：后端换了胶囊（我们没指定 / 指定的当天不存在）时不再重拉一次。 */
   const satisfiedRef = useRef("");
@@ -248,6 +260,8 @@ export function ManifestsView() {
       setHighlight(rows[0]);
       scrolledToRef.current = null;
     }
+    const order = (params.get("order") ?? "").trim();
+    if (order && !rows.length) orderJumpRef.current = order;
   }, []);
 
   // 这个标签存的列（每个标签只拉一次）；这颗胶囊有自己的一套就用自己的（置顶 71）。
@@ -337,6 +351,39 @@ export function ManifestsView() {
     showHidden,
     redirectToLogin,
   ]);
+
+  // G380：打开页面、换日期 / 标签 / 团、发完一批（onSent 会加 reloadKey）各读一次，不定时刷。
+  // 只给能发团确认 / 门票提醒的人（manifests.send，partner 后端 403）；读不到不挡页面，提醒就不出。
+  useEffect(() => {
+    if (!date || noConfirm) {
+      setUnsent(null);
+      return;
+    }
+    const controller = new AbortController();
+    fetchUnsentOrders(controller.signal)
+      .then((res) => setUnsent(res))
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        if (isStatus(error, 401)) redirectToLogin();
+        setUnsent(null);
+      });
+    return () => controller.abort();
+  }, [date, tab, pill, reloadKey, noConfirm, redirectToLogin]);
+
+  /** G380 点红框里的一单：去那天那个标签 / 团，滚到这单的行并勾上（往返两段都在 row_keys 里）。 */
+  function jumpToUnsent(order: UnsentOrder) {
+    if (!order.row_keys.length) return;
+    setViewHidden(false);
+    setPendingSend(null);
+    setSelected(new Set());
+    jumpRef.current = { rows: order.row_keys, tick: true };
+    setDate(order.tour_date);
+    setTab(order.tab);
+    setPill(order.pill);
+    setHighlight(order.row_keys[0]);
+    scrolledToRef.current = null;
+    setJumpNonce((n) => n + 1);
+  }
 
   function changeDate(next: string) {
     if (!isYmd(next) || next === date) return;
@@ -700,7 +747,34 @@ export function ManifestsView() {
     url.searchParams.delete("row");
     url.searchParams.delete("tick");
     replaceUrl(url);
-  }, [shown, noSend, tabSendable]);
+  }, [shown, noSend, tabSendable, jumpNonce]);
+  // G380：?order=<单号>（Notice「New order · not sent」的链接）：这一页里找这单的行，同点红框里那一单。
+  // 这一页没有这单（已经发了 / 挪走了）就只把 order 从网址去掉，不另提示。
+  const pageReady = !!shown && state === null;
+  useEffect(() => {
+    const order = orderJumpRef.current;
+    if (!order || !shown || !pageReady) return;
+    orderJumpRef.current = null;
+    const want = order.toUpperCase();
+    const here = shown.rows.filter(
+      (r) => r.order_number.toUpperCase() === want,
+    );
+    if (here.length) {
+      setHighlight(here[0].row_key);
+      scrolledToRef.current = null;
+      if (!noSend && tabSendable)
+        setSelected(new Set(here.filter(canSend).map((r) => r.row_key)));
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.delete("order");
+    replaceUrl(url);
+  }, [shown, pageReady, noSend, tabSendable]);
+  /** G380 Q2：这一天这个标签里要变红的胶囊（有没发的新单）。 */
+  const redPills = new Set(
+    (unsent?.pills ?? [])
+      .filter((p) => !!shown && p.date === shown.date && p.tab === shown.tab)
+      .map((p) => p.pill),
+  );
   const currentPill = shown?.pills.find((p) => p.key === shown.pill);
   // 置顶 74：Waiver link 列这一页有要 waiver 的单才自动出（题 1 A），☰ Columns 里关掉就不加。
   // 150 Notes：默认放最后，☰ Columns 里关掉就不加（withNoteColumn）。
@@ -1042,20 +1116,31 @@ export function ManifestsView() {
                     // 团色认 Settings → Products → Manifest setup（G142，`p.color`）；没配颜色时按团名猜
                     // （Antelope 紫、West 橙、Bryce 蓝、South Rim 绿，lib/tour-colors.ts），和 Dispatch 团卡片统一；其他和「还没分组」灰色。
                     // Tickets 不用团色（团色是给 bus 流程的）：回到 10-14 之前的白色胶囊（Annie 2026-11-22 P-Q1 选 A）。
-                    data-tour-color={tab === "tickets" ? undefined : ""}
+                    data-tour-color={
+                      tab === "tickets" && !redPills.has(p.key) ? undefined : ""
+                    }
+                    // G380 Q2（Annie「在其他团上的话，这个团的胶囊就变红色」）：有没发的新单 ⇒ 胶囊变红（Tickets 也是）。
+                    data-unsent-pill={redPills.has(p.key) ? "" : undefined}
+                    title={
+                      redPills.has(p.key)
+                        ? "New orders not sent on this tour"
+                        : undefined
+                    }
                     style={
-                      tab === "tickets"
-                        ? undefined
-                        : ({
-                            "--c": p.key.endsWith(":none")
-                              ? OTHER_TOUR_COLOR
-                              : resolveTourColor(p.color, p.label),
-                          } as CSSProperties)
+                      redPills.has(p.key)
+                        ? ({ "--c": UNSENT_RED } as CSSProperties)
+                        : tab === "tickets"
+                          ? undefined
+                          : ({
+                              "--c": p.key.endsWith(":none")
+                                ? OTHER_TOUR_COLOR
+                                : resolveTourColor(p.color, p.label),
+                            } as CSSProperties)
                     }
                     className={cn(
                       // Annie 2026-10-14：像游戏里的按钮——平涂（中间不做高光）、有厚度（底下一道同色系的阴影边），悬停微微抬起，选中是「按下去」的样子（颜色更深、加粗）。黑字。
                       "rounded-[8px] border px-3.5 py-[5px] text-[12.5px] font-semibold whitespace-nowrap text-[#1a1a1a] transition-[transform,box-shadow,background] duration-100",
-                      tab === "tickets"
+                      tab === "tickets" && !redPills.has(p.key)
                         ? p.key === shown.pill
                           ? "translate-y-[3px] border-[#8f8c82] bg-linear-to-b from-[#dedcd3] to-[#d3d0c6] font-bold shadow-[inset_0_2px_3px_rgba(0,0,0,.22),0_0_0_#a9a69c] night:border-white/70 night:bg-white/[.14] night:bg-none night:text-white"
                           : "border-[#b5b2a8] bg-linear-to-b from-paper to-[#e8e6de] shadow-[0_3px_0_#a9a69c,0_4px_7px_rgba(0,0,0,.28)] hover:-translate-y-px hover:shadow-[0_4px_0_#a9a69c,0_6px_9px_rgba(0,0,0,.3)] active:translate-y-[3px] active:shadow-[0_0_0_#a9a69c] night:border-white/15 night:bg-white/[.04] night:bg-none night:text-white/70 night:hover:border-white/10 night:hover:bg-white/[.08] night:hover:text-white"
@@ -1064,7 +1149,10 @@ export function ManifestsView() {
                           : "border-[color-mix(in_srgb,var(--c)_60%,#b5b2a8)] bg-[color-mix(in_srgb,var(--c)_30%,var(--paper))] shadow-[0_3px_0_color-mix(in_srgb,var(--c)_70%,#555),0_4px_7px_rgba(0,0,0,.28)] hover:-translate-y-px hover:shadow-[0_4px_0_color-mix(in_srgb,var(--c)_70%,#555),0_6px_9px_rgba(0,0,0,.3)] active:translate-y-[3px] active:shadow-none night:border-white/15 night:bg-white/[.04] night:text-white/70 night:hover:border-white/10 night:hover:bg-white/[.08] night:hover:text-white",
                       p.key.endsWith(":none") &&
                         p.key !== shown.pill &&
+                        !redPills.has(p.key) &&
                         "border-dashed",
+                      redPills.has(p.key) &&
+                        "border-[#dc3545]! border-[1.5px] text-[#7a2424] night:border-rose-400/70! night:bg-rose-400/20 night:text-rose-100",
                     )}
                   >
                     {p.label}{" "}
@@ -1178,6 +1266,20 @@ export function ManifestsView() {
               </div>
             ) : null}
 
+            {/* G380：勾选条不出的时候（Admin fee、这一团没有单、看隐藏行）和手机上（勾选条没勾时藏起来）单独一行，放在表格上面。 */}
+            <UnsentAlert
+              data={unsent}
+              onPick={jumpToUnsent}
+              className={cn(
+                "mb-3 w-full",
+                !noSend &&
+                  tabSendable &&
+                  !seeingHidden &&
+                  !!shown?.rows.length &&
+                  "sm:hidden",
+              )}
+            />
+
             {!noSend &&
             tabSendable &&
             !seeingHidden &&
@@ -1203,6 +1305,15 @@ export function ManifestsView() {
                   {foldedPicked.orders
                     ? ` (${foldedPicked.orders} in ${foldedPicked.groups === 1 ? "a collapsed group" : "collapsed groups"})`
                     : ""}
+                </span>
+                {/* G380：电脑上放在勾选条中间那块空白（「N orders selected」和发送键之间，Annie 画红框的位置）。 */}
+                {/* 占住中间的空，单子多时红框在里面折行，不把发送键挤到第二行。 */}
+                <span className="flex min-w-0 flex-1 justify-center max-sm:hidden">
+                  <UnsentAlert
+                    data={unsent}
+                    onPick={jumpToUnsent}
+                    className="min-w-0"
+                  />
                 </span>
                 {noConfirm ? null : (
                   <button
@@ -2849,6 +2960,18 @@ function ManifestsHowToUse() {
           no booking time go last). Sections stay the same in both views.
           Ticked orders stay ticked when you switch. This computer remembers
           your choice.
+        </>,
+        // G380 未发新单提醒（Annie 2026-11-23 答 8 题）。
+        <>
+          <b>New orders not sent</b>: a red box in the bar above the list shows
+          orders for the next 3 days (tomorrow, the day after and the day after
+          that) that came in after their tour was last sent as a batch and have
+          not been sent yet, on every tour. Up to 3 are listed as order number ·
+          tour date · tour; click one to open that day and tour with the order
+          ticked. With more than 3, a red number shows how many. Tours with such
+          orders have red pills; click a red pill to find them. The box goes away
+          once they are sent. Reservations team staff on shift can also get a
+          Notice for each one.
         </>,
       ]}
     />

@@ -21,9 +21,17 @@ const PEOPLE = [
   { id: 9, name: "Ken Ito", role: "staff" },
 ];
 let allowed;
+// G380（后端 1e 03e9a574）：ctl.g380 开着 = 新后端，开关列表多 unsent_order_notice（group Main manifest，默认关），
+// 另有 GET / PUT /api/settings/unsent-order-notice（只 Super Admin）。ctl.g380TeamMissing：存着的 team 被删了；ctl.g380Put400：PUT 回 400。
+const TEAMS = [
+  { id: 5, name: "Reservations", color: "#3b82f6", description: null, member_count: 4, created_at: null },
+  { id: 6, name: "Night Desk", color: "#22c55e", description: null, member_count: 2, created_at: null },
+];
+let unsentTeam;
 function fresh() {
   allowed = [7];
-  state = { operation_report_notify: { on: false, at: null }, daily_task_reminders: { on: false, at: null } };
+  state = { operation_report_notify: { on: false, at: null }, daily_task_reminders: { on: false, at: null }, unsent_order_notice: { on: false, at: null } };
+  unsentTeam = { team_id: null, team_name: null, team_missing: false };
   // 「谁看得到」开关（2026-10-25）：开始时一个都没登记（同后端现状），PUT 过的才有。
   widgetVis = {};
   sc = { enabled: false, weekday: "wed", time: "09:00" };
@@ -42,6 +50,9 @@ function listFor(role) {
     { key: "schedule_confirm", label: "Wednesday schedule confirmation", group: "Staff schedule", enabled: sc.enabled, managed_elsewhere: false, can_edit: sup, wired: true,
       description: "Sends staff next week's schedule to confirm every Wednesday. While this is off, nothing is sent." },
   ];
+  if (ctl.g380)
+    out.push({ key: "unsent_order_notice", label: "Main manifest: notice for new orders not sent", group: "Main manifest", enabled: state.unsent_order_notice.on, enabled_at: state.unsent_order_notice.at, managed_elsewhere: false, can_edit: canEdit, wired: true,
+      description: "Sends a Notice to the Reservations team on shift for each new order for the next 3 days that has not been sent. While this is off, nothing is sent; the red box on Main manifest is always shown." });
   if (sup) {
     out.push({ key: "auto_send_tour", label: "Tour confirmations (scheduled)", group: "Auto-send", enabled: ctl.autoSendOn, managed_elsewhere: true, can_edit: false, wired: true, manage_api: "/api/settings/auto-send", description: "Managed on the Auto Send page." });
     out.push({ key: "auto_send_tickets", label: "Ticket reminders (scheduled)", group: "Auto-send", enabled: false, managed_elsewhere: true, can_edit: false, wired: true, manage_api: "/api/settings/auto-send", description: "Managed on the Auto Send page." });
@@ -125,7 +136,7 @@ http.createServer(async (req, res) => {
       if (ctl.failPut) return send(res, 500, { detail: ctl.failPut });
       const ch = body.switches;
       if (!ch || typeof ch !== "object") return send(res, 400, { detail: 'Send {"switches": {"<switch key>": true}}.' });
-      const known = ["operation_report_notify", "daily_task_reminders", "schedule_confirm"];
+      const known = ["operation_report_notify", "daily_task_reminders", "schedule_confirm", ...(ctl.g380 ? ["unsent_order_notice"] : [])];
       const unknown = Object.keys(ch).filter((k) => !known.includes(k));
       if (unknown.length) return send(res, 400, { detail: "Unknown notification switch: " + unknown.join(", ") });
       for (const [k, v] of Object.entries(ch)) if (typeof v !== "boolean") return send(res, 400, { detail: `Switch '${k}' must be true or false.` });
@@ -138,6 +149,23 @@ http.createServer(async (req, res) => {
     return send(res, 200, listFor(role));
   }
 
+  if (p === "/api/admin/teams") return send(res, 200, TEAMS);
+  if (p === "/api/settings/unsent-order-notice") {
+    if (role !== "superadmin") return send(res, 403, { detail: "Super Admin access required." });
+    if (ctl.g380TeamMissing) { unsentTeam = { team_id: 4, team_name: null, team_missing: true }; ctl.g380TeamMissing = false; }
+    if (req.method === "PUT") {
+      const body = JSON.parse(await raw(req));
+      entry.body = body;
+      if (ctl.g380Put400) return send(res, 400, { detail: ctl.g380Put400 });
+      if (body.team_id === null) unsentTeam = { team_id: null, team_name: null, team_missing: false };
+      else {
+        const t = TEAMS.find((x) => x.id === body.team_id);
+        if (!t) return send(res, 400, { detail: `Team ${body.team_id} does not exist.` });
+        unsentTeam = { team_id: t.id, team_name: t.name, team_missing: false };
+      }
+    }
+    return send(res, 200, unsentTeam);
+  }
   if (p === "/api/settings/schedule-confirm") {
     if (req.method === "PUT") {
       const body = JSON.parse(await raw(req));

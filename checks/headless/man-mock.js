@@ -623,6 +623,19 @@ http
       else sectionCfm.delete(k);
       return send(res, 200, { ok: true, tour_date: body.tour_date, manifest_id: 3, section: body.section, cfm_no: cfmNo });
     }
+    // G380：GET /api/manifests/unsent（后端 1e 03e9a574 合同）。ctl.unsent = 几单（0–5，默认 0）；ctl.unsent403 = 没有发送权限（partner 也 403）。
+    // 团期都用 today（mock 只有今天有行），点了能跳到真行、勾上。
+    if (p === "/api/manifests/unsent") {
+      if (ctl.partner || ctl.unsent403) return send(res, 403, { detail: "You do not have permission to do this." });
+      const POOL = [["CHD1003", "bus", "g:7"], ["CHD2001", "tickets", "t:antelope"], ["CHD1001", "bus", "g:3"], ["CHD1004", "bus", "g:none"], ["CHD2002", "tickets", "t:none"]];
+      const orders = POOL.slice(0, Math.min(ctl.unsent || 0, POOL.length)).map(([o, tab, pill], i) => {
+        const r = ROWS.find((x) => x.order_number === o);
+        return { order_number: o, tour_date: today, tab, pill, pill_label: PILL_LABEL[pill], product: r.v.product, pax: r.v.pax,
+          booked_at: `2026-11-24T1${i}:05:00+00:00`, row_keys: [rowKey(r, today)] };
+      });
+      const pills = [...new Map(orders.map((o) => [`${o.tab}|${o.pill}`, { date: o.tour_date, tab: o.tab, pill: o.pill }])).values()];
+      return send(res, 200, { dates: [today], count: orders.length, orders, pills });
+    }
     if (p === "/api/manifests") {
       if (ctl.fail) return send(res, 500, { detail: "Internal Server Error" });
       const [status, body] = page(url);

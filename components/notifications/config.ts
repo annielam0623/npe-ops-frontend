@@ -71,6 +71,17 @@ const FALLBACK_TEXT: Record<string, FallbackText> = {
       body: "Open the schedule and tap Accept or Change.",
     },
   },
+  // G380（Annie 2026-11-23 Q6 / Q7；后端合同 docs/interfaces/manifests-unsent-2026-11-24.md 第 2 节）。
+  unsent_order_notice: {
+    trigger:
+      "An order for tomorrow, the day after or the day after that comes in after its tour was last sent as a batch (2 or more orders), and has not been sent yet. One notice per order and tour date, sent once. It clears itself once the order is sent, cancelled or moved, or the tour date is no longer in the next 3 days.",
+    recipients:
+      "People in the team chosen below who are on shift now (published Staff Schedule). If no team is chosen, or nobody in it is on shift, Super Admin. Test orders go to Super Admin only.",
+    sample: {
+      subject: "New order not sent: CHD123456 · Tue Nov 25 · South Rim",
+      body: "CHD123456 (Tue Nov 25, 2026, South Rim) was booked Nov 24 10:05 AM, after this tour was sent, and has not been sent yet. 3 pax. Open it on Main manifest and send it. This notice clears itself once it is sent.",
+    },
+  },
   [AUTO_SEND_KEY]: {
     trigger: "The times set on the Auto Send page.",
     recipients:
@@ -115,6 +126,10 @@ const CONFIRM: Record<string, string[]> = {
   ],
   operation_report_notify: [
     "Saving an incident will notify the people in charge (or supervisors and reservations@ if none are set up).",
+  ],
+  unsent_order_notice: [
+    "Each new order for the next 3 days that has not been sent will send a Notice to the chosen team's staff on shift (or to Super Admin if no team is chosen or nobody is on shift).",
+    "The red box on Main manifest does not depend on this switch; it is always shown.",
   ],
   [SCHEDULE_CONFIRM_KEY]: [
     "Next Wednesday at the set time, every scheduled employee will be asked to confirm next week’s schedule.",

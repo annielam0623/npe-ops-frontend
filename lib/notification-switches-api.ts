@@ -72,3 +72,31 @@ export function saveScheduleConfirmSettings(
     body: settings,
   });
 }
+
+/** G380：未发新单 Notice 发给哪个 team（只 Super Admin 能读写；没设 = 发 Super Admin）。 */
+export interface UnsentOrderNoticeConfig {
+  team_id: number | null;
+  team_name: string | null;
+  /** 存着的 team 被删了。 */
+  team_missing: boolean;
+}
+const UNSENT_ORDER_NOTICE_API = "/api/settings/unsent-order-notice";
+
+export function fetchUnsentOrderNoticeConfig(
+  signal?: AbortSignal,
+): Promise<UnsentOrderNoticeConfig> {
+  return apiFetch<UnsentOrderNoticeConfig>(UNSENT_ORDER_NOTICE_API, {
+    cache: "no-store",
+    signal,
+  });
+}
+
+/** 400 带一句英文（team 不存在 / body 不对），原样红字显示。 */
+export function saveUnsentOrderNoticeConfig(
+  teamId: number | null,
+): Promise<UnsentOrderNoticeConfig> {
+  return apiFetch<UnsentOrderNoticeConfig>(UNSENT_ORDER_NOTICE_API, {
+    method: "PUT",
+    body: { team_id: teamId },
+  });
+}

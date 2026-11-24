@@ -2090,6 +2090,7 @@ async function run() {
   await redProductChecks();
   await busViewChecks();
   await guestLunchChecks();
+  await unsentChecks();
 
   // ── 未登录：跳 ops 自己的登录页带 next ──
   await ctl({ fail401: true });
@@ -2144,6 +2145,117 @@ async function main() {
 
 // ── 产品名标红（Annie 2026-11-17「产品标红同意全部推荐。动手」；preview Ksg4SKsz4RxtriyNK37xri）：
 //    后端 product_differs = true ⇒ Product 格整个深红字 #a32d2d，title 写这一节大多数产品；前端不自己比。──
+// G380 未发新单提醒（Annie 2026-11-23 8 题；后端 1e 合同 manifests-unsent-2026-11-24.md）。
+async function unsentChecks() {
+  const isUnsent = (e) => e.path === "/api/manifests/unsent";
+  const DAY = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" });
+  const [yy, mm, dd] = today.split("-").map(Number);
+  const dayLabel = DAY.format(new Date(Date.UTC(yy, mm - 1, dd))).replace(",", "");
+  const shownAlert = `([...document.querySelectorAll('[data-unsent-alert]')].find(e => e.offsetParent) || null)`;
+
+  // 0 单：什么都不出，胶囊不变红；打开页面读一次接口。
+  await ctl({ unsent: 0, unsent403: false });
+  let from = (await mockLog()).length;
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await sleep(600);
+  check("G380 0 单：没有红框", await evaluate(`return !${shownAlert};`));
+  check("G380 0 单：没有红胶囊", await evaluate("return !document.querySelector('[data-unsent-pill]');"));
+  check("G380 打开页面读一次 GET /api/manifests/unsent（不带参数）", (await since(from, isUnsent)).length >= 1 && (await since(from, isUnsent)).every((e) => !e.query));
+
+  // 1 单（在别的团 g:7）：电脑上在勾选条里、逐单「单号 · 团期 · 团」；那颗胶囊变红。
+  await ctl({ unsent: 1 });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus&pill=g:3`);
+  await waitFor(shownAlert, 8000);
+  const one = await evaluate(`const a = ${shownAlert}; return { kind: a?.dataset.unsentAlert, items: [...(a?.querySelectorAll('[data-unsent-order]') ?? [])].map(b => b.textContent.trim()), inBar: !!a?.closest('[data-selected-bar]'), text: a?.textContent };`);
+  check("G380 1 单：电脑上红框在勾选条里", one.inBar, JSON.stringify(one));
+  check("G380 1 单：逐单「CHD1003 · 团期 · Grand Canyon West」", one.kind === "list" && one.items.length === 1 && one.items[0] === `CHD1003 · ${dayLabel} · Grand Canyon West`, JSON.stringify(one));
+  check("G380 1 单：写「New orders not sent」，没有数字气泡", one.text.includes("New orders not sent") && !(await evaluate("return !!document.querySelector('[data-unsent-count]');")));
+  const red = await evaluate("return [...document.querySelectorAll('[data-unsent-pill]')].map(b => b.textContent.trim());");
+  check("G380 Q2：有新单的团胶囊变红（只有 Grand Canyon West）", red.length === 1 && red[0].startsWith("Grand Canyon West"), JSON.stringify(red));
+  const pillBg = await evaluate("const b = document.querySelector('[data-unsent-pill]'); return getComputedStyle(b).borderColor;");
+  check("G380 红胶囊：边是红色 #dc3545", /220, 53, 69/.test(pillBg), pillBg);
+  const linkColor = await evaluate(`const b = ${shownAlert}.querySelector('[data-unsent-order]'); return getComputedStyle(b).backgroundColor + '|' + getComputedStyle(b).color;`);
+  check("G380 单号不是蓝色按钮（透明底、深红字）", /rgba\(0, 0, 0, 0\)|transparent/.test(linkColor) && !/59, 130, 246/.test(linkColor), linkColor);
+  // 点一单：去那个团，这单勾上、标黄；换团后再读一次接口。
+  from = (await mockLog()).length;
+  await evaluate(`${shownAlert}.querySelector('[data-unsent-order]').click();`);
+  await waitFor("$box('CHD1003')?.checked", 8000);
+  const after = await evaluate("return { pill: $pills().find(p => p.on)?.text, ticked: $box('CHD1003')?.checked, hl: !!document.querySelector('tr[data-highlight][data-row^=\"CHD1003|\"]'), url: location.search };");
+  check("G380 点一单：跳到 Grand Canyon West、勾上 CHD1003、那一行标黄", after.pill?.startsWith("Grand Canyon West") && after.ticked && after.hl, JSON.stringify(after));
+  check("G380 点一单：勾选条算上「1 order」", await evaluate("return $bar().textContent.includes('1 order');"));
+  check("G380 换团后再读一次接口", (await since(from, isUnsent)).length >= 1);
+
+  // 3 单：逐单列 3 个（含门票），点门票那单 ⇒ 换到 Tickets 标签、那颗胶囊、勾上。
+  await ctl({ unsent: 3 });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus&pill=g:3`);
+  await waitFor(`${shownAlert}?.querySelectorAll('[data-unsent-order]').length === 3`, 8000);
+  const three = await evaluate(`return [...${shownAlert}.querySelectorAll('[data-unsent-order]')].map(b => b.textContent.trim());`);
+  check("G380 3 单：逐单列 3 个，按接口的顺序", JSON.stringify(three) === JSON.stringify([`CHD1003 · ${dayLabel} · Grand Canyon West`, `CHD2001 · ${dayLabel} · Antelope Canyon`, `CHD1001 · ${dayLabel} · Antelope Bus Tour`]), JSON.stringify(three));
+  const rowOk = await evaluate("const t = (x) => Math.round($btn(x, $bar()).getBoundingClientRect().top); return t('Send tour confirmation') === t('Clear') && t('Clear') === t('Send message');");
+  check("G380 3 单（电脑 1440）：红框在中间折行，Send tour confirmation / Send message / Clear 还在同一行", rowOk);
+  check("G380 3 单：这一页（Bus）两颗红胶囊（Antelope Bus Tour、Grand Canyon West）", (await evaluate("return document.querySelectorAll('[data-unsent-pill]').length;")) === 2);
+  await evaluate(`[...${shownAlert}.querySelectorAll('[data-unsent-order]')].find(b => b.textContent.startsWith('CHD2001')).click();`);
+  await waitFor("$box('CHD2001')?.checked", 8000);
+  const tix = await evaluate("return { tab: document.querySelector('[role=tab][aria-selected=true]')?.textContent, pill: $pills().find(p => p.on)?.text, ticked: $box('CHD2001')?.checked, red: [...document.querySelectorAll('[data-unsent-pill]')].map(b => b.textContent.trim()) };");
+  check("G380 点门票那单：换到 Tickets、Antelope Canyon、勾上 CHD2001", tix.tab?.startsWith("Tickets") && tix.pill?.startsWith("Antelope Canyon") && tix.ticked, JSON.stringify(tix));
+  check("G380 Tickets 的胶囊也会变红", tix.red.length === 1 && tix.red[0].startsWith("Antelope Canyon"), JSON.stringify(tix.red));
+
+  // 同一页里再点一次（shown 不变）也要勾上。
+  await evaluate("$btn('Clear')?.click();");
+  await evaluate(`[...${shownAlert}.querySelectorAll('[data-unsent-order]')].find(b => b.textContent.startsWith('CHD2001')).click();`);
+  check("G380 已经在那一页，再点一次照样勾上", await waitFor("$box('CHD2001')?.checked", 5000));
+
+  // 超过 3 单：只出红数字（Dashboard 红气泡），不列单号、没有 Show。
+  await ctl({ unsent: 5 });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus&pill=g:3`);
+  await waitFor(`${shownAlert}?.dataset.unsentAlert === 'count'`, 8000);
+  const many = await evaluate(`const a = ${shownAlert}; const c = a.querySelector('[data-unsent-count]'); return { n: c?.textContent, bg: c && getComputedStyle(c).backgroundColor, items: a.querySelectorAll('[data-unsent-order]').length, show: !![...a.querySelectorAll('button')].length, text: a.textContent };`);
+  check("G380 >3 单：红数字气泡 5（#dc3545）", many.n === "5" && /220, 53, 69/.test(many.bg), JSON.stringify(many));
+  check("G380 >3 单：不列单号、没有 Show 键（Q5）", many.items === 0 && !many.show, JSON.stringify(many));
+  check("G380 >3 单：Bus 这一页三颗红胶囊（含 No group yet）", (await evaluate("return document.querySelectorAll('[data-unsent-pill]').length;")) === 3);
+
+  // 勾选条不出的时候（这一天没有单）：红框单独一行，照样看得到。
+  await ctl({ unsent: 1 });
+  await openPage(`${APP}/manifests?date=${shiftYmd(today, 1)}&tab=bus`);
+  await waitFor(shownAlert, 8000);
+  check("G380 这一天没有单（没有勾选条）：红框单独一行", await evaluate(`const a = ${shownAlert}; return !!a && !a.closest('[data-selected-bar]');`));
+  await evaluate(`${shownAlert}.querySelector('[data-unsent-order]').click();`);
+  await waitFor("$box('CHD1003')?.checked", 8000);
+  check("G380 点了换到那一天（团期）并勾上", await evaluate(`return new URLSearchParams(location.search).get('date') === '${today}' && $box('CHD1003')?.checked;`));
+
+  // Notice 链接 ?order=：同点红框那一单（滚到、标黄、勾上），用完从网址去掉。
+  await openPage(`${APP}/manifests?date=${today}&order=CHD1003&tab=bus&pill=g%3A7`);
+  await waitFor("$box('CHD1003')?.checked", 8000);
+  const ord = await evaluate("return { ticked: $box('CHD1003')?.checked, hl: !!document.querySelector('tr[data-highlight][data-row^=\"CHD1003|\"]'), others: [...document.querySelectorAll('tbody input[type=checkbox]:checked')].length, url: location.search };");
+  check("G380 ?order=CHD1003：勾上、标黄，只勾这一单", ord.ticked && ord.hl && ord.others === 1, JSON.stringify(ord));
+  check("G380 ?order= 用完从网址去掉（date / tab / pill 留着）", !/order=/.test(ord.url) && /pill=g%3A7/.test(ord.url), ord.url);
+  await openPage(`${APP}/manifests?date=${today}&order=chd1001&tab=bus&pill=g%3A3`);
+  check("G380 ?order= 大小写不计", await waitFor("$box('CHD1001')?.checked", 8000));
+  await openPage(`${APP}/manifests?date=${today}&order=CHD9999&tab=bus&pill=g%3A3`);
+  await sleep(800);
+  const none = await evaluate("return { n: document.querySelectorAll('tbody input[type=checkbox]:checked').length, url: location.search };");
+  check("G380 ?order= 这一页没有这单：不勾任何行，网址去掉 order", none.n === 0 && !/order=/.test(none.url), JSON.stringify(none));
+
+  // 没有发送权限（403）：不出红框、页面照常。
+  await ctl({ unsent: 3, unsent403: true });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await sleep(800);
+  check("G380 接口 403：不出红框、不出红胶囊、页面照常", await evaluate(`return !${shownAlert} && !document.querySelector('[data-unsent-pill]') && !!document.querySelector('thead th');`));
+  await ctl({ unsent403: false });
+
+  // 手机 390：勾选条没勾时藏着 ⇒ 红框单独一行，在表格上面；整页不左右晃。
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  for (const n of [1, 3, 5]) {
+    await ctl({ unsent: n });
+    await openPage(`${APP}/manifests?date=${today}&tab=bus&pill=g:3`);
+    await waitFor(shownAlert, 8000);
+    const ph = await evaluate(`const a = ${shownAlert}; const r = a.getBoundingClientRect(); const t = document.querySelector('table')?.getBoundingClientRect(); return { inBar: !!a.closest('[data-selected-bar]'), above: !!t && r.bottom <= t.top + 1, h: r.height, right: r.right, wide: document.documentElement.scrollWidth <= window.innerWidth + 1 };`);
+    check(`G380 手机 ${n} 单：单独一行、在表格上面、一行高、整页不晃`, !ph.inBar && ph.above && ph.h < 40 && ph.right <= 390 && ph.wide, JSON.stringify(ph));
+  }
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await ctl({ unsent: 0 });
+}
+
 async function redProductChecks() {
   const BUS = `${APP}/manifests?date=${today}&tab=bus&pill=g%3A3`;
   const cell = (o) => `(() => { const tr = $box('${o}')?.closest('tr'); const i = $heads().indexOf('Product'); return tr && i >= 0 ? tr.querySelectorAll('td')[i + 2] : null; })()`;

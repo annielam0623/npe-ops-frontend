@@ -1,6 +1,7 @@
 // 用 Chrome DevTools 协议驱动 headless Chrome，检查 Settings → Notifications（/settings/notifications，统一自动通知开关页）。
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 const path = require("path");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
@@ -136,6 +137,8 @@ async function open() {
   await waitFor("document.querySelector('[data-notification]') || document.body.textContent.includes('Admin access required')");
   await helpers();
   await evaluate(H2);
+  // 全站下拉换成 SelectMenu（2026-11-21）以后，「+ Add person」不是原生 select 了：用共用小工具选值 / 读选项。
+  await evaluate(SELECT_HELPERS);
 }
 
 async function run() {
@@ -295,9 +298,9 @@ async function run() {
   await waitFor("document.querySelector('[data-also-allowed=schedule_period]')", 30000);
   const aa = "document.querySelector('[data-also-allowed=schedule_period]')";
   check("Also allowed：只出在 schedule_period 那行（后端带 allow_list），写 Lina Park；Save 灰着；别的行没有", await evaluate(`return ${aa}.closest('[data-visibility-row]').dataset.visibilityRow === 'schedule_period' && document.querySelectorAll('[data-also-allowed]').length === 1 && !!${aa}.querySelector('[data-also-allowed-person="7"]') && ${aa}.querySelector('[data-also-allowed-save]').disabled;`));
-  check("+ Add person 下拉：只列能加的（Joy Chen、Ken Ito），没有已加的 Lina、Super Admin、partner", await evaluate(`return [...${aa}.querySelectorAll('[data-also-allowed-add] option')].slice(1).map(o => o.textContent).join('|') === 'Joy Chen (supervisor)|Ken Ito (staff)';`), await evaluate(`return [...${aa}.querySelectorAll('[data-also-allowed-add] option')].map(o => o.textContent).join('|');`));
+  check("+ Add person 下拉：只列能加的（Joy Chen、Ken Ito），没有已加的 Lina、Super Admin、partner", await evaluate(`return (await $selOptions(${aa}.querySelector('[data-also-allowed-add]'))).slice(1).map(o => o.label).join('|') === 'Joy Chen (supervisor)|Ken Ito (staff)';`), await evaluate(`return [...${aa}.querySelectorAll('[data-also-allowed-add] option')].map(o => o.textContent).join('|');`));
   from = (await mockLog()).length;
-  await evaluate(`const sel = ${aa}.querySelector('[data-also-allowed-add]'); sel.value = '8'; sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+  await evaluate(`await $sel(${aa}.querySelector('[data-also-allowed-add]'), '8'); return 1;`);
   check("挑 Joy：先放在页面上（没发 PUT），Save 变蓝能点", (await waitFor(`!!${aa}.querySelector('[data-also-allowed-person="8"]') && !${aa}.querySelector('[data-also-allowed-save]').disabled`)) && (await since(from, (e) => e.method === "PUT")).length === 0 && (await evaluate(`return getComputedStyle(${aa}.querySelector('[data-also-allowed-save]')).backgroundColor === 'rgb(59, 130, 246)';`)));
   await evaluate(`${aa}.querySelector('[data-also-allowed-save]').click();`);
   check("Save：PUT {allowed_users:{schedule_period:[7,8]}}（整份），写绿字 Saved", (await waitFor(`!!${aa}.querySelector('[data-also-allowed-saved]')`)) && (await since(from, (e) => e.method === "PUT" && e.path === "/api/settings/dashboard-widgets")).map((e) => JSON.stringify(e.body)).join() === '{"allowed_users":{"schedule_period":[7,8]}}' && (await evaluate(`return getComputedStyle(${aa}.querySelector('[data-also-allowed-saved]')).color === 'rgb(74, 222, 128)';`)));
@@ -306,10 +309,12 @@ async function run() {
   await evaluate(`${aa}.querySelector('[data-also-allowed-save]').click();`);
   check("× 移除 Lina 再 Save：PUT [8]", await waitFor(`!${aa}.querySelector('[data-also-allowed-person="7"]') && !!${aa}.querySelector('[data-also-allowed-saved]')`) && (await since(from, (e) => e.method === "PUT")).map((e) => JSON.stringify(e.body)).join() === '{"allowed_users":{"schedule_period":[8]}}');
   await ctl({ allowFail: true });
-  await evaluate(`const sel = ${aa}.querySelector('[data-also-allowed-add]'); sel.value = '9'; sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+  await evaluate(`await $sel(${aa}.querySelector('[data-also-allowed-add]'), '9'); return 1;`);
   await evaluate(`${aa}.querySelector('[data-also-allowed-save]').click();`);
   check("后端拒（400）：红字照后端原话，Ken 还留在页面上", await waitFor(`(${aa}.querySelector('[role=alert]')?.textContent || '') === 'Only active staff accounts can be added.' && !!${aa}.querySelector('[data-also-allowed-person="9"]')`));
   await ctl({ allowFail: false, allowList: false });
+
+  await g380Checks();
 
   // ── 普通 admin ──
   await ctl({ reset: true, role: "admin", extras: false });
@@ -341,6 +346,100 @@ async function run() {
   await waitFor("location.pathname === '/auth/login'");
   check("未登录跳旧后台登录页（带 next）", (await evaluate("return location.href;")).startsWith(`${APP}/auth/login?next=`));
   await ctl({ fail401: false, reset: true });
+}
+
+// G380 未发新单提醒：开关 unsent_order_notice（默认关）+ Super Admin 的「Send to team」下拉（先选后存）。
+async function g380Checks() {
+  const isTeamPut = (e) => e.method === "PUT" && e.path === "/api/settings/unsent-order-notice";
+  const box = "document.querySelector('[data-unsent-team]')";
+  const sel = "document.querySelector('[data-unsent-team] button[data-select-menu]')";
+  await ctl({ reset: true, role: "superadmin", g380: true, g380Put400: "", g380TeamMissing: false });
+  let from = (await mockLog()).length;
+  await open();
+  await evaluate(SELECT_HELPERS);
+  await waitFor(`${box} && ${sel}`, 8000);
+  const card = await evaluate(`const c = $card('unsent_order_notice'); return { label: c?.querySelector('h3')?.textContent, state: c?.querySelector('[data-state]')?.dataset.state, group: [...document.querySelectorAll('div')].some(d => d.textContent === 'Main manifest' && d.className.includes('uppercase')) };`);
+  check("G380 开关列表自动多一张「Main manifest: notice for new orders not sent」，默认 Off，在 Main manifest 组", card.label === "Main manifest: notice for new orders not sent" && card.state === "off" && card.group, JSON.stringify(card));
+  check("G380 Details 有 When / Who gets it / Sample（Sample 照后端合同的标题）", await evaluate("return $card('unsent_order_notice').textContent.includes('New order not sent: CHD123456 · Tue Nov 25 · South Rim') && $card('unsent_order_notice').textContent.includes('on shift now');"));
+  const opts = await evaluate(`return (await $selOptions(${sel})).map(o => o.label);`);
+  check("G380 Super Admin：卡里有 Send to team 下拉：No team + Team 页的 team（按名字排）", JSON.stringify(opts) === JSON.stringify(["No team (Super Admin gets them)", "Night Desk", "Reservations"]), JSON.stringify(opts));
+  check("G380 没设 team：下拉停在 No team，没有 Save 键", await evaluate(`return ${sel}.dataset.value === '' && !document.querySelector('[data-unsent-team-save]');`));
+  check("G380 读了 GET /api/settings/unsent-order-notice 和 /api/admin/teams", (await since(from, (e) => e.path === "/api/settings/unsent-order-notice" && e.method === "GET")).length >= 1 && (await since(from, (e) => e.path === "/api/admin/teams")).length >= 1);
+
+  // 先选后存：选了不发 PUT，出蓝色 Save；离开要拦。
+  from = (await mockLog()).length;
+  await evaluate(`await $sel(${sel}, '5'); return 1;`);
+  await sleep(400);
+  const save = await evaluate("const b = document.querySelector('[data-unsent-team-save]'); return b ? { text: b.textContent.trim(), bg: getComputedStyle(b).backgroundColor } : null;");
+  check("G380 选 Reservations：先暂存（没发 PUT），出蓝色 Save", (await since(from, isTeamPut)).length === 0 && save?.text === "Save" && /59, 130, 246/.test(save?.bg ?? ""), JSON.stringify(save));
+  await evaluate("window.__asked = 0; window.confirm = (m) => { window.__asked++; window.__askText = m; return false; }; return 1;");
+  await evaluate("const a = [...document.querySelectorAll('a[href]')].find(a => a.getAttribute('href') === '/dashboard'); a?.click(); return 1;");
+  await sleep(600);
+  check("G380 没存就点站内链接：先问 Leave without saving?，答不走就还在本页", (await evaluate("return window.__asked;")) === 1 && (await evaluate("return location.pathname;")) === "/settings/notifications" && (await evaluate("return window.__askText;")).includes("Leave without saving?"));
+  await evaluate("document.querySelector('[data-unsent-team-save]').click();");
+  await waitFor("document.querySelector('[data-unsent-team-result=ok]')", 5000);
+  const puts = await since(from, isTeamPut);
+  const ok = await evaluate("const r = document.querySelector('[data-unsent-team-result=ok]'); return { text: r?.textContent, color: r && getComputedStyle(r).color, save: !!document.querySelector('[data-unsent-team-save]') };");
+  check("G380 Save：PUT {team_id: 5}，绿字 Saved，Save 键收起", puts.length === 1 && puts[0].body?.team_id === 5 && ok.text === "Saved" && /74, 222, 128/.test(ok.color) && !ok.save, JSON.stringify({ puts, ok }));
+  await open();
+  await evaluate(SELECT_HELPERS);
+  await waitFor(`${sel}`, 8000);
+  check("G380 重开页面：下拉停在 Reservations", await evaluate(`return ${sel}.dataset.value === '5';`));
+
+  // 400：后端原话红字，下拉留着选的值、Save 还在。
+  await ctl({ g380Put400: "Team 6 does not exist." });
+  await evaluate(`await $sel(${sel}, '6'); return 1;`);
+  await waitFor("document.querySelector('[data-unsent-team-save]')", 3000);
+  await evaluate("document.querySelector('[data-unsent-team-save]').click();");
+  await waitFor("document.querySelector('[data-unsent-team-result=error]')", 5000);
+  const bad = await evaluate(`const r = document.querySelector('[data-unsent-team-result=error]'); return { text: r?.textContent, color: r && getComputedStyle(r).color, value: ${sel}.dataset.value, save: !!document.querySelector('[data-unsent-team-save]') };`);
+  check("G380 400：红字照后端原话「Not saved: Team 6 does not exist.」，选的值和 Save 都还在", bad.text === "Not saved: Team 6 does not exist." && /248, 113, 113/.test(bad.color) && bad.value === "6" && bad.save, JSON.stringify(bad));
+  await ctl({ g380Put400: "" });
+  // 改回 No team（team_id null）。
+  from = (await mockLog()).length;
+  await evaluate(`await $sel(${sel}, ''); return 1;`);
+  await waitFor("document.querySelector('[data-unsent-team-save]')", 3000);
+  await evaluate("document.querySelector('[data-unsent-team-save]').click();");
+  await waitFor("document.querySelector('[data-unsent-team-result=ok]')", 5000);
+  const nullPut = await since(from, isTeamPut);
+  check("G380 改回 No team：PUT {team_id: null}", nullPut.length === 1 && nullPut[0].body && nullPut[0].body.team_id === null, JSON.stringify(nullPut));
+
+  // 存着的 team 被删了：红字提醒，下拉停在 No team。
+  await ctl({ reset: true, g380: true, g380TeamMissing: true });
+  await open();
+  await evaluate(SELECT_HELPERS);
+  await waitFor(`${sel}`, 8000);
+  check("G380 team 被删了（team_missing）：红字说明，下拉停在 No team", await evaluate(`return !!document.querySelector('[data-unsent-team-missing]') && ${sel}.dataset.value === '';`));
+
+  // 开关照别的开关：打开先确认，PUT {switches:{unsent_order_notice:true}}。
+  from = (await mockLog()).length;
+  await evaluate("$sw('unsent_order_notice').click();");
+  await waitFor("$card('unsent_order_notice').querySelector('[role=alertdialog]')", 3000);
+  check("G380 打开开关先确认（说明发给谁、红框不受影响）", await evaluate("return $card('unsent_order_notice').querySelector('[role=alertdialog]').textContent.includes('red box on Main manifest');"));
+  await evaluate("$btnIn($card('unsent_order_notice'), 'Turn on').click();");
+  await waitFor("$card('unsent_order_notice').querySelector('[data-state=on]')", 5000);
+  const swPut = await since(from, isPut);
+  check("G380 Turn on：PUT {switches:{unsent_order_notice:true}}", swPut.length === 1 && swPut[0].body?.switches?.unsent_order_notice === true, JSON.stringify(swPut));
+
+  // 普通 admin：看得到开关卡（灰），没有 team 下拉、不请求 unsent-order-notice（后端 403）。
+  await ctl({ reset: true, role: "admin", g380: true });
+  from = (await mockLog()).length;
+  await open();
+  await sleep(500);
+  check("G380 普通 admin：有开关卡、没有 Send to team，不请求 /api/settings/unsent-order-notice", (await evaluate("return !!$card('unsent_order_notice') && !document.querySelector('[data-unsent-team]');")) && (await since(from, (e) => e.path === "/api/settings/unsent-order-notice")).length === 0);
+
+  // 手机 390：下拉和 Save 不出屏、整页不晃。
+  await ctl({ reset: true, role: "superadmin", g380: true });
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  await open();
+  await evaluate(SELECT_HELPERS);
+  await waitFor(`${sel}`, 8000);
+  await evaluate(`await $sel(${sel}, '5'); return 1;`);
+  await waitFor("document.querySelector('[data-unsent-team-save]')", 3000);
+  const ph = await evaluate(`const s = ${sel}.getBoundingClientRect(); const b = document.querySelector('[data-unsent-team-save]').getBoundingClientRect(); return { s: s.right, b: b.right, wide: document.documentElement.scrollWidth <= window.innerWidth + 1 };`);
+  check("G380 手机 390：下拉、Save 在屏幕里，整页不左右晃", ph.s <= 390 && ph.b <= 390 && ph.wide, JSON.stringify(ph));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await ctl({ reset: true, g380: false });
 }
 
 main().catch((e) => {

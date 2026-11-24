@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import { PageLink } from "@/components/ui/page-link";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,8 @@ export interface CardProps {
   error: string;
   confirming: boolean;
   timeEditor?: TimeEditor;
+  /** 卡片里开关下面多出来的设置（G380：未发新单 Notice 发给哪个 team）。 */
+  extra?: ReactNode;
   onToggle: () => void;
   onConfirm: () => void;
   onCancel: () => void;
@@ -69,6 +71,7 @@ export function NotificationCard({
   error,
   confirming,
   timeEditor,
+  extra,
   onToggle,
   onConfirm,
   onCancel,
@@ -186,6 +189,8 @@ export function NotificationCard({
           ) : null}
         </div>
       ) : null}
+
+      {extra}
 
       {confirming ? (
         <div

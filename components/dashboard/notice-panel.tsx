@@ -28,6 +28,8 @@ const KIND_LABEL: Record<string, string> = {
   pickup_missing: "Pickup location missing",
   // ★ Note @（Annie 2026-11-21 动手；后端合同 v1 第 4 点）：只站内、不发邮件，点进 Order details。
   mention: "Mention",
+  // G380（Annie 2026-11-23 Q6–Q8）：Res team 当班的人收，点进 Main manifest 那一单（href 带 ?order=，勾上）；发出去后端自动消。
+  unsent_order: "New order · not sent",
 };
 
 /** @ team 的那条：ref.to_team_name（@ 个人时 null）。 */
@@ -184,7 +186,9 @@ export function noticeLinkLabel(notice: ApiNotice): string {
         ? "Open report →"
         : notice.type === "pickup_missing" || notice.type === "mention"
           ? "Open order →"
-          : "Open →";
+          : notice.type === "unsent_order"
+            ? "Open in Main manifest →"
+            : "Open →";
 }
 
 /** 右上角「Check history」（白边框普通按钮，不是蓝色：蓝色只给提交键）。 */
