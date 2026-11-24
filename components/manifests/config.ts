@@ -552,9 +552,49 @@ export function withTicketSessions(page: ManifestPage): ManifestPage {
 /**
  * Bus / Admin fee 的「By order time」看法（Annie 2026-11-21 第 5 件「其他问题全部同意推荐，动手」，
  * 样稿 https://claude.ai/artifact/6FwfiTd9yQ6T3oTTfqZdBM 题 2 A）：节照旧（后端给的节和节的先后不动），
- * 每节里按下单时间（booked_at）早的在前，没有的排最后；一样的照原来（接客时间）的先后；同一单的几行挨在一起。
+ * 每节里按下单时间（booked_at）**晚的在前**（Annie 2026-11-24「我整个系统里只要出现订单的地方一定是最新的单排最前」「马上立刻迅速给我改过来」，
+ * 取代 11-21 的早的在前），没有的排最后；一样的照原来（接客时间）的先后；同一单的几行挨在一起。
  * 藏起来的行（hidden.rows）同样排。Tickets 不走这里（它有自己的两种看法）。只排显示，不改数据。
  */
+/**
+ * Tickets 的行序（By order time 和 By session 组里都用）：门票提醒没发的在前、发过的沉底（同后端 sort_key），
+ * 各自里按下单时间（booked_at）**晚的在前**，没有的排最后；一样的照后端原来的先后（Annie 2026-11-24「最新的单排最前」）。
+ * 藏起来的行同样排。只排显示，不改数据。
+ */
+export function withNewestTickets(page: ManifestPage): ManifestPage {
+  if (page.tab !== "tickets") return page;
+  const sortRows = <R extends ManifestRow>(rows: readonly R[]): R[] =>
+    rows
+      .map((r, i) => ({
+        r,
+        i,
+        sent: sentAt(r, "tickets") ? 1 : 0,
+        booked: r.booked_at ?? "",
+      }))
+      .sort(
+        (a, b) =>
+          a.sent - b.sent ||
+          (a.booked === b.booked
+            ? 0
+            : !a.booked
+              ? 1
+              : !b.booked
+                ? -1
+                : a.booked > b.booked
+                  ? -1
+                  : 1) ||
+          a.i - b.i,
+      )
+      .map((x) => x.r);
+  return {
+    ...page,
+    rows: sortRows(page.rows),
+    ...(page.hidden
+      ? { hidden: { ...page.hidden, rows: sortRows(page.hidden.rows) } }
+      : {}),
+  };
+}
+
 export function withBookedOrder(page: ManifestPage): ManifestPage {
   if (page.tab === "tickets") return page;
   return {
@@ -600,7 +640,7 @@ function sortByBooked<
             ? 1
             : !b.booked
               ? -1
-              : a.booked < b.booked
+              : a.booked > b.booked
                 ? -1
                 : 1) ||
         a.first - b.first ||

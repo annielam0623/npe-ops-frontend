@@ -2300,7 +2300,8 @@ async function busViewChecks() {
   const hseq = "return [...document.querySelectorAll('tr[data-hidden-row]')].map((tr) => tr.dataset.hiddenRow.split('|')[0]).join(',');";
   const counts = "return [...document.querySelectorAll('tbody [data-count]')].map((x) => x.textContent.trim()).join(',');";
   const PICKUP = "CHD1011,CHD1001,CHD1012,CHD1012,CHD1013,CHD1002";
-  const ORDER = "CHD1012,CHD1012,CHD1001,CHD1011,CHD1002,CHD1013";
+  // Annie 2026-11-24「最新的单排最前」：节里下单晚的在前（原来早的在前），没有下单时间的仍在节尾。
+  const ORDER = "CHD1011,CHD1001,CHD1012,CHD1012,CHD1002,CHD1013";
   await ctl({ role: "staff", sessions: false, rezdyTix: false, cfmMix: false, sections: true, busOrder: true, adminFee: false, hiddenMode: "today", prefs: { bus: JSON.stringify(["order_number", "guest_name", "pickup_time", "pax"]), tickets: null } });
   await openPage(BUS);
   await evaluate("localStorage.removeItem('ops.manifests.busView.v1'); localStorage.removeItem('ops.manifests.ticketsView.v2'); return true;");
@@ -2312,9 +2313,9 @@ async function busViewChecks() {
   await waitFor("$box('CHD1001').checked");
   await evaluate(`${swBtn("By order time")}.click();`);
   await waitFor(`${sw}.dataset.busView === 'order'`);
-  check("By order time：节照旧，节里按下单时间；没有下单时间的排节尾；同一单两行挨着", (await evaluate(seq)) === ORDER, await evaluate(seq));
+  check("By order time：节照旧，节里按下单时间晚的在前（11-24）；没有下单时间的排节尾；同一单两行挨着", (await evaluate(seq)) === ORDER, await evaluate(seq));
   check("By order time：两个节标题都还在（UPPER ANTELOPE、SHUTTLE）", await evaluate("const s = [...document.querySelectorAll('tr[data-section]')].map((t) => t.dataset.section); return s.length === 2 && s[0] === 'tour:UPPER ANTELOPE' && s[1].startsWith('outbound:');"), await evaluate("return [...document.querySelectorAll('tr[data-section]')].map((t) => t.dataset.section).join('|');"));
-  check("By order time：# 每节各自从 1 排、按单算（UPPER 3 单 4 行，同一单第二行不写号）", (await evaluate(counts)) === "1,,2,3,1,2", await evaluate(counts));
+  check("By order time：# 每节各自从 1 排、按单算（UPPER 3 单 4 行，同一单第二行不写号）", (await evaluate(counts)) === "1,2,3,,1,2", await evaluate(counts));
   check("切换时勾选保留：CHD1001 还勾着", await evaluate("return $box('CHD1001').checked;"));
   check("题 4 A：By order time 不自动加 Booked at 列", await evaluate("return !$heads().includes('Booked at');"), await evaluate("return $heads().join('|');"));
   await evaluate("window.__blob = null; const orig = URL.createObjectURL; URL.createObjectURL = (b) => { window.__blob = b; return orig(b); }; $btn('↓ Export CSV').click();");
@@ -2325,14 +2326,14 @@ async function busViewChecks() {
   await openPage(BUS);
   await waitFor(`${sw}?.dataset.busView === 'order' && document.querySelectorAll('tr[data-row]').length === 6`, 20000);
   check("题 3 A：记在这台电脑这个浏览器（ops.manifests.busView.v1），重开还是 By order time；Tickets 的键没动", (await evaluate(seq)) === ORDER && (await evaluate("return localStorage.getItem('ops.manifests.busView.v1') === 'order' && localStorage.getItem('ops.manifests.ticketsView.v2') === null;")));
-  // hidden 行也跟着排：CHD-88057（10-20 下单）在 CHD-88041（11-02）前面。
+  // hidden 行也跟着排：CHD-88041（11-02 下单）在 CHD-88057（10-20）前面（晚的在前，11-24）。
   const hidToggle = "document.querySelector('input[aria-label=\"Show hidden rows\"]')";
   const busPill = "[...document.querySelectorAll('[role=group][aria-label=Group] button:not([data-hidden-pill])')].find((b) => b.textContent.includes('Antelope'))";
   await evaluate(`${hidToggle}.click();`);
   await waitFor("document.querySelector('[data-hidden-pill]')", 20000);
   await evaluate("document.querySelector('[data-hidden-pill]').click();");
   await waitFor("document.querySelectorAll('tr[data-hidden-row]').length === 2", 20000);
-  check("Show hidden rows 也照 By order time 排（下单早的在前）", (await evaluate(hseq)) === "CHD-88057,CHD-88041", await evaluate(hseq));
+  check("Show hidden rows 也照 By order time 排（下单晚的在前）", (await evaluate(hseq)) === "CHD-88041,CHD-88057", await evaluate(hseq));
   await evaluate(`${busPill}.click();`);
   await waitFor(`!!${sw} && document.querySelectorAll('tr[data-row]').length === 6`, 20000);
   await evaluate(`${swBtn("By pickup time")}.click();`);
@@ -2353,11 +2354,11 @@ async function busViewChecks() {
   await ctl({ adminFee: true });
   await openPage(`${APP}/manifests?date=${today}&tab=admin_fee`);
   await waitFor(`${sw}?.dataset.busView === 'order' && document.querySelectorAll('tr[data-row]').length === 5`, 20000);
-  check("Admin fee：同样有切换、跟 Bus 共用记忆（By order time）；下单早的在前，没有下单时间的最后", (await evaluate(seq)) === "CHD-88102,CHD-88057,CHD-88110,CHD-88041,CHD-88063", await evaluate(seq));
+  check("Admin fee：同样有切换、跟 Bus 共用记忆（By order time）；下单晚的在前，没有下单时间的最后", (await evaluate(seq)) === "CHD-88041,CHD-88110,CHD-88057,CHD-88102,CHD-88063", await evaluate(seq));
   await evaluate(`${swBtn("By pickup time")}.click();`);
   await waitFor(`${sw}.dataset.busView === 'pickup'`);
   check("Admin fee：By pickup time = 后端原序", (await evaluate(seq)) === "CHD-88041,CHD-88057,CHD-88063,CHD-88102,CHD-88110", await evaluate(seq));
-  check("How to use 加了两种看法那一句（原文）", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return [...d.querySelectorAll('li')].some(l => l.textContent.replace(/\\s+/g, ' ').trim() === 'On Bus Tours and Admin fees, switch between By pickup time (the default: earliest pickup first) and By order time (in the order the bookings came in; orders with no booking time go last). Sections stay the same in both views. Ticked orders stay ticked when you switch. This computer remembers your choice.');"));
+  check("How to use 加了两种看法那一句（原文）", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return [...d.querySelectorAll('li')].some(l => l.textContent.replace(/\\s+/g, ' ').trim() === 'On Bus Tours and Admin fees, switch between By pickup time (the default: earliest pickup first) and By order time (newest booking first; orders with no booking time go last). Sections stay the same in both views. Ticked orders stay ticked when you switch. This computer remembers your choice.');"));
   // 旧后端（行上没有 booked_at）：By order time 不报错，照原序。
   await ctl({ adminFee: false, busOrder: false });
   await evaluate("localStorage.setItem('ops.manifests.busView.v1', 'order'); return true;");
@@ -2561,7 +2562,7 @@ async function sessionChecks() {
   await evaluate(`${swBtn("By session")}.click();`);
   await waitFor(`${heads}.length >= 3`);
   check("切回 By session：组头回来", await evaluate(`return ${sw}.dataset.ticketView === 'session' && ${heads}.length >= 3;`));
-  check("How to use 加了切换那一句（原文）", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return [...d.querySelectorAll('li')].some(l => l.textContent.replace(/\\s+/g, ' ').trim() === 'On Tickets, switch between By order time (the default: one list, no groups, in the order the bookings came in; orders already sent go to the bottom) and By session (grouped by start time). Ticked orders stay ticked when you switch. This computer remembers your choice.');"));
+  check("How to use 加了切换那一句（原文）", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return [...d.querySelectorAll('li')].some(l => l.textContent.replace(/\\s+/g, ' ').trim() === 'On Tickets, switch between By order time (the default: one list, no groups, newest booking first; orders already sent go to the bottom) and By session (grouped by start time; newest booking first in each group). Ticked orders stay ticked when you switch. This computer remembers your choice.');"));
   // night：组头深灰（不是浅色）
   await evaluate("document.documentElement.setAttribute('data-theme', 'night');");
   await sleep(200);

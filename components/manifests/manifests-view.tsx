@@ -91,6 +91,7 @@ import {
   WAIVER_OFF,
   withWaiverColumn,
   withBookedOrder,
+  withNewestTickets,
   withTicketSessions,
   rememberMarkChoice,
   withMarkColumns,
@@ -705,8 +706,8 @@ export function ManifestsView() {
     ? null
     : shownBase.tab === "tickets"
       ? ticketView === "session"
-        ? withTicketSessions(shownBase)
-        : shownBase
+        ? withTicketSessions(withNewestTickets(shownBase))
+        : withNewestTickets(shownBase)
       : busView === "order"
         ? withBookedOrder(shownBase)
         : shownBase;
@@ -2948,16 +2949,16 @@ function ManifestsHowToUse() {
         </>,
         <>
           On <b>Tickets</b>, switch between <b>By order time</b> (the
-          default: one list, no groups, in the order the bookings came in;
-          orders already sent go to the bottom) and <b>By session</b> (grouped
-          by start time). Ticked orders stay ticked when you switch. This
+          default: one list, no groups, newest booking first; orders
+          already sent go to the bottom) and <b>By session</b> (grouped by
+          start time; newest booking first in each group). Ticked orders stay ticked when you switch. This
           computer remembers your choice.
         </>,
         <>
           On <b>Bus Tours</b> and <b>Admin fees</b>, switch between{" "}
           <b>By pickup time</b> (the default: earliest pickup first) and{" "}
-          <b>By order time</b> (in the order the bookings came in; orders with
-          no booking time go last). Sections stay the same in both views.
+          <b>By order time</b> (newest booking first; orders with no booking
+          time go last). Sections stay the same in both views.
           Ticked orders stay ticked when you switch. This computer remembers
           your choice.
         </>,
