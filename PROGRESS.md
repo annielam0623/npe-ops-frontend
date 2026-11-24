@@ -19,6 +19,7 @@
 - 新窗口：a7 [b8f977] = G374 / 146 两个分支合最新 main 重跑、只推分支（等后端）；61 [180a4b] = G373 Quick Stats preview。
   - a7 交（基于 main b81db1ad，只推分支）：G374 task/g374-ticket-labels-fe **be8247b4**（main 今天 Products How to use 门票节也用 data-howto-tickets，G374 改名 data-howto-ticket-labels，样子不变；products 272、nav 40）；146 task/farm-out-photo-upload **7ddcb143**（无冲突；fo-settings 179、fod 65、nav 40）。tsc / eslint / build 都过。等后端 SHA 转 a7 核字段后合。
   - G374 后端上 main d1ae8ba3（75，合并 96676d7f；v183 已跑，West Rim 种 8 行）⇒ 派 a7 对真合同、合最新 main 重跑、只读看线上 West Rim、截图发 artifact、比对 How to use 句；📌 等 Annie 看样子说可以 → 推 main → 75 PASS。
+  - Annie（原话）「G374的preview我看了，很好，就记得要留可以添加的键给我就好了」⇒ 样子认可，要加「添加」键（现在是表尾自动补空行、没有键）。已问 Annie 键的做法 + 是否动手（非动手）。
 - 后端 16 转 Annie（原话）「新订单的new标签怎么没放进去，然后还有放在页面的提醒呢，都是今天在公司做的」⇒ 查 git：NEW 标签 11-21 已上 main c6b25dfc（manifests-view.tsx:1857-1867，Tickets / Bus Tours，勾选框旁，只在有勾选框的行出现，Admin fee 不标）；页面「未发新单」提醒只有 preview 8YtCoE8VWFXjV6iCt3pZTk，8 题没答、没代码、后端汇总接口 / Notice / 开关都没做。已回 16。
 - G373 Quick Stats 后端上 main 86ae0933（6d；Annie 11-20 在 bb「动手」：开放式问、只 Super Admin、不加开关、按 send_log 状态原样列、表 + Excel + SQL + 说明、存卡重跑、记历史）。新页面 ⇒ 先 preview：派 61（只出样稿，题全文给 96）。上线时告诉 6d 同时跑对数。
   - 📌 61 交 G373 preview v1 https://claude.ai/artifact/ULDTQ1GevPbDGgKEQhKF1S （无代码；10 种状态电脑 + 手机；How to use 9 条；数据从哪来到哪去，Excel 重跑同一条 SQL、也是 5,000 行上限）。4 题等 Annie：Q1 侧栏位置 A Settings 最后（推荐，同现有 SA 专用项）/ B Reports；Q2 页面顺序 A 问 → 结果 → 卡 → 历史（推荐）/ B 卡在最上；Q3 历史 A 两人都看、带 By 列（推荐，接口本来就回全部）/ B 默认只看自己；Q4 删卡 A 先确认（推荐，删了页面上恢复不了）/ B 直接删。✅ Annie（原话）「同意推荐，动手」⇒ Q1–Q4 全 A；派 61 task/g373-quick-stats（/settings/quick-stats，后端已上，检查过直接合 main；上线后通知 6d 对数）。
