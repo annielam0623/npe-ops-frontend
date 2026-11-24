@@ -170,6 +170,7 @@ async function main() {
     await cdp("Emulation.clearDeviceMetricsOverride");
     // 还原：Anita 照旧算人头，不然 runTicks 用的 2026-09-27 会多出空档、Publish 变灰。
     await fetch(`${MOCK}/api/schedule/employees/5`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ counts_for_coverage: true }) });
+    await axisLabelChecks();
     await runTicks();
   } finally {
     ws.close();
@@ -2877,6 +2878,45 @@ async function run() {
 }
 
 main();
+
+// ── Day timeline 刻度不叠（Annie 2026-11-23「时间刻度重叠那个修一下」：950 宽时「8 PM」和「9:30 PM」叠成「8 P9:30 PM」）──
+// 各种 Working hours × 各种屏宽：看得见的刻度字两两不碰，两头的开始 / 结束字一定在。
+async function axisLabelChecks() {
+  const put = (start_time, end_time) =>
+    fetch(`${MOCK}/api/settings/schedule/work-window`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ start_time, end_time }) });
+  await ctl({ role: "superadmin" });
+  const WINDOWS = [
+    ["02:00", "21:30", "2 AM", "9:30 PM"],
+    ["02:00", "21:00", "2 AM", "9 PM"],
+    ["06:30", "20:00", "6:30 AM", "8 PM"],
+    ["05:30", "22:30", "5:30 AM", "10:30 PM"],
+    ["07:00", "08:30", "7 AM", "8:30 AM"],
+  ];
+  for (const [s, e, startLabel, endLabel] of WINDOWS) {
+    await put(s, e);
+    for (const [w, mobile] of [[1920, false], [950, false], [760, false], [390, true]]) {
+      await cdp("Emulation.setDeviceMetricsOverride", { width: w, height: mobile ? 844 : 1000, deviceScaleFactor: 1, mobile });
+      await openPage(`${APP}/schedule?week=2026-10-04`);
+      await waitFor("[...document.querySelectorAll('[data-axis-step]')].some((r) => r.offsetWidth > 0)", 20000);
+      await sleep(500);
+      const m = await evaluate(`
+        const row = [...document.querySelectorAll('[data-axis-step]')].find((r) => r.offsetWidth > 0);
+        const vis = [...row.querySelectorAll('span')].filter((x) => getComputedStyle(x).visibility !== 'hidden');
+        const boxes = vis.map((x) => { const r = x.getBoundingClientRect(); return { t: x.textContent, l: Math.round(r.left * 10) / 10, r: Math.round(r.right * 10) / 10 }; }).sort((a, b) => a.l - b.l);
+        const bumps = [];
+        for (let i = 1; i < boxes.length; i++) if (boxes[i].l < boxes[i - 1].r + 2) bumps.push(boxes[i - 1].t + '|' + boxes[i].t);
+        const rr = row.getBoundingClientRect();
+        return { labels: boxes.map((b) => b.t), bumps, start: row.querySelector('[data-axis-start]')?.textContent, end: row.querySelector('[data-axis-end]')?.textContent, inside: boxes.every((b) => b.l >= rr.left - 1 && b.r <= rr.right + 1) };`);
+      check(`Day timeline 刻度不叠 · Working hours ${s}–${e} · ${w}px：看得见的字两两不碰，两头写 ${startLabel} / ${endLabel}`,
+        m.bumps.length === 0 && m.inside && m.start === startLabel && m.end === endLabel && m.labels[0] === startLabel && m.labels[m.labels.length - 1] === endLabel, JSON.stringify(m));
+      if (s === "02:00" && e === "21:30" && w === 1920)
+        check("Day timeline 刻度 1920px：照旧每 2 小时一个整点（2 AM … 8 PM、9:30 PM 都写）", JSON.stringify(m.labels) === JSON.stringify(["2 AM", "4 AM", "6 AM", "8 AM", "10 AM", "12 PM", "2 PM", "4 PM", "6 PM", "8 PM", "9:30 PM"]), JSON.stringify(m.labels));
+    }
+  }
+  await put("02:00", "21:30");
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await ctl({ role: "supervisor" });
+}
 
 // ── 全部按照勾选（Annie 2026-10-30 置顶 10c）B 类：Staff Schedule 开关开着按勾，关着照旧按角色，Super Admin 全过 ──
 // 改 = Auto-fill 键（schedule.edit）；加人 = + Add employee（team.staff_add 和 schedule.edit 都要）；发布 = Publish 键能点（schedule.publish）。
