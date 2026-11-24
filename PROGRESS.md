@@ -53,6 +53,9 @@
   - 截图在 C:\Users\annzh\Downloads\g380-unsent-orders\。
   - 跟 preview 不同：> 3 单写「⚠ New orders not sent [5] Open the red pills to find them.」；红胶囊红边淡红底；Notice 链接文字「Open in Main manifest →」；Settings 卡加「Send to team」下拉（只给 SA，先选后存）。
   - 等：1e PASS + Annie 看 team 下拉。📌 0b 提一题：> 3 单时，新单在别的日期或别的标签就看不到红胶囊 ⇒ A 不变 / B 标签加红点 / C 红数字后写日期可点，推荐 B + C，已问 Annie。
+  - 后端 1e 回 PASS（对照合同 §1–§4 一致，不用改）。
+  - Annie 在 0b 窗口答「B+C，先出preview给我看」⇒ 📌 preview https://claude.ai/artifact/QPjDQxqRiDcsZg331EbbZr （标签红点 + 超过 3 单列出哪几天；4 题推荐全 A，不用改后端），等她答题 +「动手」。
+  - G380 本体先合、不等 B+C，只差 Annie 对 team 下拉说「可以」。
 
 ## 2026-11-23 晚 收工交接：前端主窗口 `npe-ops-frontend-96`[ef47ac]（家里；Annie「好了，你应该没有什么要我确认了了，我睡觉去了」）
 - **今晚上 main**：半屏适配 37e529bb；Day timeline 刻度 ca50d015；G320 Sample pickup bb2eaddb + 灰字 e13483fe（ba PASS）；G373 Quick Stats 72daaa36（Annie「不用改，很好」，等她线上验收 + 6d 对数）；G374 门票显示名 + Add 键 29f19b29（75 PASS）；G369 7b WhatsApp 号码 ea1d15f2（92 PASS）。
