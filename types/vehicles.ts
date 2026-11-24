@@ -18,6 +18,11 @@ export interface VehicleColumn {
   id: number;
   label: string;
   is_hidden: boolean;
+  /**
+   * G363：这一列是车型（Payroll 按跑团那天的车型给司机导游加钱）。按这个标记找，不看列名；最多一列。
+   * 后端没上时没有这个键（当 false）。
+   */
+  is_model?: boolean;
 }
 
 /** 新增 / 修改送的整行（服务端整行存：seats 漏了会被清空）。 */

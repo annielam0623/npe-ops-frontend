@@ -1,5 +1,6 @@
 // 模拟后端：Tour Confirmation Tracking。控制：POST /__ctl；GET /__log。
 const http = require("http");
+const anyDate = require("./anydate-mock");
 const staffPerm = require("./staff-perm-mock");
 const staffNotes = require("./staff-notes-mock");
 // ★ Note 打通（后端合同 v1 第 7 点）：ctl.sn ⇒ /api/staff-notes 有；T02 两个产品、T01 一个产品。
@@ -89,6 +90,8 @@ http.createServer(async (req, res) => {
     }
     return send(res, 200, { mode: ctl.syncMode, enabled: ctl.syncMode !== "off" });
   }
+  // Tracking 搜索不限日期（anydate-mock.js）：/api/tracking/find-order、/api/tracking/search-orders。
+  if (anyDate(p, url, res, send)) return;
   if (p === "/api/notifications/tour-confirmation/tour-types") return send(res, 200, TYPES);
   if (p === "/api/notifications/tour-confirmation/tracking") {
     let out = rows;

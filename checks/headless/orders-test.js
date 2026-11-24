@@ -117,6 +117,7 @@ async function main() {
     await halfScreenChecks({ cdp, evaluate, openPage, check, sleep, url: `${APP}/orders`, sel: "table", label: "Order List", fitAt: [1920, 950], narrowAt: [{ width: 760, max: 760 }], scrollAt: [640] });
     await refreshChecks();
     await staffNoteChecks();
+    await mirrorChecks();
   } finally {
     ws.close();
     chrome.kill();
@@ -315,8 +316,8 @@ async function run() {
     const list = await evaluate("const h = [...document.querySelectorAll('main thead th')].map((t) => t.textContent.trim()); return { agent: h.includes('Agent'), viator: document.querySelector('main tbody').textContent.includes('Viator'), cells: document.querySelector('main tbody tr').children.length, heads: h.length };");
     check(`${label}：订单列表 ${see ? "有" : "没有"} Agent 列，每行格数 = 表头数`, list.agent === see && list.viator === see && list.cells === list.heads, JSON.stringify(list));
     // 置顶 75（定 B）：能看 agent 的人搜索框提示字带 agent ref、How to use 多一句；没权限的人都不提。
-    const ph = await evaluate("const i = document.querySelector('main input[type=search]'); const t = [...document.querySelectorAll('details')].find((d) => d.textContent.includes('How to use — Orders'))?.textContent ?? ''; return { ph: i.placeholder, how: t.includes('you can also search by the agent reference') };");
-    check(`${label}：搜索框提示字 / How to use ${see ? "提" : "不提"} agent ref`, see ? ph.ph === "Search order#, name, email, phone, product, agent ref..." && ph.how : ph.ph === "Search order#, name, email, phone, product..." && !ph.how, JSON.stringify(ph));
+    const ph = await evaluate("const i = document.querySelector('main input[type=search]'); const t = [...document.querySelectorAll('details')].find((d) => d.textContent.includes('How to use — Orders'))?.textContent ?? ''; return { ph: i.placeholder, how: t.includes('you can also search by the agent reference'), code: t.includes('Search by order #, name, email, phone, product or product code (part of a code is enough, like PHSU5Q).') };");
+    check(`${label}：搜索框提示字 / How to use ${see ? "提" : "不提"} agent ref`, see ? ph.ph === "Search order#, name, email, phone, product, product code, agent ref..." && ph.how && ph.code : ph.ph === "Search order#, name, email, phone, product, product code..." && !ph.how && ph.code, JSON.stringify(ph));
     if (see) {
       await evaluate("const i = document.querySelector('main input[type=search]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(i, 'TA-55001'); i.dispatchEvent(new Event('input', { bubbles: true })); return 1;");
       const hit = await waitFor("document.querySelector('main [data-matched-agent-ref]')", 20000);
@@ -808,6 +809,54 @@ async function staffNoteChecks() {
   const pCalls = await since(pBefore, (e) => e.path.startsWith("/api/staff-notes"));
   check("★ partner：不调 /api/staff-notes、/api/staff-notes/directory（后端 require_staff 会 403）", pCalls.length === 0, JSON.stringify(pCalls));
   await ctl({ partner: null, sn: false });
+}
+
+// ── Mirror（Rezdy ↔ TripGuru 孪生单，Annie 在后端窗口「动手」；⚠️ 形状是占位，等后端 95 合同）──
+async function mirrorChecks() {
+  const fs = require("fs");
+  const SHOTS = process.env.SHOT_DIR || "";
+  const shot = async (name) => {
+    if (!SHOTS) return;
+    fs.mkdirSync(SHOTS, { recursive: true });
+    const r = await cdp("Page.captureScreenshot", { format: "png" });
+    fs.writeFileSync(path.join(SHOTS, name), Buffer.from(r.data, "base64"));
+  };
+  const heads = "[...document.querySelectorAll('main thead th')].map((t) => t.textContent.trim())";
+  const cellOf = (on) => `[...document.querySelectorAll('main tbody tr')].find((tr) => tr.querySelector('a')?.textContent.trim() === ${JSON.stringify(on)})?.querySelector('[data-mirror-cell]')`;
+  await ctl({ partner: null, tripguru: true, mirror: false });
+  await goto(`${APP}/orders?range=all`);
+  await waitFor("document.querySelectorAll('main tbody tr').length > 10", 60000);
+  await sleep(400);
+  check("Mirror：后端还没给 mirror 键 ⇒ 不出 Mirror 列（同现在）", !(await evaluate(`return ${heads}.includes('Mirror');`)));
+  await ctl({ mirror: true });
+  await goto(`${APP}/orders?range=all`);
+  await waitFor(`${heads}.includes('Mirror')`, 60000);
+  await sleep(400);
+  await helpers();
+  const h = await evaluate(`return ${heads};`);
+  check("Mirror：列紧跟在 Source 后面", h.indexOf("Mirror") === h.indexOf("Source") + 1, JSON.stringify(h));
+  check("Mirror：Rezdy 单 CHDZZ2 写它的 TripGuru 单号 NPE-ZZ1001（TripGuru 蓝底蓝字），点了去 /orders/NPE-ZZ1001", await evaluate(`const c = ${cellOf("CHDZZ2")}; const a = c?.querySelector('[data-mirror-link]'); return !!a && a.textContent === 'NPE-ZZ1001' && a.getAttribute('href') === '/orders/NPE-ZZ1001' && getComputedStyle(a).backgroundColor === 'rgb(230, 241, 251)' && getComputedStyle(a).color === 'rgb(24, 95, 165)';`));
+  check("Mirror：反过来 TripGuru 单 NPE-ZZ1001 写 Rezdy 单号 CHDZZ2（Rezdy 灰底）", await evaluate(`const a = ${cellOf("NPE-ZZ1001")}?.querySelector('[data-mirror-link]'); return !!a && a.textContent === 'CHDZZ2' && a.getAttribute('href') === '/orders/CHDZZ2' && getComputedStyle(a).backgroundColor === 'rgb(241, 239, 232)';`));
+  check("Mirror：对上两张的 CHDZZ4 一行一个、都能点", await evaluate(`const as = [...(${cellOf("CHDZZ4")}?.querySelectorAll('[data-mirror-link]') ?? [])]; return as.length === 2 && as[0].textContent === 'NPE-ZZ1002' && as[1].textContent === 'NPE-ZZ1003' && as[1].getBoundingClientRect().top > as[0].getBoundingClientRect().top;`));
+  check("Mirror：悬停提示写渠道、单号和 matched_by（reseller_ref / guest_session）", await evaluate(`const a = ${cellOf("CHDZZ2")}.querySelector('[data-mirror-link]'); const b = ${cellOf("CHDZZ4")}.querySelectorAll('[data-mirror-link]')[1]; return a.title === 'TripGuru order NPE-ZZ1001 — open its order details. Matched: the Rezdy agent reference has the TripGuru order number.' && b.title === 'TripGuru order NPE-ZZ1003 — open its order details. Matched: same date, start time, guest name, phone and product; and the Rezdy agent reference has the TripGuru order number.';`), await evaluate(`return ${cellOf("CHDZZ4")}.querySelectorAll('[data-mirror-link]')[1].title;`));
+  check("Mirror：没有孪生单的格子写「—」", await evaluate(`const c = ${cellOf("CHDZZ1")}; return !!c && c.textContent.trim() === '—' && !c.querySelector('a');`));
+  check("Mirror：How to use 多一句（另一个渠道的单号、能点、— = 没有、怎么配对）", await evaluate("return [...document.querySelectorAll('details')].some((d) => d.textContent.includes('Mirror shows the same booking in the other channel') && d.textContent.includes('when the Rezdy agent reference has the TripGuru order number'));"));
+  await evaluate(`${cellOf("CHDZZ2")}.scrollIntoView({ block: 'center', inline: 'center' }); return 1;`);
+  await sleep(200);
+  await shot("orders-list-mirror-1600.png");
+  await evaluate(`${cellOf("CHDZZ2")}.querySelector('[data-mirror-link]').click(); return 1;`);
+  check("Mirror：点单号打开那一单的 Order details", await waitFor("location.pathname === '/orders/NPE-ZZ1001'", 20000));
+  // 手机：表格在卡片里左右滑，整页不晃
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  await goto(`${APP}/orders?range=all`);
+  await waitFor(`${heads}.includes('Mirror')`, 60000);
+  await sleep(400);
+  check("Mirror 手机：整页不左右晃（表格在卡片里横滑）", await evaluate("return document.documentElement.scrollWidth <= innerWidth + 1;"));
+  await evaluate(`${cellOf("CHDZZ2")}.scrollIntoView({ block: 'center', inline: 'center' }); return 1;`);
+  await sleep(200);
+  await shot("orders-list-mirror-phone-390.png");
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await ctl({ tripguru: false, mirror: false });
 }
 
 main().catch((e) => {

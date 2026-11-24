@@ -41,6 +41,7 @@ import {
   updateTicketStatus,
 } from "@/lib/tickets-tracking-api";
 import { cn, takeSearchParam } from "@/lib/utils";
+import { useAnyDateSearch } from "@/components/tracking-ui/any-date-search";
 import { ChatNotFound } from "@/components/tracking-ui/chat-not-found";
 import { useOpenChatFromUrl } from "@/lib/open-chat-param";
 import type {
@@ -64,6 +65,7 @@ import {
   defaultColumnPrefs,
   emailBadgeOf,
   matchesSearch,
+  productLabel,
   orderRows,
   parseColumnPrefs,
   POLL_INTERVAL_MS,
@@ -155,6 +157,8 @@ export function TicketsTrackingView() {
   const redirectingRef = useRef(false);
   /** 只认最新一次请求的结果：换日期以后，旧日期晚到的响应丢掉。 */
   const requestSeqRef = useRef(0);
+  /** 搜索不限日期：页面一打开就要用（hook 在下面才建好）。 */
+  const arriveRef = useRef<(order: string, from: string, target: string) => void>(() => {});
   /** 当前看的日期：写完 / 弹窗回调里重拉用它，点的时候那天已经换走了也不会把旧日期的行拉回来。 */
   const dateRef = useRef(date);
   dateRef.current = date;
@@ -172,9 +176,15 @@ export function TicketsTrackingView() {
 
   useEffect(() => {
     const fromUrl = new URLSearchParams(window.location.search).get("date");
-    setDate(isYmd(fromUrl) ? fromUrl : laToday());
+    const startDate = isYmd(fromUrl) ? fromUrl : laToday();
+    setDate(startDate);
     // dashboard 订单查询的「Open tracking →」带 ?q=单号：搜索框预填这一单。
-    setSearch(takeSearchParam("q") ?? "");
+    const q = takeSearchParam("q");
+    setSearch(q ?? "");
+    // 搜索不限日期（Q4 A）：从 Tour Tracking 带过来的还带 ?from=原来那天 ⇒ 读到这一天就定位、蓝条给 ← Back。
+    const cameFrom = takeSearchParam("from");
+    if (q && cameFrom && isYmd(cameFrom))
+      arriveRef.current(q, cameFrom, startDate);
     setPrefs(readPrefs());
     // 列设置存在账号里（tickets_col_order，换电脑也在）：本机缓存先画，账号里的到了再覆盖。
     // 值的格式是本页定的 {order, hide, file}；读到不认识的就当没存过。
@@ -407,6 +417,21 @@ export function TicketsTrackingView() {
 
   const data = state.kind === "ready" ? state.data : null;
   const allRows = useMemo(() => data?.rows ?? [], [data]);
+  // 搜索不限日期（Annie 2026-11-23「Tracking搜索全部同意推荐，动手」）：按 Enter、这一天没有 ⇒ 去别的日子找、跳过去。
+  const anyDate = useAnyDateSearch({
+    page: "tickets",
+    date,
+    data,
+    rows: data ? data.rows : null,
+    search,
+    setSearch,
+    changeDate,
+    matches: matchesSearch,
+    onLocate: (row) => setProduct(row.tour_type),
+    productOf: (row) => productLabel(row.tour_type),
+    onUnauthorized: redirectToLogin,
+  });
+  arriveRef.current = anyDate.arrive;
   // 订单生命周期「Open chat →」：?chat=单号 ⇒ 这天有这单就打开对话框，没有就黄字（Annie「全部同意推荐。动手」）。
   const chatParam = useOpenChatFromUrl(data ? allRows : null, (row) =>
     setConversationId(row.id),
@@ -674,11 +699,14 @@ export function TicketsTrackingView() {
               <input
                 type="search"
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) => anyDate.onType(event.target.value)}
+                onKeyDown={anyDate.onKeyDown}
                 placeholder="🔍  Search order #, name, phone…"
                 aria-label="Search"
                 className="box-border h-[26px] w-[200px] rounded-[7px] border border-[#cbd5e1] bg-paper px-2.5 font-[inherit] text-[12px] text-[#1a1a1a] outline-none max-sm:w-auto max-sm:min-w-0 max-sm:flex-1 [&::-webkit-search-cancel-button]:appearance-none"
               />
+              {/* 搜索不限日期：搜索框下面那一行（找不到 / 取消了 / Search all dates）。 */}
+              {anyDate.note}
               {/* 手机上 Columns / CSV / Broadcast 收进「⋯」（手机版规则：次要按钮）；当天发过群发 ⇒ ⋯ 上也标条数。 */}
               <PhoneMore
                 label="More actions"
@@ -819,8 +847,12 @@ export function TicketsTrackingView() {
               </span>
             </div>
           </div>
+          {anyDate.banner ? (
+            <div className="px-5 max-sm:px-3">{anyDate.banner}</div>
+          ) : null}
           <div className="overflow-x-auto px-5 pb-6 max-sm:px-3">
             <TicketsTable
+              hitOrder={anyDate.hitOrder}
               rows={filtered}
               columns={columns}
               onMoveColumn={moveColumn}
@@ -842,7 +874,8 @@ export function TicketsTrackingView() {
               items={[
                 // G281 题 5 A：开着同步（看得到灰行）才出这两条；第一条在最前。
                 ...(sync ? [SYNC_HOW_TO] : []),
-                "Pick the service date. Click a tour button to see one product only. The search box finds an order #, name or phone.",
+                "Pick the service date. Click a tour button to see one product only.",
+                "The search box finds an order #, name or phone on this day. To find an order on any day, type the whole order # and press Enter: the page moves to that day and product, shows the order and marks it. Click ← Back to return to the day you were on. If the order is cancelled or is not on this page, a line under the search box says so. For a name or phone that is not on this day, click Search all dates.",
                 "To change a guest’s status, pick it in the Status column, then click ✓ next to it to save (✕ puts it back). Saved shows in green; if it can’t be saved, the reason shows in red at the top.",
                 "Click a Notes or WhatsApp cell to read the guest’s messages and reply. When your reply goes out to the guest (SMS or email sent), it counts as handled and the cell shows ✓ with your name. If no reply is needed, click Take action. SMS can be at most 306 characters (134 if it has a character such as Δ), plain characters only (no emoji, accents such as á, or symbols such as € and { }; curly quotes and long dashes are changed to plain ones automatically); if your reply is longer, SMS to guest is greyed out and it goes by email only. Shorten it to use SMS again, then tick SMS to guest again.",
                 "☰ Columns chooses what shows on the page. Untick a page column to hide it. Under From the uploaded file, tick any column of the manifest you uploaded to show it. Reset to default brings back the normal page. Your choice is saved to your account, so it follows you to another computer.",

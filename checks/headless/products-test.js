@@ -1300,6 +1300,29 @@ async function run() {
   check("手机：点 More 看全文", await evaluate("return document.querySelector('[data-attn-row] [data-phone-oneline]').getBoundingClientRect().height > 30;"));
   await cdp("Emulation.clearDeviceMetricsOverride");
   await sleep(300);
+  // ── Annie 2026-11-23「写进 Products 页面的 How to use 吧」：How to use 里折叠的「Setting up a ticket product」──
+  {
+    const fs = require("fs");
+    const SHOTS = process.env.SHOT_DIR || "";
+    const shotOf = async (name) => {
+      if (!SHOTS) return;
+      fs.mkdirSync(SHOTS, { recursive: true });
+      // 截图时先藏起顶栏（sticky，会盖住说明的上半截），截完放回。
+      const r0 = await evaluate("document.querySelectorAll('[data-app-topbar], header').forEach((e) => (e.style.visibility = 'hidden')); const d = [...document.querySelectorAll('details')].find(x => /How to use — Products/.test(x.querySelector('summary')?.textContent || '')); d.scrollIntoView(); const r = d.getBoundingClientRect(); return { x: r.left + scrollX, y: r.top + scrollY, w: r.width, h: r.height };");
+      const r = await cdp("Page.captureScreenshot", { format: "png", captureBeyondViewport: true, clip: { x: r0.x, y: r0.y, width: r0.w, height: r0.h, scale: 1 } });
+      await evaluate("document.querySelectorAll('[data-app-topbar], header').forEach((e) => (e.style.visibility = '')); return 1;");
+      fs.writeFileSync(path.join(SHOTS, name), Buffer.from(r.data, "base64"));
+    };
+    await evaluate("const d = [...document.querySelectorAll('details')].find(x => /How to use — Products/.test(x.querySelector('summary')?.textContent || '')); d.open = true; return 1;");
+    await sleep(200);
+    check("How to use — Products：最后一条是折叠的「Setting up a ticket product (Antelope etc.)」，打开 How to use 时它还收着", await evaluate("const t = document.querySelector('[data-howto-tickets] details'); return !!t && !t.open && t.querySelector('summary').textContent.trim() === 'Setting up a ticket product (Antelope etc.)' && t.closest('li') === [...t.closest('ul, ol').children].pop();"));
+    await shotOf("howto-tickets-folded.png");
+    await evaluate("document.querySelector('[data-howto-tickets] details').open = true; return 1;");
+    await sleep(200);
+    check("门票设置：6 条，用页面上真的名字（Code、Category → Ticket、Group、Tour type、Save、Tickets - SelfDrive、Waiver link、Content Studio › Tickets Reminder › Guest Page、+ New tour、✎ Edit tour、No Cfm # needed、Active）", await evaluate("const d = document.querySelector('[data-howto-tickets] details'); const li = d.querySelectorAll('ol > li'); const t = d.textContent.replace(/\\s+/g, ' '); return li.length === 6 && t.includes('Set its Category to Ticket and pick its Group.') && t.includes('pick its Tour type') && t.includes('The Tickets - SelfDrive pill on Manifests, Tickets Tracking and Auto Send all follow this tour type') && t.includes('“No ticket tour type set for this product”') && t.includes('“Antelope Canyon X Confirmation #”') && t.includes('tours with No Cfm # needed ticked (the Hogan tours) need none') && t.includes('fill the Waiver link column') && t.includes('PHSU5Q6F') && t.includes('Content Studio › Tickets Reminder › Guest Page: + New tour adds one (name and key); ✎ Edit tour renames it, sets No Cfm # needed, or turns it off by unticking Active.');"));
+    await shotOf("howto-tickets-open.png");
+    await evaluate("document.querySelector('[data-howto-tickets] details').open = false; return 1;");
+  }
   check("电脑：How to use 照旧在上面、说明照旧全显示", (await evaluate(`return ${howProducts} < document.querySelector('table').getBoundingClientRect().top + scrollY;`)) && (await evaluate("const f = document.querySelector('[data-field]'); return !f || f.querySelector('p').getBoundingClientRect().height > 0;")));
 }
 

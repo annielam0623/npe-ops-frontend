@@ -6,6 +6,17 @@
 
 > **下一个主窗口：先读「2026-11-20 收工交接：5e」，再读 11-20 当天记录，开工照 CLAUDE.md 开工必做第 4 条先列「Annie 提过没做完的」问她。**
 
+## 2026-11-23 收工交接：前端主窗口 `今天前端主窗口-5e`[54a3a7]（公司电脑，14:30 下班）
+- **今天上 main**：第 8 件 Farm out 每家一页 451d4497；第 13 件 Main manifest 手机收键 8fc13aca；7c–e 快捷回复搬 Content Studio 9a3ae1fc；G363 按车型算导游工资前端 aad89428；Order List 搜索提示加 product code 197616f1；Products How to use 门票设置节 c826f333；nav-test 时序修复 34374a6f。✅ Tracking 不限日期搜索 **01f53bc5**（bb，功能 5a85de19 + 404 改中性句「No order X found on any date.」；47 PASS；tt 249、tk 164、nav 40）。📌 Annie 线上试：Tour Tracking 别的日子输 CHDWQLV4Z 按 Enter ⇒ 跳 11-26、Also 列 Admin fee；CHDXQYEQG ⇒ 带到 Tickets Tracking 11-16。
+- **分支等着（未合）**：
+  - Mirror task/order-mirror c95da628（9b）：95 PASS；✅ Annie（原话）「Mirror 可以，动手」⇒ 上 main 91924767。
+  - G374 门票显示名 task/g374-ticket-labels-fe 63f25045（bb）：等 Annie 跑 v183 SQL + 后端 47 上 main + PASS + Annie 看截图 C:\Users\annzh\Downloads\g374-ticket-labels\。
+  - 146 Farm out 上传 task/farm-out-photo-upload ea85f9f8（89）：合同 v1 对齐，等 Annie 对后端方案说动手 + 后端 28 上 main + PASS。
+  - 半屏适配 task/schedule-half-screen **29b5b0db**（2c，WIP，worktree C:\Code\ops-wt-2c-red）：6 页代码写完（排班每天最窄 72px、表最窄 650、时间一行缩到最小 6px、标签挪名字下；Bus Manifest 编辑页 ≥640 最窄 650、打印照旧；Order List / Order Log / Farm out Report / Sales Report 640–1279 最窄 650）。950 宽六页都不滑；760 宽 Order List / Sales Report / Bus Manifest 编辑页还差一点要滑（不能折的内容）。tsc / eslint / build；man 586、orders 178、fr 31、olog 24、sales 63、nav 40 过；sch 534/546（12 条新半屏检查 mock 状态问题，已加复位未重跑）、mf 374/375（旧 151 检查要 980 已改未重跑）。下次：合 main → 重跑 sch / mf → 拍改后截图 C:\Users\annzh\Downloads\half-screen-fit\ → 推 main。
+- **📌 等 Annie 答**：导游页 D（后端做）D2–D13 C:\Users\annzh\Downloads\Annie_待答题_2026-11-23_导游页D.xlsx（第 6 版 + 中午折叠）；未发新单提醒 8 题 C:\Users\annzh\Downloads\Annie_待答题_2026-11-23_未发新单提醒.xlsx；David H 在 Team 页开 staff 账号；★ Notes 验收后撤旧 Save note。
+- **等后端**：G363「不送 model_from = 所有日子生效」（b5）；7a / 7b 快捷回复 8 句 + 号码（b5，SQL 先给 Annie）；第 9 件 G320、第 11 件导游必填、G361 DOR No show、页面慢。
+- **家里接着做（Annie 11-23 原话「ok，我回家再做，你收工吧，让我在家里也可以继续」）**：所有分支都已推远端（origin/task/order-mirror c95da628、task/schedule-half-screen 29b5b0db、task/g374-ticket-labels-fe 63f25045、task/farm-out-photo-upload ea85f9f8）。家里后端仓库在 D:\npe-confirmation-service。家里开窗后先做：① ✅ Mirror 已上 main **91924767**（9b 收工前合；orders 184、os 174、nav 40；Annie 线上试 CHD51C9K5 ↔ NPE-4WD4WJ），不用再做；② 半屏适配照上面「下次接着做」4 步；③ 其他照「等 Annie / 等后端」。
+- 下一个主窗口：读这节 + 下面 11-23 当天记录；开工照开工必做第 4 条列 Annie 提过没做完的。
 ## 2026-11-23（周一）前端主窗口 `今天前端主窗口-5e`[b5b9b4]（接着昨天的会话；只分工和汇报，不写代码）
 - 开工：origin/main 463cc257，主目录 detached 干净。资源：空闲内存 49.4 GB，node 0、chrome 0。工作窗口：bb [01f67c]、2c [721148]、9b [532018]（都空）。后端主窗口-bb [384f3c]。
 - 开工必做第 4 条（只读子任务核 PROGRESS 9–565 行）已列给 Annie，等她选今天做哪几件：等 Annie：146 上传 7 题 + G363 3 题（Excel Annie_待答题_2026-11-22_146_G363.xlsx）、导游页手机版 A / B / C（回后端）、David H 账号（Team 页开）、★ Notes 验收后旧路径下线；动手没做：第 8 件 Farm out 每家一页、7c–e 快捷回复搬 Content Studio；等后端：7a / 7b 快捷回复 6 句 + 号码、第 9 件 G320 变量标出、第 11 件导游必填、G361 DOR No show、页面慢（Morning Tracking）；拿不准：150 题 8 Main manifest 手机收键、G318 第二部分、7a / 7b / 9 / 页面慢后端进度没记。
@@ -35,6 +46,37 @@
 - G363 后端 NOT PASS（后端主窗口核 guide_payroll.py）：① 后端 total 已含 vehicle_extra_amount（gp:245 / 270 / 273），前端若再加 = 重复算；② 没有 rule_id，车型价 id 是 vehicle_extra.rate_id；③「Vehicle extra after Save」条件要加：没手填 Fee、GET /rates 有匹配的 active 车型价，total 方式可能为 0。已转 9b 改。
 - Annie 答半屏题（原话）「Staff Schedule 除了Q4选B，其他都按推荐」⇒ Q1 B（排班 + Bus Manifest 编辑页、Order List、Farm out Report、Order Log、Sales Report）、Q2 A（650px 以下才滑）、Q3 A（手机照旧滑，只修名字）、Q4 B（时间一行写完、字号缩小）、Q5 A（标签挪名字下）。非动手，已问是否现在动手。导游页 A / B / C 仍等。
 - ✅ Annie（原话）「动手」⇒ 半屏适配开工，派 2c task/schedule-half-screen（Q1 B 六页、Q2 A 650、Q3 A、Q4 B 时间一行缩字、Q5 A；1920 不变，151 手机版不能坏；检查过直接合 main）。
+- G363 后端有条件 PASS（extrasTotal 同 gp:203-214 口径、tips 只私人团、车型只 trim + 小写不合并中间空格、manifest_id 整数）⇒ 9b 核完直接合。Staff Schedule 时间题（A 8px 后滑 / B 6px / C 8px 后换两行，推荐 C）已发 Annie，等答。
+- Annie 新要求（原话）「你看一下antelope的午餐那一页，我想做成那个样子的，只是在后面多两列picked up和board，picked up由relay司机填，TI的客人这个位置为TI，你preview一下。客人的名字排列要跟餐单一致」⇒ 理解为导游页手机版（取代 A / B / C）：照 Antelope 午餐单版式 + Picked up（relay 司机填，TI 客人显示 TI）+ Boarded 两列，名字顺序同餐单。导游页是后端页面 ⇒ 已请后端主窗口派 ab 出 preview（含数据流、题），非动手。
+- 📌 导游页 D 样稿（后端 ab）https://claude.ai/artifact/CuAT4qXq4kopCM3WXA94tR ：午餐单样子 + Picked up / Boarded，TI 写 TI；名字照餐单「First Last」一格（tour_manifest.py:445）。8 题 D1–D8 都推荐 A，Excel C:\Users\annzh\Downloads\Annie_待答题_2026-11-23_导游页D.xlsx（ab 做）。导游页后端做。
+- ✅ **G363 按车型算导游工资前端上 main aad89428**（9b；2b48ccc8 + ffcfeff9 + 条件修复：extras 只算 extras_allowed 里的、tips 只私人团、车型 trim + 小写不合并空格）。后端有条件 PASS。veh 59、payroll 151、hr 138、nav 40、pl 129，tsc / eslint 0 error / build。📌 Annie 线上验：Settings › Vehicles Model 框提示用过车型（无日期）；Human Resource › Payroll 每趟 Vehicle 列「2041 · Sprinter / +$50.00」、人员表 Vehicle extras 列、Pay rates › Vehicle extras 节。后端「不送 model_from = 所有日子生效」b5 之后改。
+- Annie 对导游页 D 样稿（原话）「导游页面，太难看了，我是要你按照格式，不是样式，我还是喜欢我们以前的样式，看上去高科技和先进一些」⇒ 内容 / 结构照午餐单（分节、名字一格、顺序同餐单、餐列、合计 + Picked up / Boarded、TI），视觉照导游页现在的深色高科技样式；已请后端 ab 出 D 第 2 版。D1–D8 未答。
+- ✅ Annie（原话）「Staff Schedule 时间选B，动手」⇒ 班次卡时间一行、最小缩到 6px、不换两行（760 基本不滑，字约 5.6–6px）；已转 2c。
+- 导游页 D 第 2 版（同链接 CuAT4qXq…，深色卡片样式；D5 加合计放哪 A 表上蓝框 / B 表尾 / C 照餐单）。Annie 意见（原话）「导游：第一，竖屏的时候按钮肯定要小正方形啊，名字单独一行，第二行是餐和按钮，餐就写nT/nB/nV就好-」⇒ 竖屏按钮小正方形、每人两行（名字 / 餐 + 按钮）、餐写 nT / nB / nV；已请后端出第 3 版。非动手。
+- Annie 补（原话）「Notes放名字后面，0份的不写」⇒ 导游页 D 第 3 版：Notes 紧跟名字，餐 0 份不写；已转后端。
+- 导游页 D 第 3 版（ab，同链接）跟 Annie「Notes放名字后面，0份的不写」错开（0 份变淡仍写、Notes 在餐后、pax 在第一行）⇒ 已请出第 4 版：第一行名字 + Notes、第二行 pax · 餐（只写有份数的）+ 两个 40×40 方键，横屏同规则；D1 记为已答（B + Notes 放名字后）。
+- 146 后端合同 v1（后端 28，草案：Annie 还没确认后端方案，形状不变）：parse 收 xlsx / csv 1 MB、照片 / PDF 10 MB ≤5 页，读图 10–60 秒（前端超时 ≥90 s）；回 grid + format（orientation、tours / hotels 的 match + status）+ needs_match，needs_match=false 时 parsed / diff 同现在；新 rematch（不花钱）；apply 加 format + remember（同一事务记住）；GET / PUT format；英文报错 8 条 + 503 / 502。已全文转 89。导游页 D 第 4 版（Notes 跟名字、0 份不写、人数在第二行；后端自加「No lunch」淡字），D2–D8 待 Annie。
+- Annie 对导游页 D 第 4 版（原话）「导游页：我要保留餐更改的那个功能，然后braod只需要点记一下就好了，不要选择，no show单独一个钮，然后TI就标在客人名字旁瓣」⇒ 第 5 版：✎ Change 改餐每行可见；Boarded 一个键点一下标、再点取消（不出选单）；No show 单独一个键；TI 小标签在名字旁，Picked up 格不再写 TI；存法仍先选后存（若认为该马上存则出题问 Annie）。已转后端。非动手。
+- 89 交 146 前端（合同 v1）task/farm-out-photo-upload **845a55fd / ea85f9f8**（未合，等后端 28 上 main + PASS）：MatchPanel（方向下拉、团 / 酒店对照、Remember 默认勾）、rematch、橙格可改、超时 120 s + 读图提示、503 / 502 / 400 原样。fo-settings 179（146 项 32）。2 个问题已转 28（rematch source null 沿用 parse 的；没动对照 apply 只送 parsed）。nav-test 在 Morning Pickup Send 页失败（nav-test.js:215 无 h1）⇒ 派 bb 查 main 上是否也失败。
+- 导游页 D 第 5 版（ab）：每行 ✎ 改餐、Board / No show 两个独立方键点一下标再点取消、TI 蓝标签在名字旁、TI 的 Pick 灰「—」；D4 改问存的时机（后端推荐 B 马上存 = 导游页现状 guide_home.html:339；A 最后 Save）、D7 去掉改餐。已发 Annie。
+- nav-test Morning Pickup Send 失败查明（bb）：检查时序问题，不是页面 bug（nav-test.js:212 只等顶栏标题，:215 就量页内 h1，dev 现编译时还没出来）。main 上 nav 40/40。只改检查加等 h1，上 main 34374a6f；nav 40、mt 329。已告 89。146 后端 28 确认 89 两问，前端不改，后端代码等 Annie 动手。
+- 导游页 D 第 6 版（Annie 在后端窗口「导游，把picked up也放在客人名字旁边吧」「导游只需要点击两个键：borad和no show」）：relay 结果标签在名字旁（绿 Picked up / 红 Not at hotel / 蓝 TI / 灰 Bus），右边只有 Board、No show，改餐点「2T / 1B ✎」；D6 / D8 改、D9 新。又加中午 12 点后收 tour（Annie 问），D10–D13。全部在 Annie_待答题_2026-11-23_导游页D.xlsx（D2–D13）。
+- 后端 95：Order List 搜索加产品码（28922a46，接口不变）⇒ 派 9b 改搜索框占位字 + How to use；TripGuru 行 pickup_time 有值（c366a543，前端不用改）。
+- Annie 新要求（截图 /manifests 选择条空白处画红框，原话）「我需要在页面画了红框的这个位置做个醒目的提示，3天内的订单如果还有新单进来没有发送的话，就在这里出现，超过3单就列数字，数字还是按照网站的红色气泡形式。然后这个提醒要出现在res team当班的所有人的notice里」⇒ 记录，非动手。派 bb 出 preview（判据同 NEW 标签 sent_tour_at / sent_tickets_at、3 天怎么算、全站还是当前标签、≤3 列单号 / >3 红气泡数字、Res team 当班谁、Notice 何时发、总开关题、要后端的）。
+- ✅ Order List 搜索提示加 product code 上 main 197616f1（9b，功能 ab5f2705）：占位字「Search order#, name, email, phone, product, product code, agent ref...」（无 agent 权限去掉 agent ref）；How to use 第 1 条加「product or product code (part of a code is enough, like PHSU5Q)」。orders 174、nav 40，tsc / eslint 0 error / build。
+- 📌 未发新单提醒 preview（bb，未写代码）https://claude.ai/artifact/8YtCoE8VWFXjV6iCt3pZTk ：页面一次只读一天一团 ⇒ 要后端汇总接口；手机没勾选时勾选条藏 ⇒ 提醒单独一行；红气泡照 Dashboard CountPill #dc3545。8 题 Excel C:\Users\annzh\Downloads\Annie_待答题_2026-11-23_未发新单提醒.xlsx（推荐 Q1 A 今明后三天、Q2 A 所有团、Q3 A 同 NEW、Q4 A 单号 · 团期 · 团可跳、Q5 A Show、Q6 A 一单一张自动消、Q7 A Res team × 当班（问 team 名）、Q8 A Notice 开关默认关红框不加）。要后端：汇总接口、Notice kind、开关、Res team。
+- 后端转 Annie（原话）「写进 Products 页面的 How to use 吧」⇒ Settings › Products How to use 加折叠节「Setting up a ticket product」6 条（产品码设 Ticket + 组、Ticket tour type、Cfm # 字段、Brenda waiver、TripGuru 码、Content Studio › Tickets 管类型）。派 9b task/products-howto-tickets：照真实标签名、先截图给 Annie，她 OK 再合。
+- ✅ Annie（原话）「可以，动手」⇒ Products How to use「Setting up a ticket product」（9b af1e719a，照真实标签：Category / Group / Tour type、TIX_TOURS 短名、Content Studio › Tickets Reminder › Guest Page 的 + New tour / ✎ Edit tour）合 main。
+- Annie 新要求（原话）「我要在现在的tour和ticket tracking 页面上的搜索功能加不限日期搜索，就是在搜索框里输入任何一个日期的订单号都可以定位到实际页面的那个产品上去」⇒ 记录，非动手；派 bb 出 preview（现状、用哪个接口查订单 → 日期 + 产品、多产品 / 找不到 / 取消、只认完整单号还是名字电话也跨日期、要后端的）。
+- ✅ Products How to use「Setting up a ticket product」上 main c826f333（9b，功能 af1e719a）。products 253、nav 40，tsc / eslint 0 error / build。
+- 📌 Tracking 不限日期搜索 preview（bb）https://claude.ai/artifact/TZYW2kAVLFsdqkkkRQBaVZ ：现状两页搜索只在当天已读行里筛（tour-tracking-view.tsx:405-415、tickets-tracking-view.tsx:436-441），都认 ?date=&q=；单号 → 日期 + 产品用 Order List。bb 原 Q7（无 orders.view 的人）按「前台能操作就能写」不出题，定 B：后端加只读接口 GET /api/tracking/find-order?order=（能开 Tracking 就能用）。6 题 Excel C:\Users\annzh\Downloads\Annie_待答题_2026-11-23_Tracking搜索.xlsx（推荐都 A）。
+- 后端转：Annie 在后端窗口对 Mirror 说「动手」：Order List 加 Mirror 列（Rezdy 行显示 TripGuru 对应单号、反之亦然，可点开详情，Export 也加）；顶栏订单搜索结果也显示对方渠道单号；配对 = Rezdy agent ref 含 TripGuru 单号，或 日期 + 开始时间 + 名字 + 电话末 10 位 + 产品名；只显示。后端 95 做，合同 + SHA 之后发。派 9b task/order-mirror 先规划 + 占位 mock；合前要合同、后端 PASS、截图给 Annie。
+- ✅ Annie（原话）「Tracking搜索全部同意推荐，动手」⇒ Q1–Q6 全 A；Q7 按前台能写定 B（后端加只读 find-order 接口，能开 Tracking 就能用，含名字 / 电话 Search all dates）。已发后端要合同；bb task/tracking-any-date-search 先照 mock 写，合同 + 后端 PASS 才合。
+- 📌 Mirror 前端（9b，占位形状）task/order-mirror **3c208b70**（未合）：Order List Mirror 列放 Source 后、对方渠道单号做成小胶囊（TripGuru 蓝 / Rezdy 灰）、多个上下排、没有写「—」、点开 /orders/<单号>；顶栏搜索多结果加 Mirror 列、单结果卡加 Mirror 字段；How to use 一句。orders 184（+10）、os +5、nav 40。截图 C:\Users\annzh\Downloads\order-mirror\，📌 给 Annie 看（列位置 / 胶囊 / 不写渠道字）。占位形状 rows[].mirror=[{order_number, source}] 已发 95 核。
+- Tracking 不限日期搜索后端上 main（47：27ba952c / b72ec854 / 3bfd9440；合同 docs/interfaces/tracking-find-order-2026-11-23.md）：GET /api/notifications/tracking/find-order?order=（完整单号，products[] 带 tour_date / status / page tour|tickets|null）、GET …/search-all-dates?q=（电话 ≥4 位 / 名字 ≥2 字，最多 20 行 + truncated）；权限 tour.view 或 tickets.view，不要 orders.view。已转 bb 对齐。
+- Mirror 后端上 main（95：95281e41 / 1d2be8dc）：records[].mirror=[{order_number, source, matched_by[]}]（[] 无），订单详情顶层 mirror 同形；60 秒缓存；Export 第 14 列 Mirror 最右（Annie「Export 选 A，加在最右边」）。已转 9b 对齐；合前等 Annie 看截图 + 95 PASS。
+- Mirror 前端 c95da628（9b，已对齐合同）：95 回 PASS。📌 只等 Annie 看截图（C:\Users\annzh\Downloads\order-mirror\）说可以就合。
+- bb 交 Tracking 不限日期搜索前端 task/tracking-any-date-search **5a85de19**（对齐合同，未合）：tt 249（+25）、tk 164（+6）、nav 40，tsc / eslint 0 error / build。截图 C:\Users\annzh\Downloads\tracking-any-date\。已交 47 核（问 Admin fee 先跳 tour 项、404 用前端自己的句子可否）。
 
 ## 2026-11-20（周五）前端主窗口 `npe-ops-frontend-5e`[614588]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工：origin/main 9ab99466（主目录 detached 改 PROGRESS）。资源：空闲内存 38.2 / 61.8 GB，node 0、chrome 71。现在没有工作窗口；后端在线 `npe-confirmation-service-bb`[282016]。
