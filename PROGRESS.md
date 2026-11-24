@@ -15,7 +15,7 @@
 - G381 TripGuru twin 前端：074f5fe1。后端没上字段，页面不变。
 
 **进行中**
-- 0b [b1ecd6] task/new-sections-first：Bus 页所有胶囊、每天，有 NEW 的小节整节置顶，节里 NEW 在前，发完回原位（Annie「动手」）。做完合 main 报主窗口；做不完推分支、在 PROGRESS 写清做到哪一步。下一个主窗口先看 0b 报了什么。
+- ✅ **有 NEW 的小节置顶上 main 67e48bab**（0b；功能 4988e084）。依据 Annie「动手」（所有 Bus 胶囊、每天、发完回原位）。config.ts withNewSectionsFirst：Bus 标签里有 NEW（团确认没发过）的小节整节移到最上面，几节之间照原先后；节里 NEW 在前；没分节时整张表 NEW 在前；By pickup time、By order time 都这样排。How to use 末尾加一句英文。检查 tsc 0、eslint 0 error、build；man 621（+4）、mf 375。不改后端。0b dev server / Chrome 已关。📌 Annie 线上验；给 staff 的 notice 可补那句。
 
 **📌 等 Annie（Excel 都在公司电脑 C:\Users\annzh\Downloads\；家里没有的，原文看下面各条和当天记录）**
 1. G380 剩 5 题：Annie_待答题_2026-11-24_G380_未发新单.xlsx。BC-1~4：红框按日期列出可点 + 标签红点（preview https://claude.ai/artifact/QPjDQxqRiDcsZg331EbbZr ），解决「11 单但没有红胶囊、点不进去」。RED-1：胶囊改成「有 NEW 就变红」（要后端 1e 出数）。全推荐 A。
@@ -29,7 +29,7 @@
 9. 给 staff 的 short notice（Annie 要的，英文）已在对话里给她：讲 By order time 新的在前、红框、NEW 标签。整节置顶上线后补一句「Sections with NEW orders now move to the top of the list.」；BC 做完要改「More than 3」那句。
 10. ★ Notes 撤旧 Save 说明、G373 Quick Stats：陪 Annie 线上验。David H 账号：Annie 自己在 Team 页开。
 
-**窗口**：0b 在做整节置顶；c1 [15df65] 待命（留 worktree C:\Code\ops-wt-c1-g381，dev server / Chrome 已关）；de [5665c9] 待命。后端：03 主窗口、1e G380、33 G381、52 G382、64 G329。
+**窗口**：0b 待命；c1 [15df65] 待命（留 worktree C:\Code\ops-wt-c1-g381，dev server / Chrome 已关）；de [5665c9] 待命。后端：03 主窗口、1e G380、33 G381、52 G382、64 G329。
 
 ## 📌 置顶：等 Annie 选 + 动手（G380 今天的新单）
 - **G380 今天的新单看不出来**（0b 转，Annie 直接跟 0b 说的）。原话：「比如说11/24，两个新单是沉底的，从页面上面来看我根本看不出今天有新单还没有发出去」。截图：11/24 One-way Shuttle 段在表底，CHDT2YBTE 去程、回程两行带绿色 NEW，表头上方没有任何提示。
