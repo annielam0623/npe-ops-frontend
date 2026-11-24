@@ -584,6 +584,106 @@ export function CardShell({
   );
 }
 
+/** 单行输入框：同多行框的边框 / 底色（Global 红边淡红底），不要多行框的最小高度。 */
+function phoneInputClass(global: boolean): string {
+  return cn(
+    "box-border block h-8 w-full max-w-[260px] rounded-[7px] border px-2.5 text-[12px] text-[#1a1a1a] night:text-white/90 transition-colors focus:bg-paper night:focus:bg-white/[.04] focus:outline-none",
+    global
+      ? "border-[#fca5a5] night:border-red-500/30 bg-[#fff8f8] night:bg-red-500/10 focus:border-[#dc2626] night:focus:border-red-500/30"
+      : "border-[#e5e7eb] night:border-white/10 bg-paper night:bg-white/[.03] focus:border-[#1a1a1a] night:focus:border-white/40",
+  );
+}
+
+/** 电话号码只许数字和 + ( ) - . 空格，最多 20 个字（后端同样拦，后端原话为准）。 */
+const PHONE_CHARS = /^[0-9+().\- ]*$/;
+
+/**
+ * 单行电话号码（G369 Guest text / WhatsApp number）：先改后存（蓝 Save），绿字 ✓ Saved，
+ * 存不上红字只写后端原话（不加前后缀）。可以存空（= 隐藏那句求助话）。
+ */
+export function PhoneFieldCard({
+  field,
+  studio,
+  global = false,
+}: {
+  field: TextField;
+  studio: Studio;
+  global?: boolean;
+}) {
+  const value = studio.draft(field.key);
+  const dirty = value !== studio.savedValue(field.key);
+  const [state, setState] = useState<SaveState>("idle");
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    const v = value.trim();
+    if (!PHONE_CHARS.test(v) || v.length > 20) {
+      setState("error");
+      setError(`${field.label}: use digits only, like 725-777-1698.`);
+      return;
+    }
+    if (v !== value) studio.setDraft(field.key, v);
+    setError(null);
+    setState("saving");
+    const r = await studio.save([field.key]);
+    if (r.failed.length) {
+      setState("error");
+      setError(r.failed[0].message);
+    } else {
+      setState("saved");
+      setSavedAt(SAVED_TIME.format(new Date()));
+    }
+  }
+
+  return (
+    <CardShell label={field.label} keyName={field.key} global={global}>
+      <input
+        type="text"
+        inputMode="tel"
+        autoComplete="off"
+        aria-label={field.label}
+        data-phone-field={field.key}
+        value={value}
+        maxLength={40}
+        onFocus={() => studio.setActive(field.key)}
+        onChange={(e) => {
+          studio.setDraft(field.key, e.target.value);
+          setError(null);
+          if (state === "error") setState("idle");
+        }}
+        className={phoneInputClass(global)}
+      />
+      {field.hint ? (
+        <div className="mt-1">
+          <span className={HINT}>{field.hint}</span>
+        </div>
+      ) : null}
+      {error ? (
+        <p
+          role="alert"
+          data-phone-error
+          className="mt-1.5 text-[11px] text-[#dc2626] night:text-red-300"
+        >
+          {error}
+        </p>
+      ) : null}
+      <CardFooter
+        dirty={dirty}
+        state={state}
+        savedAt={savedAt}
+        meta={editedLine(studio.saved[field.key])}
+        onSave={() => void save()}
+        onCancel={() => {
+          studio.setDraft(field.key, studio.savedValue(field.key));
+          setError(null);
+          setState("idle");
+        }}
+      />
+    </CardShell>
+  );
+}
+
 /** 每行一条（存成换行分隔，空行去掉）；可拖动排序。 */
 export function LinesCard({
   field,

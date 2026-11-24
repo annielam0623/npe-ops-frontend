@@ -10,6 +10,8 @@ const settings = [
   s("tmpl__global__tc_email_greeting", "Hello"),
   s("tmpl__global__tc_guest_pickup_order", "location,sms"),
   s("tmpl__global__tc_guest_pu_notsure_head", "Not sure?"),
+  // G369 7b（后端 92 契约）：客人短信 / WhatsApp 号码，种子 725-777-1698。
+  s("tmpl__global__guest_text_number", "725-777-1698"),
   s("tmpl__global__tix_general_reminder", "Bring ID\nArrive early"),
   s("tmpl__tix__upper_antelope_tsosie__prep_1_label", "Buy permit"),
   s("tmpl__tix__upper_antelope_tsosie__prep_1_url", "https://x"),
@@ -330,6 +332,12 @@ http.createServer(async (req, res) => {
     if (teamErr) return send(res, 400, { detail: teamErr });
     const gpErr = guestPageProblem(body.key, body.value);
     if (gpErr) return send(res, 400, { detail: gpErr });
+    if (body.key === "tmpl__global__guest_text_number" && body.value.trim()) {
+      const v = body.value.trim();
+      if (!/^[0-9+().\- ]+$/.test(v) || v.length > 20) return send(res, 400, { detail: "Guest text / WhatsApp number: use digits only, like 725-777-1698." });
+      const d = v.replace(/\D/g, "");
+      if (d.length < 10 || d.length > 15) return send(res, 400, { detail: "Guest text / WhatsApp number: this isn't a phone number WhatsApp can open. Check the digits." });
+    }
     byKey[body.key].value = body.value;
     byKey[body.key].updated_by = "zztest";
     byKey[body.key].updated_at = "2026-10-30T20:00:00";

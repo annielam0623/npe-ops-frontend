@@ -74,6 +74,7 @@ import {
 import {
   BroadcastSlotCard,
   LinesCard,
+  PhoneFieldCard,
   PickupOrderCard,
   PrepStepsCard,
   type Studio,
@@ -234,10 +235,7 @@ export function ContentStudioView() {
   // 网址直接打开某个标签（7c A：旧的 /settings/quick-replies 跳到 ?module=team&tab=driver-quick-replies）。
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
-    if (
-      q.get("module") === "team" &&
-      q.get("tab") === QUICK_REPLIES_TAB_SLUG
-    ) {
+    if (q.get("module") === "team" && q.get("tab") === QUICK_REPLIES_TAB_SLUG) {
       setModule("team");
       setTab(TEAM_TABS.indexOf(QUICK_REPLIES_TAB));
     }
@@ -709,6 +707,8 @@ function FieldBlock({
     <>
       {field.type === "dynamic_lines" ? (
         <LinesCard field={field} studio={studio} global={global} />
+      ) : field.type === "phone" ? (
+        <PhoneFieldCard field={field} studio={studio} global={global} />
       ) : (
         <TextFieldCard field={field} studio={studio} global={global} />
       )}
@@ -1063,6 +1063,7 @@ const HOW_TO_ITEMS = [
   "Tickets Reminder → ✎ Edit tour: tick No Cfm # needed for a tour whose guests don't get a confirmation number (for example the two Hogan Upper Antelope tours). Its orders are sent without a Cfm #, and the reminder email shows the check-in instructions instead. Click Save.",
   "Tour Confirmation → Guest Page: the page is drawn exactly as guests see it. Click Edit, then click any outlined text to change it in the small box and click Apply. Amber outlines are shared by all tours. + Add line adds up to 2 lines to a part (this tour only or all tours); ↑↓ changes the order of the pick-up steps. Click Save once to store every change; Discard throws them away. List view shows the same text as a list.",
   "The sample uses the tour bus departure stop with this tour's real pickup time. Pick another place in Sample pickup to see its directions and map, or Show as variable to see which parts change for each guest (purple tags). The choice is not saved.",
+  "Tour Confirmation → Global → Guest text / WhatsApp number: the number guests text or WhatsApp for help. It appears in the morning pickup SMS, the morning email footer and the guest Bus Tracker. Leave it empty to hide that line. Click Save on the card.",
   "Team Messages: texts to drivers, guides, restaurants and staff. Driver and guide texts must fit in one SMS with the link filled in, keep exactly one {link}, and use plain characters only. Subjects, the texts and link text can't be empty; the other lines can be left empty to drop them.",
   "Team Messages › Driver Quick Replies: the one-tap texts drivers can send to a guest. Add, edit, switch off or delete a reply there; drag ⠿ to change the order and press Save order. It has its own How to use and Action Log under the list. It used to be Settings › Driver Quick Replies; the old link opens this tab.",
 ];

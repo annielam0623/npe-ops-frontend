@@ -278,6 +278,40 @@ async function run() {
   await waitFor(`$card('${thanks}').querySelector('[role=alert]')`);
   check("没种的键：Error 和原因", (await evaluate(`return $card('${thanks}').textContent;`)).includes("Settings key not seeded"));
 
+  // ── G369 7b Guest text / WhatsApp number（Annie Excel 11-20「A」「动手」；后端 92 契约，mock）──
+  {
+    const WA = "Guest text / WhatsApp number";
+    const inp = `$card('${WA}').querySelector('input[data-phone-field]')`;
+    const err = `$card('${WA}').querySelector('[data-phone-error]')`;
+    check("G369 Tour Confirmation › Global 第一格：单行输入框，种子 725-777-1698，键名 tmpl__global__guest_text_number", await evaluate(`const c = $card('${WA}'); const first = [...c.parentElement.querySelectorAll(':scope > section')][0]; return first === c && ${inp}.value === '725-777-1698' && c.textContent.includes('tmpl__global__guest_text_number') && !c.querySelector('textarea');`));
+    check("G369 输入框下面的提示原话", await evaluate(`const c = $card('${WA}'); const h = [...c.querySelectorAll('span')].find(x => x.textContent === 'Guests text or WhatsApp this number for help. Leave empty to hide the help line.'); return !!h && h.getBoundingClientRect().top > ${inp}.getBoundingClientRect().bottom - 1;`));
+    check("G369 没改：Save 灰的", await evaluate(`return $btn('Save', $card('${WA}')).disabled;`));
+    // 先改后存：改了不发请求
+    before = (await mockLog()).length;
+    await evaluate(`$setValue(${inp}, '725 777 1699');`);
+    await sleep(600);
+    check("G369 改了不马上存（没有 save 请求），Save 变蓝能点", (await since(before, (e) => e.path === "/api/template-settings/save")).length === 0 && (await evaluate(`const b = $btn('Save', $card('${WA}')); return !b.disabled && getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)';`)));
+    // 400：后端原话红字
+    await evaluate(`$setValue(${inp}, '725-777');`);
+    before = (await mockLog()).length;
+    await evaluate(`$btn('Save', $card('${WA}')).click();`);
+    check("G369 位数不对：红字只写后端原话（this isn't a phone number WhatsApp can open…）", await waitFor(`${err}?.textContent === "Guest text / WhatsApp number: this isn't a phone number WhatsApp can open. Check the digits."`) && (await evaluate(`return getComputedStyle(${err}).color === 'rgb(220, 38, 38)' || getComputedStyle(${err}).color.startsWith('rgb(252, 165, 165');`)), await evaluate(`return ${err}?.textContent + ' / ' + getComputedStyle(${err}).color;`));
+    await evaluate(`$setValue(${inp}, '725-777-ABCD');`);
+    check("G369 有字母：前端先挡，红字 use digits only（同后端原话），不发请求", await waitFor("true") && (await evaluate(`$btn('Save', $card('${WA}')).click(); await new Promise(r => setTimeout(r, 300)); return ${err}?.textContent === 'Guest text / WhatsApp number: use digits only, like 725-777-1698.';`)) && (await since(before, (e) => e.path === "/api/template-settings/save" && e.body?.value === "725-777-ABCD")).length === 0);
+    // 存空：允许（= 隐藏那句话）
+    await evaluate(`$setValue(${inp}, '');`);
+    before = (await mockLog()).length;
+    await evaluate(`$btn('Save', $card('${WA}')).click();`);
+    saves = await waitSaves(before, 1);
+    check("G369 存空可以：POST save {key, value \"\"}，绿字 ✓ Saved，红字消失", saves[0]?.body.key === "tmpl__global__guest_text_number" && saves[0]?.body.value === "" && (await waitFor(`!!$card('${WA}').querySelector('[data-save-ok]') && !${err}`)), JSON.stringify(saves[0]?.body));
+    await evaluate(`$setValue(${inp}, ' 725-777-1698 ');`);
+    before = (await mockLog()).length;
+    await evaluate(`$btn('Save', $card('${WA}')).click();`);
+    saves = await waitSaves(before, 1);
+    check("G369 存回 725-777-1698（前后空格去掉）", saves[0]?.body.value === "725-777-1698" && (await waitFor(`${inp}.value === '725-777-1698' && !!$card('${WA}').querySelector('[data-save-ok]')`)), JSON.stringify(saves[0]?.body));
+    check("G369 How to use 那句", await evaluate("return document.body.textContent.includes('Tour Confirmation → Global → Guest text / WhatsApp number: the number guests text or WhatsApp for help. It appears in the morning pickup SMS, the morning email footer and the guest Bus Tracker. Leave it empty to hide that line. Click Save on the card.');"));
+  }
+
   // ── TIX：每行一条 + 准备步骤 + 真实预览 ──
   await evaluate("[...document.querySelectorAll('main button')].find(b => b.textContent.startsWith('← All modules')).click();");
   await sleep(200);
