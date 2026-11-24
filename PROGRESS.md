@@ -33,6 +33,11 @@
   - 字段草案（33）：不开新接口，GET /api/settings/products 每个产品加只读字段：Rezdy 行 tripguru_twin，TG 行 tripguru_options（含 Rezdy 编码、in_products、historical_order_only）。
   - 7 题（后端 Q1–Q4 + 前端 F1–F3，全推荐 A，F1 推荐 C）已做成 Excel：C:\Users\annzh\Downloads\Annie_待答题_2026-11-24_G381_TripGuru对照.xlsx。
   - ⚠️ TripGuru 的 zip 只在家里电脑（C:\Users\annzh\Downloads\Annie-NPE-Integration-20261124.zip），公司电脑没有，后端导入前要带过来。
+- 📌 G382 总览页 preview（de，未写代码）https://claude.ai/artifact/5zikT5SiG3sxbGcV3WDQUZ
+  - 内容：总览 1440 / 950 / 390、七个弹框、改后的 Staff Schedule（只读）、搬家表、数据流、「现在」逐条文件:行、跟设计的 9 条出入。
+  - 题：设计 Q1–Q12，外加 de 新题 N1（员工改班请求放哪）、N2（4 周 28 列，推荐左右滚、停在本周）、N3（只能批假的人看到什么）。
+  - Excel 由后端 52 做：C:\Users\annzh\Downloads\Annie_待答题_2026-11-24_G382_HR排班请假.xlsx。等 52 补上 preview 链接和 N1–N3 后通知 Annie 填。
+  - 未核两处：Overview 标签的统计怎么合进来；已发布周 Fill gap 之后怎么通知。
 
 ## 2026-11-23 晚 收工交接：前端主窗口 `npe-ops-frontend-96`[ef47ac]（家里；Annie「好了，你应该没有什么要我确认了了，我睡觉去了」）
 - **今晚上 main**：半屏适配 37e529bb；Day timeline 刻度 ca50d015；G320 Sample pickup bb2eaddb + 灰字 e13483fe（ba PASS）；G373 Quick Stats 72daaa36（Annie「不用改，很好」，等她线上验收 + 6d 对数）；G374 门票显示名 + Add 键 29f19b29（75 PASS）；G369 7b WhatsApp 号码 ea1d15f2（92 PASS）。
