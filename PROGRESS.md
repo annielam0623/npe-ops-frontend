@@ -59,6 +59,7 @@
   - ✅ Annie 问 Send to team 在哪，答了：Settings › Notifications 页、MAIN MANIFEST 卡、只给 SA、只管 Notice 发给谁、红框不受影响。Annie（原话）「可以，上线」⇒ 通知 0b 合最新 main、重跑、推 main。
   - ✅ **G380 上 main fde603ea**（0b；功能 21cd8ab2，截图 mock 7d3484a0）。合了两次 main，没有冲突。检查：tsc 0、eslint 0 error、build；man 617、ns 72、mf 375、nav 40。
   - 📌 Annie 线上验：Main manifest 的红框 / 红胶囊（只出明天到大后天、最近一次整批发送后进来的新单）；Settings › Notifications 先选 Reservations team 再开开关（默认关）。B+C 等 4 题 +「动手」后另开分支。
+  - Annie（经 5e 转，她开错窗口）看 11/24 · Bus Tour · Antelope：红框「⚠ New orders not sent 11 Open the red pills to find them.」，没有一颗红胶囊，原话「这个红点的意义是什么，也点不进去」。65 查代码（origin/main 4ca1bcd8）：红胶囊只取当前日期 + 当前标签（manifests-view.tsx:773-777），那 11 单在 11/25–27，所以今天那页没有红胶囊；超过 3 单的数字不能点（unsent-alert.tsx:36-46，照 Q5）。这正是 B+C preview（QPjDQxqRiDcsZg331EbbZr）要补的：C 在红框里列出可以点的日期，点了跳到那天的第一张新单所在的标签和团（Q2 A），B 给标签加红点。5e 给她的改法 A 和 B+C 是同一件事，不另立题。📌 等她答那 4 题 +「动手」。
 
 ## 2026-11-23 晚 收工交接：前端主窗口 `npe-ops-frontend-96`[ef47ac]（家里；Annie「好了，你应该没有什么要我确认了了，我睡觉去了」）
 - **今晚上 main**：半屏适配 37e529bb；Day timeline 刻度 ca50d015；G320 Sample pickup bb2eaddb + 灰字 e13483fe（ba PASS）；G373 Quick Stats 72daaa36（Annie「不用改，很好」，等她线上验收 + 6d 对数）；G374 门票显示名 + Add 键 29f19b29（75 PASS）；G369 7b WhatsApp 号码 ea1d15f2（92 PASS）。
