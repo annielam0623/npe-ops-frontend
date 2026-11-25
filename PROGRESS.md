@@ -6,6 +6,10 @@
 
 > **下一个主窗口：先读最上面的收工交接，再读当天记录，开工照 CLAUDE.md 开工必做第 4 条先列「Annie 提过没做完的」问她。**
 
+## 2026-11-25（周三）前端主窗口 `npe-ops-frontend-3d`[70a1a9]（公司电脑；只分工和汇报，不写代码；14:30 下班）
+- 开工 12:58：origin/main 72184956（主目录 detached 干净；main 在 ops-74 worktree，不用）。资源：空闲内存 35.3 / 61.8 GB，node 0、chrome 65。前端工作窗口：无。后端主窗口-a6 [0c3ec1]（今天后端上了 G384 顶栏按 agent ref 搜单 93692ed7，前端不用改）。
+- 7 天清单（11-18 至 11-24，Annie 提过的）已列给 Annie，等她选今天做哪几件。
+
 ## 2026-11-24 晚 收工交接：前端主窗口 `npe-ops-frontend-e7`[9d93e6]（家里；Annie「写交接」）
 **今晚上 main（都等 Annie 线上验，都只测 mock）**
 - G380 红框分标签 1dc3e96e：Bus / Tickets 各算各的，Admin fee 不出（修「Tickets 没新单也挂着」）。
