@@ -20,6 +20,9 @@
   - 页面上已能改（先暂存、整页 Save，page-save.tsx）：版式、字号、换车、黄框景点确认、Special Requirements、隐藏列；改的存 Dispatch 自己的表，不回写 Main manifest；打印页、Excel、司机 / 导游页都跟着变。真错去 Rezdy 改（manifest-view.tsx:3386）。
   - 去掉 Print 会影响：View only 纸面、A4 分页每页重印抬头合计、Products › Bus Manifest setup、打印前餐不符提醒；partner 现在能印。未核：司机 / partner 实际拿纸还是 Excel。
   - 📌 已问 Annie：A 不改（已有 Excel + 页面可改）/ B Download Excel 当主键、Print 收进 ⋯ / C 页面能改更多格（要她说哪几格；违背「真错去 Rezdy 改」要她定）。推荐 A，或她点名要多改的格再出 preview。
+  - Annie 说清真问题（原话）：「主要是页面的设置很多时候会导致去到两页，或者是一页但字体压缩得很厉害。他们自己调整是把字体放大，与网格线之间的space缩小来实现，但是我们现在的页面压缩是保持space把文字缩小了。然后他们不会改动页头的设置，只是把全部客人信息的字放大，很多时候用的字号是40-45」
+  - 3d 核代码：打印页格子留白写死 td padding 2px 5px / th 3px 5px（后端 tour_manifest_print.html:50-55），客人格字号 = 版式默认（General 16.5px、Marcello 21px）+ 调整 d，d 只能 −2..+10（text-size.tsx:24-26、BASE）⇒ 页面上最大约 26.5px，到不了 40–45。「一页但字压得很小」是哪一步缩的（浏览器打印缩放 / 后端 paginate / Excel 适合一页）未核。40–45 是不是在 Download 的 Excel 里设的字号（pt）未核。
+  - 拟方向（未定、未动手）：页头不动，只把客人信息格放大、同时收小格子留白，满一页时先收留白再缩字。改样子 ⇒ 先 preview；涉及后端打印页 / Excel 生成，后端也要改，要写进「需要后端」。📌 问 Annie：40–45 是在哪设的 + 是否开 1 个窗口出 preview。
 
 ## 2026-11-24 晚 收工交接：前端主窗口 `npe-ops-frontend-e7`[9d93e6]（家里；Annie「写交接」）
 **今晚上 main（都等 Annie 线上验，都只测 mock）**
