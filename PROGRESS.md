@@ -43,6 +43,7 @@
 - 新需求：排车前也能看午餐数量。53 问「要不要在排车之前也能看到午餐」，Annie（原话）「要的，让staff可以统计餐的数量然后打给餐馆订餐」⇒ 新功能，非动手。派 61 出 preview（整团汇总：每种份数 / 总数 / 默认读不准 / 餐厅名电话；题：放哪、排车后还出不出、复制报数文字、打印、手机；需要后端：不按车分的整团 lunch_view）。
   - 61 交 preview v1 https://claude.ai/artifact/NPCCxAfHrNDRxuqiyDFZWe （页顶「Lunch count」汇总卡 + L1–L6）。Annie（原话）「没有分车，你就出一张完整的餐单，长一点也没问题，因为总数是一样」⇒ 方向改：没分车时照每车午餐单样子出一张整团完整餐单，不另做汇总卡。派 61 出 v2、重整题目。非动手。Annie（原话）「你是知道我们的task流程的，需要头一天下午5点打电话给bee's订餐，所以他们需要提前知道目前的餐是多少」⇒ 转 61：整团餐单要在头一天 17:00（车多半没排）就能看明天的；查 Task 里有没有订餐任务、能否链过去（出题）；17:00 后新单 / 改单怎么让 staff 知道份数变了（出题）。
 - 📌 今天的题汇成一张 **C:\Users\annzh\Downloads\Annie_待答题_2026-11-25_合并表.xlsx**（R1–R7 自动适配 + TB-1~4 Tour bus 酒店 + L1–L6 午餐 = 17 行；旧「自动适配」单表已删，Annie 还没动过）。L 那 6 行等 61 v2 后重做。
+  - 61 交午餐 preview v3（同链接 NPCCxAfHrNDRxuqiyDFZWe）：没分车时「Not on a bus yet」下照 LunchSheet 出完整午餐单；头一天 17:00 打开明天的团就有。L1–L6 作废，改 **M1–M8**（推荐全 A：M1 没分车的人单独一张、合起来 = 总数；M2 排完不出整团；M3 屏幕加电话 + Copy order text；M4 打印页 / Excel 也出；M5 手机照每车样子；M6 Farm out 不算；M7 Bus manifest 认 date=tomorrow，任务链接填明天；M8 抬头「Counted at …」）。合并表 Annie 正开着（写不进），M1–M8 另存 **C:\Users\annzh\Downloads\Annie_待答题_2026-11-25_午餐单_M1-M8.xlsx**，合并表里 L1–L6 作废。未核：任务里有没有订午餐这条、报数电话还是短信、Farm out 吃不吃这家、一团两家店、没排车时 Excel 出什么。
 
 ## 2026-11-24 晚 收工交接：前端主窗口 `npe-ops-frontend-e7`[9d93e6]（家里；Annie「写交接」）
 **今晚上 main（都等 Annie 线上验，都只测 mock）**
