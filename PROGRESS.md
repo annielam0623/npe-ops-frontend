@@ -6,6 +6,14 @@
 
 > **下一个主窗口：先读最上面的收工交接，再读当天记录，开工照 CLAUDE.md 开工必做第 4 条先列「Annie 提过没做完的」问她。**
 
+## 2026-11-24 晚 家里：前端主窗口 `npe-ops-frontend-e7`[9d93e6]（只分工和汇报，不写代码）
+- 开工：origin/main 7ba700d6。资源：空闲内存 11.9 / 31.7 GB，node 1、chrome 55。家里无前端工作窗口。后端主窗口 cf [ccda17]。
+- 后端 cf / 67 问 Test send How to use 有没有写死样例时间 ⇒ 查 test-send-view.tsx:392-430 没有；预览下灰字 :494-497 是后端 sample_note 原样显示，改后端那句即可。已回。
+- 7 天清单列给 Annie ⇒ ✅ Annie（原话）「做合并表给我，1-5今天做」= 今晚必做：① G380 后续 ② 全站订单排序 ③ CLAUDE.md 最新单排最前 ④ G381 ⑤ G382（都是先答题；答了不等于动手）。
+- 📌 合并表 **C:\Users\annzh\Downloads\Annie_待答题_2026-11-24_晚_合并表.xlsx**（55 题）：G380 BC1–4 / RED-1 / SPLIT（6）、排序 S01–S28（28，家里只读重查，编号跟公司那张 24 处不对号；另 5 处已新在前不问）、RULE-1、G381 A 部分动手 + D1–D4（原文只在公司 33 worktree，表里只有推荐；cf：后端代码今晚家里做不了）、G382 15 题（后端 task/g382-hr-schedule 原表）。
+- 排序盘点要点：Main manifest Bus / Admin fee 默认看法仍是 By pickup time（manifests-view.tsx:682）= S06；Order List 的 created_at 是收 webhook 的时间、按 GREATEST(created, updated) 排，改过的老单会顶上（orders.py:242-246）。前端能自己改的：S03–S07。
+- **G380 红框 Tour / Tickets 合在一起算**（Annie 原话）：「我发现一个问题，tour和ticket的unsent提醒的数字是不是合在一起了统计了，这个是要分开的」；「现在ticket那边没有3天内没发送的新单，但是那个提醒一直挂在那里」。查代码：后端 count 是 Bus + Tickets 合计（unsent_orders.py:115-123），前端各标签传同一份 unsent（manifests-view.tsx:1272、:1313），Admin fee 也出。改法：前端按 orders[].tab 过滤，各标签只算自己的，后端不改，样子不变（当 bug）。Admin fee 出不出 = 表里 G380-SPLIT（推荐 A 不出）。📌 已问 Annie「是否现在动手」，等回答。
+
 ## 2026-11-24 收工交接：前端主窗口 `npe-ops-frontend-65`[1e2990]（公司电脑；Annie「好几个重大问题，等我回家再挨个处理吧，写交接」）
 > 这个窗口在别的窗口那边显示的名字是「前端主窗口-0b」[1e2990]，容易跟工作窗口 0b 混，已请 Annie 用 /rename 改。家里开新主窗口的，照「开工必做」报名字；后端仓库在 D:\npe-confirmation-service。
 
