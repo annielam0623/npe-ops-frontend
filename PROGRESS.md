@@ -41,6 +41,8 @@
 - Annie（原话，经 a6）「为什么要 tour bus assign 酒店，我在 dispatch 做 bus assignment 的时候要我加酒店，我们 TI 不是默认的么」。a6 读：dispatch/config.ts:516 没 location_ids 就标「Needs a hotel」，对 Bus tour 车也标（G308 11-13 加进 Schedule check，只标不拦），Bus tour 车不自动带 TI。⇒ 派 53 查（是否真挡、stops 下游用途、TI 默认站现有概念）+ 出方案，不改代码。
   - 53 交回：只标不拦（vehicle-row.tsx:1247-1252 胶囊、config.ts:494-541 Schedule check；后端保存 dispatch.py:1015/1021 不要求非空；Send 不查）。下游只有司机页站点（driver_day.py:195-215）、relay 下拉「also Bus」、shuttle 检查、团锁定比对用；Bus manifest / Morning send / Tracking 不用。已有每团默认站表 dispatch_tour_default_stop（v62，只种 Hoover：Excalibur → Horseshoe → TI），前端 Add vehicle / 自动车窗 / Farm out 改回、后端导入、旧 confirm 都读；还有 Pickup Locations is_tour_departure（TI）。📌 题已问 Annie：A 不标 / B 后端迁移给没配默认站的 Bus tour 团加 TI（推荐，前端不改，已排好的车要手动加一次）/ C 前端兜底用 Tour bus departure（入口不一致）。B 要她确认哪些团（除 Hoover 全部？）。已请 a6 跑两条只读 SQL。⇒ a6 原文：dispatch_tour_default_stop 只有 manifest 5（Hoover）三行 (4,0)(5,1)(14,2)；is_tour_departure 两行：id 14「Treasure Island」（Hoover 用的）、id 33「Treasure Island Normal」。⇒ B 多一题：用哪个 TI（推荐 14，同 Hoover）。迁移 Risk C，SQL 先给 Annie 看。
 - 新需求：排车前也能看午餐数量。53 问「要不要在排车之前也能看到午餐」，Annie（原话）「要的，让staff可以统计餐的数量然后打给餐馆订餐」⇒ 新功能，非动手。派 61 出 preview（整团汇总：每种份数 / 总数 / 默认读不准 / 餐厅名电话；题：放哪、排车后还出不出、复制报数文字、打印、手机；需要后端：不按车分的整团 lunch_view）。
+  - 61 交 preview v1 https://claude.ai/artifact/NPCCxAfHrNDRxuqiyDFZWe （页顶「Lunch count」汇总卡 + L1–L6）。Annie（原话）「没有分车，你就出一张完整的餐单，长一点也没问题，因为总数是一样」⇒ 方向改：没分车时照每车午餐单样子出一张整团完整餐单，不另做汇总卡。派 61 出 v2、重整题目。非动手。
+- 📌 今天的题汇成一张 **C:\Users\annzh\Downloads\Annie_待答题_2026-11-25_合并表.xlsx**（R1–R7 自动适配 + TB-1~4 Tour bus 酒店 + L1–L6 午餐 = 17 行；旧「自动适配」单表已删，Annie 还没动过）。L 那 6 行等 61 v2 后重做。
 
 ## 2026-11-24 晚 收工交接：前端主窗口 `npe-ops-frontend-e7`[9d93e6]（家里；Annie「写交接」）
 **今晚上 main（都等 Annie 线上验，都只测 mock）**
