@@ -33,6 +33,7 @@
   - ✅ 定案（a6 生产只读）：settings bus_manifest_hidden_columns = {"3": ["lunch"]}；manifests id 3 Page / Antelope Canyon，lunch_restaurant_id 1（店还在）⇒ 就是 Lunch 列被设成隐藏。不用改代码；要放回来 = 页头 Columns 勾回 Lunch + Save（由 Annie 定）。
   - ❌ 更正（a6）：Annie 说的是「General 版式下午餐页（LunchSheet）不见了」，不是 Lunch 列。藏列是 Nadia 11-10 做的、只影响 lunch_column；后端 7d 离线跑真函数核 11-24/25/26 Antelope 每车 13–23 位带餐客人 ⇒ block.lunch 应非空。⇒ 疑在前端：再派 53 查 manifest-view.tsx:1901 前后条件 + mock 复现 + 线上部署版本，先报不改。a6 请 Annie 点 View only（后端打印页 ?view=1）翻到最后看有没有午餐单：打印页有、屏幕没有 ⇒ 前端；都没有 ⇒ 后端。等她答（a6 转）。
   - 53 第二轮：前端没 bug。LunchSheet 只看 block.lunch（manifest-view.tsx:1901-1909），不看版式 / 藏列；mock 复现 general + hiddenCols lunch 照常出；线上前端含 37e529bb / fd3bf378。例外：手机 ⛶ Full screen 本来没有午餐单（151 设计）；午餐单接在每台车合计下面要往下滚。⇒ 转 a6 核线上后端部署 SHA / 接口原文；请 Annie 说明哪一屏（电脑 / 手机、哪天、哪台车）。53 已关 dev / Chrome、git 干净。
+  - Annie（原话）「用电脑看的，整个dispatch都没有午餐信息，在general模式下面，午餐是单独一页纸。现在有了」⇒ 现在自己恢复了，原因未查到（前端代码 / mock 正常；后端数据离线核正常；今天后端只推 93692ed7 不碰 manifest）。先关掉，下次再出现请她记时间 + 截图，当时就查接口。已告诉 a6 / 53。
 
 ## 2026-11-24 晚 收工交接：前端主窗口 `npe-ops-frontend-e7`[9d93e6]（家里；Annie「写交接」）
 **今晚上 main（都等 Annie 线上验，都只测 mock）**
