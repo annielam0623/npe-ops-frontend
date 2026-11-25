@@ -14,6 +14,12 @@
   - a. Bus 11-27 红框 (1)、HooverDam 两单 NEW：CHDDQS9GQ 7-22 下单，早于 11-24 整批发送，按 Q3 B 不算（后端 unsent_orders.py:101）。a6 已问 Annie 要不要改成跟 NEW 一致（后端改）。前端不动。
   - b. Tickets 点红框里的单跳过去后，红框和红胶囊都没了。3d 核代码：manifests-view.tsx:362-368 每次换日期 / 标签 / 团都重拉 /api/manifests/unsent，出错（非 401）时 setUnsent(null)，红框和红胶囊全藏、没有提示。是不是这次的原因未核（Annie 没给单号）。修法拟：派工作窗口先照 Annie 的操作复现找真原因；若是重拉出错，出错时保留上次结果（样子不变，当 bug）。出错要不要加一行提示是新文字，要先 preview。📌 问 Annie 今天修不修 + 单号 / 日期。
   - c. Annie 要「有小节的团也跟 Antelope bus 的规则一样」：withNewSectionsFirst（config.ts:605）对所有 Bus 胶囊都生效，HooverDam 两节都有 NEW 所以看不出。a6 在问她「Antelope 的规则」指什么，答了转前端。
+- Annie（原话）「在dispatch里的buse manifest，是否可以不用出pdf文件直接给他们excel表，然后可以在页面上编辑算了」⇒ 只记录、未动手。只读核（子任务）：
+  - 现在没有后端 PDF：Print 开后端 HTML 打印页 /admin/dispatch/manifest/print（后端 tour_manifest.py:160-255，A4 横向），浏览器存 PDF。
+  - **Excel 已经有**：Download 键 POST /admin/dispatch/manifest/download（后端 tour_manifest.py:680-708，build_workbook 每车一张 + Affiliate + 午餐单），前端 manifest-view.tsx:1200-1230。
+  - 页面上已能改（先暂存、整页 Save，page-save.tsx）：版式、字号、换车、黄框景点确认、Special Requirements、隐藏列；改的存 Dispatch 自己的表，不回写 Main manifest；打印页、Excel、司机 / 导游页都跟着变。真错去 Rezdy 改（manifest-view.tsx:3386）。
+  - 去掉 Print 会影响：View only 纸面、A4 分页每页重印抬头合计、Products › Bus Manifest setup、打印前餐不符提醒；partner 现在能印。未核：司机 / partner 实际拿纸还是 Excel。
+  - 📌 已问 Annie：A 不改（已有 Excel + 页面可改）/ B Download Excel 当主键、Print 收进 ⋯ / C 页面能改更多格（要她说哪几格；违背「真错去 Rezdy 改」要她定）。推荐 A，或她点名要多改的格再出 preview。
 
 ## 2026-11-24 晚 收工交接：前端主窗口 `npe-ops-frontend-e7`[9d93e6]（家里；Annie「写交接」）
 **今晚上 main（都等 Annie 线上验，都只测 mock）**
