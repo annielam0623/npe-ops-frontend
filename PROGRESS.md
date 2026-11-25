@@ -25,6 +25,8 @@
   - 拟方向（未定、未动手）：页头不动，只把客人信息格放大、同时收小格子留白，满一页时先收留白再缩字。改样子 ⇒ 先 preview；涉及后端打印页 / Excel 生成，后端也要改，要写进「需要后端」。📌 问 Annie：40–45 是在哪设的 + 是否开 1 个窗口出 preview。
   - Annie（原话）「能不能把文字和网格之间的space调到最小」⇒ 答：能。打印页是后端模板（td padding 2px 5px），要后端改；拟客人格上下 0、左右 2px（贴线会难看），页头 / 表头不动。改样子 ⇒ 先 preview（打印页 + Excel 前后对比），等「动手」。屏幕上 Dispatch 页本身的留白未核。
   - Annie（原话）「出preview吧，我开个窗口」⇒ 派新窗口 **61 [b5ec85]** 只出 preview（改前 / 改后、留白 0 / 1 / 2px、字号上限几档、打印页 + Excel、数据流、需要后端），交回给 3d。已知会后端 a6。不是动手。a6 回：等 preview + 动手后派后端 7d。
+  - Annie 中途跟 61 补（原话）：「除了页面的留白，最主要还要包括行间距与字体，字体与表格线的最小留白」。
+  - 📌 **61 交 preview https://claude.ai/artifact/T7CHqsFu8ehaWHUS1bNjah**（无代码）。更正：打印页客人格起点 General 14px / Marcello 18px（模板 :24-26），叠 Settings › Text d −4..+12 + 当天 d −2..+10 ⇒ 打印最大 36px≈27pt / 40px=30pt（3d 之前说 16.5 / 26.5 是屏幕的，不对）。打印放不下不缩字、挪到第 2 页（模板末尾脚本）；Excel fitToWidth=1（tour_manifest.py:3425-3427）字大表变宽整张连页头缩 ⇒ 多半是「一页但字压得很厉害」。7 题 BM-1~7 汇成 **C:\Users\annzh\Downloads\Annie_待答题_2026-11-25_Bus_manifest_留白字号.xlsx**（推荐 B / B / A / C / A / A / A）。未核：40–45 单位、staff 印打印页还是 Excel、浏览器打印缩放、司机 / 导游页。需要后端：模板 padding / line-height / 分页页数、build_workbook 行高列宽换行缩放、D_RANGE、BUS_MARGIN_MM；前端 TEXT_MAX、Q4 黄框。
 - Annie（原话）「然后查一下为什么我现在在dispatch的bus manifest上看不到羚羊谷的午餐」⇒ Annie（原话）「我又开了一个窗口，你把查询任务给它吧」⇒ 停掉子任务，派新窗口 **53 [4cd388]** 只查原因（午餐显示条件、Antelope 团型 / 设置、午餐值来源、11-14 起的改动、线上怎么分辨），交回 3d，修不修等 Annie。
 
 ## 2026-11-24 晚 收工交接：前端主窗口 `npe-ops-frontend-e7`[9d93e6]（家里；Annie「写交接」）
