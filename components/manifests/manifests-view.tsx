@@ -26,7 +26,6 @@ import {
   fetchUnsentOrders,
   type ManifestSearchEntry,
   saveManifestCfm,
-  type UnsentOrder,
   type UnsentOrders,
 } from "@/lib/manifests-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
@@ -230,8 +229,6 @@ export function ManifestsView() {
   const scrolledToRef = useRef<string | null>(null);
   /** 置顶 51 B：?row= 带来的行，这一页拿到后用一次（预勾 + 去掉网址里的 row / tick）。 */
   const jumpRef = useRef<{ rows: string[]; tick: boolean } | null>(null);
-  /** G380：点了红框里的一单（同一页时 shown 不变，靠它让下面的预勾再跑一次）。 */
-  const [jumpNonce, setJumpNonce] = useState(0);
   /** G380：Notice 链接带来的 ?order=（只有单号）：这一页拿到后找这单的行，标黄、滚到、勾上，用一次。 */
   const orderJumpRef = useRef<string | null>(null);
   /** G380 未发新单（GET /api/manifests/unsent）；null = 没有 / 读不到 / 没有发送权限，什么都不出。 */
@@ -372,19 +369,19 @@ export function ManifestsView() {
     return () => controller.abort();
   }, [date, tab, pill, reloadKey, noConfirm, redirectToLogin]);
 
-  /** G380 点红框里的一单：去那天那个标签 / 团，滚到这单的行并勾上（往返两段都在 row_keys 里）。 */
-  function jumpToUnsent(order: UnsentOrder) {
-    if (!order.row_keys.length) return;
+  /**
+   * G380 B+C（preview QPjDQxqRiDcsZg331EbbZr 题 2 A）：点红框里的日期 ⇒ 跳到那天，
+   * 打开那天这个标签里第一张新单（orders 已按下单时间排好）所在的团胶囊，不勾选。
+   */
+  function jumpToUnsentDay(day: string) {
+    const first = tabUnsent?.orders.find((o) => o.tour_date === day);
+    if (!first || day === date) return;
     setViewHidden(false);
     setPendingSend(null);
     setSelected(new Set());
-    jumpRef.current = { rows: order.row_keys, tick: true };
-    setDate(order.tour_date);
-    setTab(order.tab);
-    setPill(order.pill);
-    setHighlight(order.row_keys[0]);
-    scrolledToRef.current = null;
-    setJumpNonce((n) => n + 1);
+    setHighlight(null);
+    setDate(day);
+    setPill(first.pill);
   }
 
   function changeDate(next: string) {
@@ -749,7 +746,7 @@ export function ManifestsView() {
     url.searchParams.delete("row");
     url.searchParams.delete("tick");
     replaceUrl(url);
-  }, [shown, noSend, tabSendable, jumpNonce]);
+  }, [shown, noSend, tabSendable]);
   // G380：?order=<单号>（Notice「New order · not sent」的链接）：这一页里找这单的行，同点红框里那一单。
   // 这一页没有这单（已经发了 / 挪走了）就只把 order 从网址去掉，不另提示。
   const pageReady = !!shown && state === null;
@@ -779,6 +776,10 @@ export function ManifestsView() {
   );
   /** G380 分标签：红框只算、只列当前标签的单（Admin fee 不出）。 */
   const tabUnsent = unsentForTab(unsent, tab);
+  /** G380 B：这一天有要变红的胶囊的标签（标签红点）。 */
+  const unsentTabs = new Set<string>(
+    (unsent?.pills ?? []).filter((p) => p.date === date).map((p) => p.tab),
+  );
   const currentPill = shown?.pills.find((p) => p.key === shown.pill);
   // 置顶 74：Waiver link 列这一页有要 waiver 的单才自动出（题 1 A），☰ Columns 里关掉就不加。
   // 150 Notes：默认放最后，☰ Columns 里关掉就不加（withNoteColumn）。
@@ -1078,6 +1079,14 @@ export function ManifestsView() {
                     >
                       {data ? `${t.orders} · ${t.pax} pax${unknownPax(t)}` : ""}
                     </span>
+                    {/* G380 B（题 1 A）：这一天这个标签有要变红的胶囊 ⇒ 标签名后面一个小红点（不写数字）。 */}
+                    {unsentTabs.has(t.key) ? (
+                      <span
+                        data-unsent-tab-dot
+                        title="New orders not sent on this tab"
+                        className="inline-block size-2 shrink-0 self-center rounded-full bg-[#dc3545] shadow-[0_0_0_2px_rgba(220,53,69,.25)]"
+                      />
+                    ) : null}
                   </button>
                 );
               })}
@@ -1273,7 +1282,8 @@ export function ManifestsView() {
             {/* G380：勾选条不出的时候（Admin fee、这一团没有单、看隐藏行）和手机上（勾选条没勾时藏起来）单独一行，放在表格上面。 */}
             <UnsentAlert
               data={tabUnsent}
-              onPick={jumpToUnsent}
+              currentDate={date}
+              onPickDay={jumpToUnsentDay}
               className={cn(
                 "mb-3 w-full",
                 !noSend &&
@@ -1315,7 +1325,8 @@ export function ManifestsView() {
                 <span className="flex min-w-0 flex-1 justify-center max-sm:hidden">
                   <UnsentAlert
                     data={tabUnsent}
-                    onPick={jumpToUnsent}
+                    currentDate={date}
+                    onPickDay={jumpToUnsentDay}
                     className="min-w-0"
                   />
                 </span>
@@ -2970,14 +2981,15 @@ function ManifestsHowToUse() {
           <b>New orders not sent</b>: a red box in the bar above the list shows
           orders for the next 3 days (tomorrow, the day after and the day after
           that) that came in after their tour was last sent as a batch and have
-          not been sent yet. Each tab counts only its own orders: the bus tour
-          tab shows bus tour orders, the tickets tab shows ticket orders, and
-          the admin fee tab shows no box. Up to 3 are listed as order number ·
-          tour date · tour; click one to open that day and tour with the order
-          ticked. With more than 3, a red number shows how many. Tours with such
-          orders have red pills; click a red pill to find them. The box goes away
-          once they are sent. Reservations team staff on shift can also get a
-          Notice for each one.
+          not been sent yet. Bus Tour and Tickets each count only their own
+          orders; the admin fee tab shows no box. The box shows a red number
+          with how many, followed by each day that has such orders and how many
+          are on it, for example Thu Nov 26 (1). The day you are looking at is
+          in bold; click another day to open it at the first tour with a new
+          order. A red dot on Bus Tour or Tickets means that tab has such orders
+          on the day you are looking at, and the tours with them have red pills;
+          click a red pill to find them. The box goes away once they are sent.
+          Reservations team staff on shift can also get a Notice for each one.
         </>,
         // 有 NEW 的小节置顶（Annie 2026-11-24「只要有新单的小节，连小节和新单一起置顶」「动手」）。
         <>

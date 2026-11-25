@@ -1,4 +1,4 @@
-// G380 截图（未发新单提醒）：电脑 1440 / 手机 390，0 / 1 / 3 / >3 单，Settings › Notifications 的 Send to team 下拉。
+// G380 截图（未发新单提醒）：电脑 1440 / 手机 390，0 / 1 / 多单（B+C：日期列表、标签红点），Settings › Notifications 的 Send to team 下拉。
 // 用法：先有 next dev（API_PROXY_TARGET 指向 MOCK_URL），本脚本自己起 man-mock / ns-mock（轮流占 MOCK_PORT）、headless Chrome。
 //   APP_URL=http://localhost:3271 MOCK_PORT=8871 CDP_PORT=9472 node g380-shots.js <输出目录>
 // 只连本机模拟接口。
@@ -104,38 +104,42 @@ async function main() {
 
   let mock = startMock("man-mock.js");
   await waitMock();
-  // 团期照 Q1 放在明天 / 后天 / 大后天（mock ctl.unsentFuture），截图停在明天那一页。
+  // G380 B+C：团期放在明天 / 后天 / 大后天（mock ctl.unsentFuture + unsentList 的「隔几天」），截图停在明天那一页。
   const [y, m, d] = today.split("-").map(Number);
   const day = (n) => new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
   const manUrl = `${APP}/manifests?date=${day(1)}&tab=bus&pill=g:3`;
   const ready = "document.querySelector('thead th')";
   const alertReady = "[...document.querySelectorAll('[data-unsent-alert]')].some(e => e.offsetParent)";
-  const ticked = "document.querySelector('input[aria-label=\"Select CHD1003\"]')?.checked";
-  for (const [n, label] of [[0, "0"], [1, "1"], [3, "3"], [5, "5-over3"]]) {
-    await ctl({ unsent: n, unsentFuture: true });
-    await open(manUrl, n ? alertReady : ready);
+  const MANY = [["CHD1003", "bus", "g:7", 1], ["CHD2001", "tickets", "t:antelope", 1], ["CHD1004", "bus", "g:none", 2], ["CHD1001", "bus", "g:3", 3], ["CHD1003", "bus", "g:7", 3], ["CHD2002", "tickets", "t:none", 3]];
+  const cases = [
+    ["0", []],
+    ["1", [["CHD1003", "bus", "g:7", 2]]],
+    ["many", MANY],
+  ];
+  for (const [label, list] of cases) {
+    await ctl({ unsentFuture: true, unsentList: list });
+    await open(manUrl, list.length ? alertReady : ready);
     await shot(`desktop-${label}-orders.png`);
-    await open(manUrl, n ? alertReady : ready, { width: 390, height: 844, mobile: true });
+    await open(manUrl, list.length ? alertReady : ready, { width: 390, height: 844, mobile: true });
     await shot(`phone-${label}-orders.png`, { width: 390, height: 844, mobile: true });
   }
-  // 1 单：点了以后（跳到明天的 Grand Canyon West、勾上、标黄）。
-  await ctl({ unsent: 1, unsentFuture: true });
+  // 点大后天：跳到那天、Bus 第一张新单的团（Antelope Bus Tour），不勾选。
+  await ctl({ unsentFuture: true, unsentList: MANY });
   await open(manUrl, alertReady);
-  await evaluate("[...document.querySelectorAll('[data-unsent-alert]')].find(e => e.offsetParent).querySelector('[data-unsent-order]').click();");
-  await waitFor(ticked);
-  await sleep(800);
-  await shot("desktop-1-after-click.png");
-  // Tickets 页的红胶囊（后天：CHD2001 Antelope Canyon、CHD2002 No tour type yet）。
-  await ctl({ unsent: 5, unsentFuture: true });
-  await open(`${APP}/manifests?date=${day(2)}&tab=tickets&pill=t:none`, alertReady);
-  await shot("desktop-5-tickets-red-pill.png");
+  await evaluate(`[...document.querySelectorAll('[data-unsent-alert]')].find(e => e.offsetParent).querySelector('button[data-unsent-day="${day(3)}"]').click();`);
+  await waitFor(`new URLSearchParams(location.search).get('date') === '${day(3)}' && !!document.querySelector('input[aria-label="Select CHD1001"]')`);
+  await sleep(1000);
+  await shot("desktop-many-after-click-day3.png");
+  // Tickets 标签：只算门票（明天 1 张、大后天 1 张）。
+  await open(`${APP}/manifests?date=${day(1)}&tab=tickets`, alertReady);
+  await shot("desktop-many-tickets-tab.png");
+  // 后天：只有 Bus 有新单 ⇒ 只有 Bus Tour 红点。
+  await open(`${APP}/manifests?date=${day(2)}&tab=bus`, alertReady);
+  await shot("desktop-many-day2-bus-dot-only.png");
   // 这一天没有单（没有勾选条）：红框单独一行。
-  await ctl({ unsent: 1, unsentFuture: true });
   await open(`${APP}/manifests?date=${day(5)}&tab=bus`, alertReady);
-  await shot("desktop-1-no-rows-day.png");
-  // Notice 链接 ?order=。
-  await open(`${APP}/manifests?date=${day(1)}&order=CHD1003&tab=bus&pill=g%3A7`, ticked);
-  await shot("desktop-notice-link-order.png");
+  await shot("desktop-many-no-rows-day.png");
+  await ctl({ unsentList: null, unsentFuture: false, unsent: 0 });
   mock.kill();
   await sleep(800);
 

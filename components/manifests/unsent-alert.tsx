@@ -1,67 +1,106 @@
 "use client";
 
-import type { UnsentOrder, UnsentOrders } from "@/lib/manifests-api";
+import type { UnsentOrders } from "@/lib/manifests-api";
 import { cn } from "@/lib/utils";
 
 /**
- * G380 未发新单提醒（Annie 2026-11-23 答 8 题、11-24「第一件做」；preview https://claude.ai/artifact/8YtCoE8VWFXjV6iCt3pZTk）：
- * 0 单什么都不出；1–3 单逐单「单号 · 团期 · 团」，点了跳到那一行并勾上（Q4 A）；
- * 超过 3 单只出红数字（Q5：不做 Show 下拉，靠变红的胶囊点进去）。红框照页面已有的淡红条，数字照 Dashboard 的红气泡。
+ * G380 未发新单提醒（Annie 2026-11-23 答 8 题；preview https://claude.ai/artifact/8YtCoE8VWFXjV6iCt3pZTk）。
+ * B+C（Annie 2026-11-24「只需要显示未来几天，每天有几单…只显示总数，点进去就可以进到那一天的页面…点击红色胶囊就可以看到」「动手」；
+ * preview https://claude.ai/artifact/QPjDQxqRiDcsZg331EbbZr 第 2–7 节）：
+ * 不管几单都写「⚠ New orders not sent [总数] Wed Nov 25 (2) · Thu Nov 26 (1) …」，只列有新单的日子，不再逐单列单号。
+ * 正在看的那一天加粗、没下划线、不能点；别的日子点了去那天（onPickDay）。数字、日期只算当前标签（unsentForTab）。
+ * 红框照页面已有的淡红条，数字照 Dashboard 的红气泡。
  */
 export function UnsentAlert({
   data,
-  onPick,
+  currentDate,
+  onPickDay,
   className,
 }: {
   data: UnsentOrders | null;
-  onPick: (order: UnsentOrder) => void;
+  /** 正在看的日期（YYYY-MM-DD）。 */
+  currentDate: string;
+  onPickDay: (date: string) => void;
   className?: string;
 }) {
   if (!data || data.count <= 0) return null;
-  const many = data.count > 3 || data.orders.length > 3;
+  const days = unsentDays(data);
   return (
     <div
       role="status"
-      data-unsent-alert={many ? "count" : "list"}
+      data-unsent-alert="days"
       className={cn(
         "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-[8px] border-[0.5px] border-[#e4a5a0] bg-[#fdeceb] px-2.5 py-1 text-[12.5px] leading-snug text-[#7a2424] night:border-rose-400/30 night:bg-rose-400/10 night:text-rose-200",
-        "max-sm:flex-nowrap",
+        // 手机：一行放不下就横着滑（preview 第 4 节），日期一个都不截掉。
+        "max-sm:flex-nowrap max-sm:overflow-x-auto",
         className,
       )}
     >
       <span className="shrink-0 font-bold whitespace-nowrap">
-        ⚠ New orders not sent{many ? "" : ":"}
+        ⚠ New orders not sent
       </span>
-      {many ? (
-        <>
+      <span
+        data-unsent-count
+        className="inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-[#dc3545] px-1.5 text-[10px] leading-none font-bold whitespace-nowrap text-white tabular-nums"
+      >
+        {data.count}
+      </span>
+      {days.map((d, i) => {
+        const here = d.date === currentDate;
+        const label = `${dayLabel(d.date)} (${d.count})`;
+        return (
           <span
-            data-unsent-count
-            className="inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-[#dc3545] px-1.5 text-[10px] leading-none font-bold whitespace-nowrap text-white tabular-nums"
+            key={d.date}
+            className="inline-flex shrink-0 items-center gap-2"
           >
-            {data.count}
+            {i > 0 ? (
+              <span aria-hidden className="opacity-55">
+                ·
+              </span>
+            ) : null}
+            {here ? (
+              <span
+                data-unsent-day={d.date}
+                data-here=""
+                title="You are on this day"
+                className="font-extrabold whitespace-nowrap"
+              >
+                {label}
+              </span>
+            ) : (
+              <button
+                type="button"
+                data-unsent-day={d.date}
+                onClick={() => onPickDay(d.date)}
+                className="cursor-pointer font-semibold whitespace-nowrap underline underline-offset-2 hover:text-[#4a1010] night:hover:text-white"
+              >
+                {label}
+              </button>
+            )}
           </span>
-          <span className="min-w-0 max-sm:truncate">
-            Open the red pills to find them.
-          </span>
-        </>
-      ) : (
-        <span className="flex min-w-0 flex-wrap gap-x-2.5 gap-y-0.5 max-sm:flex-nowrap max-sm:overflow-x-auto">
-          {data.orders.map((o) => (
-            <button
-              key={`${o.order_number}|${o.tour_date}|${o.tab}|${o.pill}`}
-              type="button"
-              data-unsent-order={o.order_number}
-              title={`${o.product} · ${o.pax} pax`}
-              onClick={() => onPick(o)}
-              className="shrink-0 cursor-pointer font-semibold whitespace-nowrap underline underline-offset-2 hover:text-[#4a1010] night:hover:text-white"
-            >
-              {unsentLabel(o)}
-            </button>
-          ))}
-        </span>
-      )}
+        );
+      })}
     </div>
   );
+}
+
+/** 每天几张（同一「单号 + 团期」只算一张），只留有新单的日子；顺序照接口的 dates[]（没在里面的排后面）。 */
+export function unsentDays(
+  data: UnsentOrders,
+): { date: string; count: number }[] {
+  const per = new Map<string, Set<string>>();
+  for (const o of data.orders) {
+    let s = per.get(o.tour_date);
+    if (!s) per.set(o.tour_date, (s = new Set()));
+    s.add(o.order_number);
+  }
+  const order = [
+    ...data.dates,
+    ...[...per.keys()].filter((d) => !data.dates.includes(d)).sort(),
+  ];
+  return order
+    .filter((d) => per.get(d)?.size)
+    .map((d) => ({ date: d, count: per.get(d)!.size }));
 }
 
 /**
@@ -93,11 +132,10 @@ const DAY = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
 });
 
-/** 「CHD123456 · Tue Nov 25 · South Rim」（Q4 A，同后端 Notice 标题的写法）。 */
-export function unsentLabel(o: UnsentOrder): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(o.tour_date);
-  const day = m
+/** 「Wed Nov 25」。 */
+function dayLabel(ymd: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
+  return m
     ? DAY.format(new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]))).replace(",", "")
-    : o.tour_date;
-  return [o.order_number, day, o.pill_label].filter(Boolean).join(" · ");
+    : ymd;
 }
