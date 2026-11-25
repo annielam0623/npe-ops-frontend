@@ -31,6 +31,7 @@
 - Annie（原话）「然后查一下为什么我现在在dispatch的bus manifest上看不到羚羊谷的午餐」⇒ Annie（原话）「我又开了一个窗口，你把查询任务给它吧」⇒ 停掉子任务，派新窗口 **53 [4cd388]** 只查原因（午餐显示条件、Antelope 团型 / 设置、午餐值来源、11-14 起的改动、线上怎么分辨），交回 3d，修不修等 Annie。
   - 53 交回（只读，线上 401 没看到真值）：最可能 = 11-09 Annie 自己要求藏 Antelope 的 Lunch 列（G275 / 113，后端 manifest_setup.py:656-658 原话「On the Antelope Canyon bus manifest, hide the lunch column. Neither preview nor print should show it.」），之后在页头 Columns 勾掉了 Lunch（存 settings bus_manifest_hidden_columns，按团、天天生效）；只藏客人表的 Lunch 列，午餐单（NPE Lunch Box）照出。其次：Antelope（manifests.name='Page'）没有午餐店了（Supplier › Restaurant 存店时团列表整组替换，lunch_restaurants.py:217-237），列和午餐单一起没；或者列在但都是「-」（产品没认成带餐 / Rezdy 没写三明治）。11-14 起两边改动都没弄没它。修法若是 1：她在页头勾回 Lunch + Save，不用改代码。已请 a6 跑两条只读 SQL 定案。📌 问 Annie：她说的午餐是客人表 Lunch 列还是午餐单。
   - ✅ 定案（a6 生产只读）：settings bus_manifest_hidden_columns = {"3": ["lunch"]}；manifests id 3 Page / Antelope Canyon，lunch_restaurant_id 1（店还在）⇒ 就是 Lunch 列被设成隐藏。不用改代码；要放回来 = 页头 Columns 勾回 Lunch + Save（由 Annie 定）。
+  - ❌ 更正（a6）：Annie 说的是「General 版式下午餐页（LunchSheet）不见了」，不是 Lunch 列。藏列是 Nadia 11-10 做的、只影响 lunch_column；后端 7d 离线跑真函数核 11-24/25/26 Antelope 每车 13–23 位带餐客人 ⇒ block.lunch 应非空。⇒ 疑在前端：再派 53 查 manifest-view.tsx:1901 前后条件 + mock 复现 + 线上部署版本，先报不改。
 
 ## 2026-11-24 晚 收工交接：前端主窗口 `npe-ops-frontend-e7`[9d93e6]（家里；Annie「写交接」）
 **今晚上 main（都等 Annie 线上验，都只测 mock）**
