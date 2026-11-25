@@ -2185,19 +2185,24 @@ async function unsentChecks() {
   check("G380 点一单：勾选条算上「1 order」", await evaluate("return $bar().textContent.includes('1 order');"));
   check("G380 换团后再读一次接口", (await since(from, isUnsent)).length >= 1);
 
-  // 3 单：逐单列 3 个（含门票），点门票那单 ⇒ 换到 Tickets 标签、那颗胶囊、勾上。
-  await ctl({ unsent: 3 });
+  // 3 单（2 张 Bus + 1 张门票）：分标签（Annie 2026-11-24「tour和ticket的unsent提醒…是要分开的」）——
+  // Bus 页只列 Bus 的 2 张；Tickets 页只列门票那 1 张，点了去那颗胶囊、勾上。
+  await ctl({ unsent: 3, unsentList: null });
   await openPage(`${APP}/manifests?date=${today}&tab=bus&pill=g:3`);
-  await waitFor(`${shownAlert}?.querySelectorAll('[data-unsent-order]').length === 3`, 8000);
+  await waitFor(`${shownAlert}?.querySelectorAll('[data-unsent-order]').length === 2`, 8000);
   const three = await evaluate(`return [...${shownAlert}.querySelectorAll('[data-unsent-order]')].map(b => b.textContent.trim());`);
-  check("G380 3 单：逐单列 3 个，按接口的顺序", JSON.stringify(three) === JSON.stringify([`CHD1003 · ${dayLabel} · Grand Canyon West`, `CHD2001 · ${dayLabel} · Antelope Canyon`, `CHD1001 · ${dayLabel} · Antelope Bus Tour`]), JSON.stringify(three));
+  check("G380 分标签：Bus 页只列 Bus 的单（CHD1003、CHD1001），不列门票 CHD2001", JSON.stringify(three) === JSON.stringify([`CHD1003 · ${dayLabel} · Grand Canyon West`, `CHD1001 · ${dayLabel} · Antelope Bus Tour`]), JSON.stringify(three));
   const rowOk = await evaluate("const t = (x) => Math.round($btn(x, $bar()).getBoundingClientRect().top); return t('Send tour confirmation') === t('Clear') && t('Clear') === t('Send message');");
-  check("G380 3 单（电脑 1440）：红框在中间折行，Send tour confirmation / Send message / Clear 还在同一行", rowOk);
+  check("G380 Bus 2 单（电脑 1440）：Send tour confirmation / Send message / Clear 还在同一行", rowOk);
   check("G380 3 单：这一页（Bus）两颗红胶囊（Antelope Bus Tour、Grand Canyon West）", (await evaluate("return document.querySelectorAll('[data-unsent-pill]').length;")) === 2);
+  await openPage(`${APP}/manifests?date=${today}&tab=tickets`);
+  await waitFor(`${shownAlert}?.querySelectorAll('[data-unsent-order]').length === 1`, 8000);
+  const tixList = await evaluate(`return [...${shownAlert}.querySelectorAll('[data-unsent-order]')].map(b => b.textContent.trim());`);
+  check("G380 分标签：Tickets 页只列门票 CHD2001", JSON.stringify(tixList) === JSON.stringify([`CHD2001 · ${dayLabel} · Antelope Canyon`]), JSON.stringify(tixList));
   await evaluate(`[...${shownAlert}.querySelectorAll('[data-unsent-order]')].find(b => b.textContent.startsWith('CHD2001')).click();`);
   await waitFor("$box('CHD2001')?.checked", 8000);
   const tix = await evaluate("return { tab: document.querySelector('[role=tab][aria-selected=true]')?.textContent, pill: $pills().find(p => p.on)?.text, ticked: $box('CHD2001')?.checked, red: [...document.querySelectorAll('[data-unsent-pill]')].map(b => b.textContent.trim()) };");
-  check("G380 点门票那单：换到 Tickets、Antelope Canyon、勾上 CHD2001", tix.tab?.startsWith("Tickets") && tix.pill?.startsWith("Antelope Canyon") && tix.ticked, JSON.stringify(tix));
+  check("G380 点门票那单：在 Tickets、Antelope Canyon、勾上 CHD2001", tix.tab?.startsWith("Tickets") && tix.pill?.startsWith("Antelope Canyon") && tix.ticked, JSON.stringify(tix));
   check("G380 Tickets 的胶囊也会变红", tix.red.length === 1 && tix.red[0].startsWith("Antelope Canyon"), JSON.stringify(tix.red));
 
   // 同一页里再点一次（shown 不变）也要勾上。
@@ -2205,14 +2210,43 @@ async function unsentChecks() {
   await evaluate(`[...${shownAlert}.querySelectorAll('[data-unsent-order]')].find(b => b.textContent.startsWith('CHD2001')).click();`);
   check("G380 已经在那一页，再点一次照样勾上", await waitFor("$box('CHD2001')?.checked", 5000));
 
-  // 超过 3 单：只出红数字（Dashboard 红气泡），不列单号、没有 Show。
-  await ctl({ unsent: 5 });
+  // Annie「现在ticket那边没有3天内没发送的新单，但是那个提醒一直挂在那里」：只有 Bus 有新单 ⇒ Tickets 页不出红框。
+  await ctl({ unsentList: [["CHD1003", "bus", "g:7"], ["CHD1001", "bus", "g:3"], ["CHD1004", "bus", "g:none"]] });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus&pill=g:3`);
+  await waitFor(shownAlert, 8000);
+  await openPage(`${APP}/manifests?date=${today}&tab=tickets`);
+  await waitFor("document.querySelector('thead th')", 8000);
+  await sleep(800);
+  check("G380 分标签：Bus 有新单、Tickets 没有 ⇒ Tickets 页没有红框、没有红胶囊", await evaluate(`return !document.querySelector('[data-unsent-alert]') && !document.querySelector('[data-unsent-pill]');`));
+
+  // 同一单号同一团期在两颗胶囊里：只算 1 张（同后端 summarize）。门票页的 3 张 Bus 不算进来。
+  await ctl({ unsentList: [["CHD2001", "tickets", "t:antelope"], ["CHD2001", "tickets", "t:none"], ["CHD1003", "bus", "g:7"], ["CHD1001", "bus", "g:3"], ["CHD1004", "bus", "g:none"]] });
+  await openPage(`${APP}/manifests?date=${today}&tab=tickets`);
+  await waitFor(shownAlert, 8000);
+  const dup = await evaluate(`const a = ${shownAlert}; return { kind: a?.dataset.unsentAlert, items: [...a.querySelectorAll('[data-unsent-order]')].map(b => b.textContent.trim()), count: !!a.querySelector('[data-unsent-count]') };`);
+  check("G380 同一单号同一团期两段只算 1 张：Tickets 页逐单列（不出数字），只列门票的两段", dup.kind === "list" && !dup.count && dup.items.length === 2 && dup.items.every((t) => t.startsWith("CHD2001")), JSON.stringify(dup));
+
+  // 超过 3 张（只算 Bus）：只出红数字（Dashboard 红气泡），不列单号、没有 Show。
+  // 5 张 Bus = 今天 3 张 + 明天 2 张（单号相同、团期不同各算一张）；另有 2 张门票不算进 Bus 的数字。
+  await ctl({ unsentList: [["CHD1003", "bus", "g:7"], ["CHD1001", "bus", "g:3"], ["CHD1004", "bus", "g:none"], ["CHD1003", "bus", "g:7", 1], ["CHD1001", "bus", "g:3", 1], ["CHD2001", "tickets", "t:antelope"], ["CHD2002", "tickets", "t:none"]] });
   await openPage(`${APP}/manifests?date=${today}&tab=bus&pill=g:3`);
   await waitFor(`${shownAlert}?.dataset.unsentAlert === 'count'`, 8000);
   const many = await evaluate(`const a = ${shownAlert}; const c = a.querySelector('[data-unsent-count]'); return { n: c?.textContent, bg: c && getComputedStyle(c).backgroundColor, items: a.querySelectorAll('[data-unsent-order]').length, show: !![...a.querySelectorAll('button')].length, text: a.textContent };`);
-  check("G380 >3 单：红数字气泡 5（#dc3545）", many.n === "5" && /220, 53, 69/.test(many.bg), JSON.stringify(many));
+  check("G380 >3 单：Bus 页红数字气泡 5（只算 Bus，后端合计 7 张不用）（#dc3545）", many.n === "5" && /220, 53, 69/.test(many.bg), JSON.stringify(many));
   check("G380 >3 单：不列单号、没有 Show 键（Q5）", many.items === 0 && !many.show, JSON.stringify(many));
   check("G380 >3 单：Bus 这一页三颗红胶囊（含 No group yet）", (await evaluate("return document.querySelectorAll('[data-unsent-pill]').length;")) === 3);
+  await openPage(`${APP}/manifests?date=${today}&tab=tickets`);
+  await waitFor(shownAlert, 8000);
+  const tixFew = await evaluate(`const a = ${shownAlert}; return { kind: a?.dataset.unsentAlert, items: [...a.querySelectorAll('[data-unsent-order]')].map(b => b.textContent.trim().split(' · ')[0]) };`);
+  check("G380 同一份数据 Tickets 页只算门票 2 张：逐单列 CHD2001、CHD2002", tixFew.kind === "list" && JSON.stringify(tixFew.items) === JSON.stringify(["CHD2001", "CHD2002"]), JSON.stringify(tixFew));
+
+  // Admin fee 标签（Annie「Admin fee选A」）：两个位置都不出红框。
+  await ctl({ adminFee: true, unsent: 5, unsentList: null });
+  await openPage(`${APP}/manifests?date=${today}&tab=admin_fee`);
+  await waitFor("document.querySelector('[role=tab][aria-selected=true]')?.textContent.startsWith('CHD')", 8000);
+  await sleep(800);
+  check("G380 Admin fee 标签：不出红框（单独一行、勾选条里都没有）", await evaluate("return !document.querySelector('[data-unsent-alert]');"));
+  await ctl({ adminFee: false, unsent: 1 });
 
   // 勾选条不出的时候（这一天没有单）：红框单独一行，照样看得到。
   await ctl({ unsent: 1 });
@@ -2253,7 +2287,7 @@ async function unsentChecks() {
     check(`G380 手机 ${n} 单：单独一行、在表格上面、一行高、整页不晃`, !ph.inBar && ph.above && ph.h < 40 && ph.right <= 390 && ph.wide, JSON.stringify(ph));
   }
   await cdp("Emulation.clearDeviceMetricsOverride");
-  await ctl({ unsent: 0 });
+  await ctl({ unsent: 0, unsentList: null });
 }
 
 async function redProductChecks() {

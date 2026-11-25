@@ -104,7 +104,7 @@ import {
 } from "./config";
 import { NoteInput } from "./note-cell";
 import { StaffNoteCell } from "./staff-note-cell";
-import { UnsentAlert } from "./unsent-alert";
+import { UnsentAlert, unsentForTab } from "./unsent-alert";
 import { FieldPicker } from "./field-picker";
 import { ManifestSearch } from "./manifest-search";
 import { SectionCfm } from "./section-cfm";
@@ -777,6 +777,8 @@ export function ManifestsView() {
       .filter((p) => !!shown && p.date === shown.date && p.tab === shown.tab)
       .map((p) => p.pill),
   );
+  /** G380 分标签：红框只算、只列当前标签的单（Admin fee 不出）。 */
+  const tabUnsent = unsentForTab(unsent, tab);
   const currentPill = shown?.pills.find((p) => p.key === shown.pill);
   // 置顶 74：Waiver link 列这一页有要 waiver 的单才自动出（题 1 A），☰ Columns 里关掉就不加。
   // 150 Notes：默认放最后，☰ Columns 里关掉就不加（withNoteColumn）。
@@ -1270,7 +1272,7 @@ export function ManifestsView() {
 
             {/* G380：勾选条不出的时候（Admin fee、这一团没有单、看隐藏行）和手机上（勾选条没勾时藏起来）单独一行，放在表格上面。 */}
             <UnsentAlert
-              data={unsent}
+              data={tabUnsent}
               onPick={jumpToUnsent}
               className={cn(
                 "mb-3 w-full",
@@ -1312,7 +1314,7 @@ export function ManifestsView() {
                 {/* 占住中间的空，单子多时红框在里面折行，不把发送键挤到第二行。 */}
                 <span className="flex min-w-0 flex-1 justify-center max-sm:hidden">
                   <UnsentAlert
-                    data={unsent}
+                    data={tabUnsent}
                     onPick={jumpToUnsent}
                     className="min-w-0"
                   />
@@ -2968,7 +2970,9 @@ function ManifestsHowToUse() {
           <b>New orders not sent</b>: a red box in the bar above the list shows
           orders for the next 3 days (tomorrow, the day after and the day after
           that) that came in after their tour was last sent as a batch and have
-          not been sent yet, on every tour. Up to 3 are listed as order number ·
+          not been sent yet. Each tab counts only its own orders: the bus tour
+          tab shows bus tour orders, the tickets tab shows ticket orders, and
+          the admin fee tab shows no box. Up to 3 are listed as order number ·
           tour date · tour; click one to open that day and tour with the order
           ticked. With more than 3, a red number shows how many. Tours with such
           orders have red pills; click a red pill to find them. The box goes away

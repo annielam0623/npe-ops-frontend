@@ -64,6 +64,28 @@ export function UnsentAlert({
   );
 }
 
+/**
+ * G380 分标签（Annie 2026-11-24「tour和ticket的unsent提醒的数字…是要分开的」「动手，Admin fee选A」）：
+ * 只留这个标签的单（Bus 只算 bus、Tickets 只算 tickets，Admin fee 等没有的标签 = null 不出红框）；
+ * 张数照后端 summarize 的算法重算：同一「单号 + 团期」只算一张。
+ */
+export function unsentForTab(
+  data: UnsentOrders | null,
+  tab: string,
+): UnsentOrders | null {
+  if (!data) return null;
+  const orders = data.orders.filter((o) => o.tab === tab);
+  const count = new Set(orders.map((o) => `${o.order_number}|${o.tour_date}`))
+    .size;
+  if (!count) return null;
+  return {
+    ...data,
+    count,
+    orders,
+    pills: data.pills.filter((p) => p.tab === tab),
+  };
+}
+
 const DAY = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
   weekday: "short",

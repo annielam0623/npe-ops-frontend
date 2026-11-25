@@ -637,14 +637,18 @@ http
       if (ctl.partner || ctl.unsent403) return send(res, 403, { detail: "You do not have permission to do this." });
       const POOL = [["CHD1003", "bus", "g:7"], ["CHD2001", "tickets", "t:antelope"], ["CHD1001", "bus", "g:3"], ["CHD1004", "bus", "g:none"], ["CHD2002", "tickets", "t:none"]];
       // ctl.unsentFuture：团期轮流放在明天 / 后天 / 大后天（同生产 Q1）；不开时都放今天（检查套用）。
-      const orders = POOL.slice(0, Math.min(ctl.unsent || 0, POOL.length)).map(([o, tab, pill], i) => {
+      // G380 分标签：ctl.unsentList = [[单号, tab, pill, 隔几天]…] 自定义（同一单号 + 团期在两颗胶囊里也能造）。
+      const list = ctl.unsentList || POOL.slice(0, Math.min(ctl.unsent || 0, POOL.length));
+      const orders = list.map(([o, tab, pill, plus], i) => {
         const r = ROWS.find((x) => x.order_number === o);
-        const d = ctl.unsentFuture ? unsentDays()[i % 3] : today;
+        const d = plus ? unsentDays()[plus - 1] : ctl.unsentFuture ? unsentDays()[i % 3] : today;
         return { order_number: o, tour_date: d, tab, pill, pill_label: PILL_LABEL[pill], product: r.v.product, pax: r.v.pax,
           booked_at: `2026-11-24T1${i}:05:00+00:00`, row_keys: [rowKey(r, d)] };
       });
-      const pills = [...new Map(orders.map((o) => [`${o.tab}|${o.pill}`, { date: o.tour_date, tab: o.tab, pill: o.pill }])).values()];
-      return send(res, 200, { dates: ctl.unsentFuture ? unsentDays() : [today], count: orders.length, orders, pills });
+      const pills = [...new Map(orders.map((o) => [`${o.tour_date}|${o.tab}|${o.pill}`, { date: o.tour_date, tab: o.tab, pill: o.pill }])).values()];
+      // count 同后端 summarize：Bus + Tickets 合计，同一「单号 + 团期」只算一张。
+      const count = new Set(orders.map((o) => `${o.order_number}|${o.tour_date}`)).size;
+      return send(res, 200, { dates: ctl.unsentFuture ? unsentDays() : [today], count, orders, pills });
     }
     if (p === "/api/manifests") {
       if (ctl.fail) return send(res, 500, { detail: "Internal Server Error" });
