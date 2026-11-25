@@ -1452,7 +1452,7 @@ async function run() {
   );
   check(
     "How to use 写了新的门票流程（能勾缺号行，发送时才拦）",
-    await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')).textContent; return t.includes('ALL at the top left') && t.includes('Tick unsent under it to select only the orders not sent yet') && t.includes('Orders not sent yet show a green NEW tag next to their box') && t.includes('Send tour confirmation') && t.includes('highlighted in red; you can still tick them') && t.includes('Send message');"),
+    await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')).textContent; return t.includes('ALL at the top left') && t.includes('Tick unsent under it to select only the orders not sent yet') && t.includes('Orders not sent yet show a yellow NEW tag next to their box') && t.includes('Send tour confirmation') && t.includes('highlighted in red; you can still tick them') && t.includes('Send message');"),
   );
 
   // G129（Annie 2026-10-19「G129 动手」）：确认条里多一个 Send anyway：缺 Cfm # 的也照发，确认号栏留空，订单号进 send_anyway。
@@ -1652,7 +1652,12 @@ async function run() {
   check("门票标签：Select unsent 勾上所有没发过的（含没填 Cfm # 的）", (await evaluate("document.querySelector('thead th [data-select-unsent]').click(); return 1;")) === 1 && (await evaluate("const boxes = [...document.querySelectorAll('input[aria-label^=\"Select CHD\"]')]; return boxes.length >= 2 && boxes.every((b) => b.checked);")));
   // NEW 标签（Annie 2026-11-21「全部同意推荐，new的样式选B,动手」）：没发过的门票行框旁边 NEW，发过的（淡黄）不标；浅绿底深绿字；勾选列不变宽。
   check("门票 NEW：没发过的行都有 NEW、发过的（淡黄）没有", await evaluate("const rows = [...document.querySelectorAll('tr[data-row]')].filter((r) => !r.querySelector('label').hidden); return rows.length >= 2 && rows.some((r) => r.querySelector('[data-new-tag]')) && rows.every((r) => !!r.querySelector('[data-new-tag]') === !r.className.includes('fff8e1'));"), await evaluate("return [...document.querySelectorAll('tr[data-row]')].map((r) => r.dataset.row + ':' + !!r.querySelector('[data-new-tag]') + ':' + r.className.includes('fff8e1')).join(' | ');"));
-  check("门票 NEW：字是 NEW，浅绿底 #e3f1e6、深绿字 #2f6b3f（样式 B，不是蓝色）", await evaluate("const t = document.querySelector('[data-new-tag]'); const c = getComputedStyle(t); return t.textContent.trim() === 'NEW' && c.backgroundColor === 'rgb(227, 241, 230)' && c.color === 'rgb(47, 107, 63)';"));
+  check("门票 NEW：字是 NEW，实心琥珀黄底 #f5b301、深字 #2b1d00（Annie 2026-11-25「B动手」，不是蓝色）", await evaluate("const t = document.querySelector('[data-new-tag]'); const c = getComputedStyle(t); return t.textContent.trim() === 'NEW' && c.backgroundColor === 'rgb(245, 179, 1)' && c.color === 'rgb(43, 29, 0)';"));
+  check("门票 NEW：打印也带颜色（print-color-adjust: exact）", await evaluate("const c = getComputedStyle(document.querySelector('[data-new-tag]')); return c.printColorAdjust === 'exact' || c.webkitPrintColorAdjust === 'exact';"));
+  await cdp("Emulation.setEmulatedMedia", { media: "print" });
+  check("门票 NEW：打印预览里还是黄底深字", await evaluate("const c = getComputedStyle(document.querySelector('[data-new-tag]')); return c.backgroundColor === 'rgb(245, 179, 1)' && c.color === 'rgb(43, 29, 0)';"));
+  await cdp("Emulation.setEmulatedMedia", { media: "" });
+  check("门票 NEW：night 主题底 #fbbf24、字 #1a1200", await evaluate("document.documentElement.setAttribute('data-theme', 'night'); await new Promise((r) => setTimeout(r, 50)); const c = getComputedStyle(document.querySelector('[data-new-tag]')); const ok = c.backgroundColor === 'rgb(251, 191, 36)' && c.color === 'rgb(26, 18, 0)'; document.documentElement.removeAttribute('data-theme'); return ok;"));
   check("门票 NEW：勾选列不被撑宽（有没有 NEW 一样宽）", await evaluate("const w = () => document.querySelector('thead th').getBoundingClientRect().width; const a = w(); const st = document.createElement('style'); st.textContent = '[data-new-tag]{display:none!important}'; document.head.appendChild(st); await new Promise((r) => setTimeout(r, 50)); const b = w(); st.remove(); return Math.abs(a - b) < 0.5;"));
   await ctl({ resetSent: true, resetCalls: true });
 

@@ -1981,12 +1981,12 @@ function ManifestTable({
               onChange={(e) => onToggle([r.row_key], e.target.checked)}
             />
             {/* 还没发过的门票单在框旁边标 NEW（Annie 2026-11-21「还没有的订单在打勾的框旁边加个tag，new」；「全部同意推荐，new的样式选B,动手」）：
-                浅绿底深绿字、方角；Bus Tours 也加（「T-Q3 Bus Tours 要不要也加 NEW  要」）。
+                方角；2026-11-25 改成实心琥珀黄 + 深字（Annie「把new这个tag换个颜色吧，比如黄色」「B动手」，preview QZf9XiUVY5b44uMvnSoFms），打印也带颜色；Bus Tours 也加（「T-Q3 Bus Tours 要不要也加 NEW  要」）。
                 判断同表头 unsent 框：Tickets 看 sent_tickets_at、Bus 看 sent_tour_at；Admin fee 不标；不能撑宽勾选列。 */}
             {(tab === "tickets" || tab === "bus") && !sentAt(r, tab) ? (
               <span
                 data-new-tag
-                className="ml-1 rounded-[3px] bg-[#e3f1e6] px-1 text-[9.5px] leading-[15px] font-bold tracking-[.04em] whitespace-nowrap text-[#2f6b3f] night:bg-emerald-400/15 night:text-emerald-300"
+                className="ml-1 rounded-[3px] bg-[#f5b301] px-1 text-[9.5px] leading-[15px] font-bold tracking-[.04em] whitespace-nowrap text-[#2b1d00] [-webkit-print-color-adjust:exact] [print-color-adjust:exact] night:bg-[#fbbf24] night:text-[#1a1200]"
               >
                 NEW
               </span>
@@ -2803,7 +2803,7 @@ function ManifestsHowToUse() {
           Tick orders. Tick a section header to select that section, or{" "}
           <b>ALL</b> at the top left of the table to select everyone. Tick{" "}
           <b>unsent</b> under it to select only the orders not sent yet;
-          untick it to clear them. Orders not sent yet show a green{" "}
+          untick it to clear them. Orders not sent yet show a yellow{" "}
           <b>NEW</b> tag next to their box. A group with sections set in
           Settings → Products → Manifest setup (for
           example UPPER / LOWER / X for Antelope) is split into those sections.
