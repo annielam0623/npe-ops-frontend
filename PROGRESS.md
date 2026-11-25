@@ -9,6 +9,7 @@
 ## 2026-11-25（周三）前端主窗口 `npe-ops-frontend-3d`[70a1a9]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工 12:58：origin/main 72184956（主目录 detached 干净；main 在 ops-74 worktree，不用）。资源：空闲内存 35.3 / 61.8 GB，node 0、chrome 65。前端工作窗口：无。后端主窗口-a6 [0c3ec1]（今天后端上了 G384 顶栏按 agent ref 搜单 93692ed7，前端不用改）。
 - 7 天清单（11-18 至 11-24，Annie 提过的）已列给 Annie，等她选今天做哪几件。
+- Annie（原话）「3公司电脑里也有」⇒ 核到 TripGuru zip 公司电脑也有：C:\Users\annzh\Downloads\Annie-NPE-Integration-20261124.zip（239,675 字节，11-24 9:12）。前面交接写「只在家里」不对，已改正；已告诉后端 a6，G381 导入不用等家里。
 
 ## 2026-11-24 晚 收工交接：前端主窗口 `npe-ops-frontend-e7`[9d93e6]（家里；Annie「写交接」）
 **今晚上 main（都等 Annie 线上验，都只测 mock）**
