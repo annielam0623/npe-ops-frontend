@@ -38,6 +38,7 @@
   - 53 第二轮：前端没 bug。LunchSheet 只看 block.lunch（manifest-view.tsx:1901-1909），不看版式 / 藏列；mock 复现 general + hiddenCols lunch 照常出；线上前端含 37e529bb / fd3bf378。例外：手机 ⛶ Full screen 本来没有午餐单（151 设计）；午餐单接在每台车合计下面要往下滚。⇒ 转 a6 核线上后端部署 SHA / 接口原文；请 Annie 说明哪一屏（电脑 / 手机、哪天、哪台车）。53 已关 dev / Chrome、git 干净。
   - Annie（原话）「用电脑看的，整个dispatch都没有午餐信息，在general模式下面，午餐是单独一页纸。现在有了」⇒ 现在自己恢复了，原因未查到（前端代码 / mock 正常；后端数据离线核正常；今天后端只推 93692ed7 不碰 manifest）。先关掉，下次再出现请她记时间 + 截图，当时就查接口。已告诉 a6 / 53。Annie 在 53 补（原话）「电脑，今天 11-25，A 车，往下滚也没有。现在有了」。53：前端只看 blocks[].lunch，当时接口多半回空（名单没同步完 / 后端部署重启，未核）；要查清看 11-25 confirm 部署记录、dispatch_sync 时间、GET /api/dispatch/manifest?tour=3 日志，查不查由 Annie 定（不追问）。Annie 在 53 问（原话）「是不是没有 assign bus 和 driver 之前午餐页是不显示的」⇒ 53 已直接回她（后端 origin/main）：要先排车、不用排司机——午餐单每台车一张（tour_manifest.py:1496-1517），车 = Dispatch 已保存的 dispatch_assignment（:610）；没排车 blocks 空、客人进 unplaced、不画午餐单（前端只在 BusCard 画，manifest-view.tsx:1901）；多台车时客人要分进这台车才算，车字母不全则每张都空；还要有午餐店 + tour 节有人读出三明治（:1920）。今天 A 车已有，更可能当时 A 车还没分进带餐客人或名单没同步完（未核）。
   - ✅ **结案**：Annie（原话）「因为我但是查看的时候还没有assign司机和bus」⇒ 当时 Antelope 11-25 还没在 Dispatch 保存车 ⇒ 没车块 ⇒ 没午餐单；规则本来这样，不是 bug。排车前也要看午餐（如整团一张）= 新功能要先 preview，53 已问她，她没说要，不动。也告诉 a6 结案。
+- Annie（原话，经 a6）「为什么要 tour bus assign 酒店，我在 dispatch 做 bus assignment 的时候要我加酒店，我们 TI 不是默认的么」。a6 读：dispatch/config.ts:516 没 location_ids 就标「Needs a hotel」，对 Bus tour 车也标（G308 11-13 加进 Schedule check，只标不拦），Bus tour 车不自动带 TI。⇒ 派 53 查（是否真挡、stops 下游用途、TI 默认站现有概念）+ 出方案，不改代码。
 
 ## 2026-11-24 晚 收工交接：前端主窗口 `npe-ops-frontend-e7`[9d93e6]（家里；Annie「写交接」）
 **今晚上 main（都等 Annie 线上验，都只测 mock）**
