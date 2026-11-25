@@ -10,6 +10,10 @@
 - 开工 12:58：origin/main 72184956（主目录 detached 干净；main 在 ops-74 worktree，不用）。资源：空闲内存 35.3 / 61.8 GB，node 0、chrome 65。前端工作窗口：无。后端主窗口-a6 [0c3ec1]（今天后端上了 G384 顶栏按 agent ref 搜单 93692ed7，前端不用改）。
 - 7 天清单（11-18 至 11-24，Annie 提过的）已列给 Annie，等她选今天做哪几件。
 - Annie（原话）「3公司电脑里也有」⇒ 核到 TripGuru zip 公司电脑也有：C:\Users\annzh\Downloads\Annie-NPE-Integration-20261124.zip（239,675 字节，11-24 9:12）。前面交接写「只在家里」不对，已改正；已告诉后端 a6，G381 导入不用等家里。
+- 后端 a6 转 G380 红框 Annie 今天报的问题（Annie 跟后端说的，前端没收到原话）：
+  - a. Bus 11-27 红框 (1)、HooverDam 两单 NEW：CHDDQS9GQ 7-22 下单，早于 11-24 整批发送，按 Q3 B 不算（后端 unsent_orders.py:101）。a6 已问 Annie 要不要改成跟 NEW 一致（后端改）。前端不动。
+  - b. Tickets 点红框里的单跳过去后，红框和红胶囊都没了。3d 核代码：manifests-view.tsx:362-368 每次换日期 / 标签 / 团都重拉 /api/manifests/unsent，出错（非 401）时 setUnsent(null)，红框和红胶囊全藏、没有提示。是不是这次的原因未核（Annie 没给单号）。修法拟：派工作窗口先照 Annie 的操作复现找真原因；若是重拉出错，出错时保留上次结果（样子不变，当 bug）。出错要不要加一行提示是新文字，要先 preview。📌 问 Annie 今天修不修 + 单号 / 日期。
+  - c. Annie 要「有小节的团也跟 Antelope bus 的规则一样」：withNewSectionsFirst（config.ts:605）对所有 Bus 胶囊都生效，HooverDam 两节都有 NEW 所以看不出。a6 在问她「Antelope 的规则」指什么，答了转前端。
 
 ## 2026-11-24 晚 收工交接：前端主窗口 `npe-ops-frontend-e7`[9d93e6]（家里；Annie「写交接」）
 **今晚上 main（都等 Annie 线上验，都只测 mock）**
