@@ -6,6 +6,11 @@
 
 > **下一个主窗口：先读最上面的收工交接，再读当天记录，开工照 CLAUDE.md 开工必做第 4 条先列「Annie 提过没做完的」问她。**
 
+## 2026-11-26（周四）前端主窗口 `npe-ops-frontend-fe`[8565ac]（公司电脑；只分工和汇报，不写代码；14:30 下班）
+- 开工：origin/main 3cd6f390（主目录 detached 干净；main 在 ops-74 worktree）。资源：空闲内存 48.1 / 61.8 GB，node 0、chrome 0。前端工作窗口：无。后端在线：npe-confirmation-service-f1 [b5473f]。
+- ⚠️ G382 前端昨晚家里没有新提交（6e c01c928f、61 4ed9005b 仍未合，53 总览本体没写）；后端 7d task/g382-hr-schedule 到 c336d008（v185 Annie 已在生产执行）。
+- 7 天清单（11-19 至 11-25，Annie 提过的）已列给 Annie，等她选今天做哪几件。
+
 ## 2026-11-25 收工交接：前端主窗口 `前端主窗口-3d`[70a1a9]（公司电脑，今天 17:30 下班）
 **今天上 main（都等 Annie 线上验）**
 - 整团午餐单（G385）：前端 2807c609（61，be PASS）+ 后端 3fbd215c。明天没排车的团 Dispatch › Bus manifest「Not on a bus yet」下整张午餐单 + 餐厅电话 + Counted at；打印页 / Excel 也有。
