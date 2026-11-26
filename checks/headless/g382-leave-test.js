@@ -221,6 +221,24 @@ const out = (p) => p.evaluate(() => window.__out);
   const sw = await page.evaluate(() => document.documentElement.scrollWidth);
   check("phone: no horizontal page scroll", sw <= 390, String(sw));
 
+  // 改班栏手机版（e2 2026-11-26）：标题不叠第一条（ab 报）；收起时「+N」整个在栏里、点得到（fe：原来被整行截断截掉）。
+  await page.goto(`${BASE}/zz-g382-leave-harness?d=bar`, { waitUntil: "networkidle0" });
+  await page.waitForSelector("[data-change-requests-bar]");
+  const bar = await page.evaluate(() => {
+    const b = document.querySelector("[data-change-requests-bar]");
+    const br = b.getBoundingClientRect(), t = b.children[0].getBoundingClientRect();
+    const first = b.querySelector("[data-change-request]").getBoundingClientRect();
+    const more = b.querySelector("[data-change-requests-more]");
+    const m = more ? more.getBoundingClientRect() : null;
+    return { titleRight: t.right, firstLeft: first.left, more: more?.textContent, moreIn: !!m && m.width > 0 && m.left >= br.left && m.right <= br.right - 1 && m.left >= first.right - 0.5,
+      top: m ? document.elementFromPoint(m.left + m.width / 2, m.top + m.height / 2) === more : false, oneLine: Math.round(first.top) === Math.round(t.top) };
+  });
+  check("phone bar: title doesn't overlap the first request", bar.titleRight <= bar.firstLeft + 0.5, JSON.stringify(bar));
+  check("phone bar: +1 fully inside the bar and on top (tappable)", bar.more === "+1" && bar.moreIn && bar.top, JSON.stringify(bar));
+  await page.click("[data-change-requests-more]");
+  const shown = await page.$$eval("[data-change-request]", (b) => b.filter((x) => x.getBoundingClientRect().width > 0).length);
+  check("phone bar: tapping +1 shows both requests", shown === 2 && !(await page.$("[data-change-requests-more]")), String(shown));
+
   check("no page errors", errors.length === 0, errors.join(" | "));
   await browser.close();
   console.log(failures ? `\n${failures} FAILED` : "\nALL PASS");
