@@ -4,6 +4,7 @@ import type { HoursOf } from "@/lib/schedule-work-hours";
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 
 import { laToday, shiftYmd } from "@/lib/la-date";
+import { isHourly, leaveLine } from "@/lib/schedule-leave";
 import { gapRangeShort } from "@/lib/schedule-gaps";
 import { readRecentShifts, type RecentShift } from "@/lib/schedule-recent";
 import { formatClock, hasBadTimeRange } from "@/lib/schedule-time";
@@ -276,6 +277,26 @@ export function WeekGrid({
             onUndoDelete={() => onUndoDelete?.(slot.id)}
           />
         ))}
+        {live.length > 0 && employeeId != null
+          ? (() => {
+              // G382 按小时的假：班照旧，下面另一行「Leave 2–4 PM (PTO)」（Annie 已定，design 2.1 / preview v2 第 3 节）。
+              const hourly = (timeOff ?? []).find(
+                (t) =>
+                  t.employee_id === employeeId &&
+                  t.date === date &&
+                  isHourly(t),
+              );
+              return hourly ? (
+                <div
+                  data-hourly-leave={hourly.id}
+                  title={hourly.note ?? undefined}
+                  className="truncate rounded-[4px] bg-[rgba(253,224,71,.28)] px-1.5 py-px text-[10.5px] font-bold text-[#fde68a]"
+                >
+                  {leaveLine(hourly)}
+                </div>
+              ) : null;
+            })()
+          : null}
         {ghosts.map((slot) => (
           <div
             key={`ghost-${slot.id}`}
@@ -810,7 +831,12 @@ function OffOrTimeOffCard({
       className="relative flex flex-1 flex-col justify-center gap-0.5 rounded-[6px] border border-[rgba(250,204,21,.5)] bg-[rgba(253,224,71,.28)] px-2 py-1 text-[#fde68a]"
     >
       <b className="text-[12.5px] leading-tight">
-        {TIME_OFF_LABEL[timeOff.kind] ?? timeOff.kind}
+        {/* G382：类别可以自己建，后端带 kind_label（PTO / Sick / Leave…）；旧后端没有时照旧。 */}
+        {isHourly(timeOff)
+          ? leaveLine(timeOff)
+          : (timeOff.kind_label ??
+            TIME_OFF_LABEL[timeOff.kind] ??
+            timeOff.kind)}
       </b>
       {canEdit ? (
         <button
