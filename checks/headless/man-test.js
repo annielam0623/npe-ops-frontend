@@ -1454,7 +1454,7 @@ async function run() {
         return r;
       };
       // 上一段 Send anyway 发过 CHD2005（行变淡黄、不显示红）：清掉「已发」再看红不红。
-      await ctl({ clearCfm: true, mismatch: null, resetSent: true });
+      await ctl({ mismatch: null, resetSent: true }); // 不用 clearCfm：会连别的单（CHD2001）预存的号一起清掉，后面几项要用
       await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`);
       await waitFor(`$box('CHD2005') && ${isRed}`);
       let f0 = await setCfm("123");
@@ -1474,7 +1474,8 @@ async function run() {
       await waitFor(`$box('CHD2005') && ${row}.querySelector('[data-cfm-mismatch]')`);
       await setCfm("7654321");
       check("Cfm 标记跟着换：Rezdy 号不符的 CHD2005 填对的 staff 号存好，不刷新页面 ⇒ 红格消失", await waitFor(`!${row}.querySelector('[data-cfm-mismatch]')`, 5000), await evaluate(`return ${row}.innerHTML.slice(0, 300);`));
-      await ctl({ mismatch: null, clearCfm: true });
+      await setCfm(""); // 只清 CHD2005 自己的 staff 号，回到原样
+      await ctl({ mismatch: null });
     }
     await ctl({ cfmRule: null });
   }
