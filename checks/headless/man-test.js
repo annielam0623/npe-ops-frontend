@@ -217,8 +217,15 @@ async function run() {
     await evaluate(`${th(toLabel)}.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: window.__dt })); ${th(fromLabel)}?.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: window.__dt }));`);
     await sleep(200);
   };
+  // 拖表头 / Apply 马上存账号，但 PUT 经 next dev 转到 mock 要时间：等它到了再看（最多 5 秒），不然偶发 → null（同 f963ef70）。
+  const prefPuts = async (since0) => {
+    for (let end = Date.now() + 5000; ; await sleep(100)) {
+      const puts = await since(since0, (e) => e.path === "/api/user-prefs/manifest_cols_bus" && e.method === "PUT");
+      if (puts.length || Date.now() > end) return puts;
+    }
+  };
   const colPut = async (since0) => {
-    const p = (await since(since0, (e) => e.path === "/api/user-prefs/manifest_cols_bus" && e.method === "PUT"))[0];
+    const p = (await prefPuts(since0))[0];
     return p ? colsOf(p.body.value).join(",") : null;
   };
   check("表头可拖（draggable、提示 Drag to move this column）", await evaluate("const t = [...document.querySelectorAll('thead th[data-col]')]; return t.length === 10 && t.every(x => x.draggable && x.title === 'Drag to move this column');"));
@@ -320,7 +327,7 @@ async function run() {
   check("Cancel：不存、列不变", (await evaluate("return $heads().length;")) === 8);
 
   // ── 置顶 71（Annie「1 A 2 A 3 apply for this page 用蓝色 apply for all 用白色」）：☰ Columns 可以只存给这颗胶囊 ──
-  const busPut = async (since0) => { const p = (await since(since0, (e) => e.path === "/api/user-prefs/manifest_cols_bus" && e.method === "PUT")).at(-1); return p ? JSON.parse(p.body.value) : null; };
+  const busPut = async (since0) => { const p = (await prefPuts(since0)).at(-1); return p ? JSON.parse(p.body.value) : null; };
   const ownPills = () => evaluate("return [...document.querySelectorAll('[data-own-cols]')].map(o => o.closest('button').textContent.split(' ')[0]).join('|');");
   const goPill = async (label) => {
     await evaluate("$btn(" + JSON.stringify(label) + ").click();");
@@ -345,7 +352,7 @@ async function run() {
   from = (await mockLog()).length;
   await dragHead("Phone", "Guest");
   cv = await busPut(from);
-  check("71：有自己设置的页拖表头 ⇒ 存进这一页，共用的不动", cv && JSON.stringify(cv.shared) === "[]" && cv.pages["g:3"].indexOf("phone") === cv.pages["g:3"].indexOf("guest_name") - 1, JSON.stringify(cv));
+  check("71：有自己设置的页拖表头 ⇒ 存进这一页，共用的不动", cv && JSON.stringify(cv.shared) === "[]" && cv.pages["g:3"].indexOf("phone") === cv.pages["g:3"].indexOf("guest_name") - 1, JSON.stringify(cv) + " / " + (await evaluate("return $heads().join('|');")));
   await evaluate("$btn('☰ Columns').click();");
   await waitFor("$dialog()");
   check("71：有自己设置时弹窗写 This page has its own columns. + Use the shared columns", await evaluate("return $dialog().querySelector('[data-cols-scope]').textContent.startsWith('This page has its own columns.') && !!$dialog().querySelector('[data-use-shared]');"));
@@ -1419,6 +1426,57 @@ async function run() {
     );
     await evaluate("$btn('Done', $dialog()).click();");
     await waitFor("!$dialog()");
+    // ── 2026-11-26 bug（Annie 截图 AACT CHDL19M5H / CHDE5CPNW）：存 / 清空 Cfm # 后，太短 / 不符的标记要跟着后端换，
+    //    不刷新页面红框就该对（以前只换格里的号，cfm_short / cfm_mismatch 停在打开页面时的值）──
+    {
+      const SHORT_R = "Cfm # is too short (under 6 digits)";
+      const row = "$box('CHD2005').closest('tr')";
+      const isRed = `${row}.className.includes('bg-[#fdeceb]')`;
+      const setCfm = async (v) => {
+        const f0 = (await mockLog()).length;
+        await evaluate(`const el = $cfm('CHD2005'); $setValue(el, ${JSON.stringify(v)});`);
+        await waitFor(`$cfm('CHD2005').parentElement.querySelector('[data-cfm-save]')`);
+        await evaluate("$cfm('CHD2005').parentElement.querySelector('[data-cfm-save]').click();");
+        await waitFor("$cfm('CHD2005').parentElement.querySelector('[data-cfm-saved]')");
+        return f0;
+      };
+      const softReason = async () => {
+        await evaluate("for (const b of document.querySelectorAll('tbody input[type=checkbox]')) if (b.checked) b.click(); $box('CHD2005').click();");
+        await evaluate("$btn('Send reminder', $bar()).click();");
+        await waitFor("document.querySelector('[data-soft-blocked]') || $dialog()");
+        const r = await evaluate("return document.querySelector('[data-soft-block=\"CHD2005\"]')?.textContent ?? (\$dialog() ? 'dialog' : '');");
+        if (await evaluate("return !!$dialog();")) {
+          await evaluate("$btn('Cancel', $dialog().lastElementChild).click();");
+          await waitFor("!$dialog()");
+        } else {
+          await evaluate("$btn('Go fill them in').click();");
+        }
+        return r;
+      };
+      // 上一段 Send anyway 发过 CHD2005（行变淡黄、不显示红）：清掉「已发」再看红不红。
+      await ctl({ mismatch: null, resetSent: true }); // 不用 clearCfm：会连别的单（CHD2001）预存的号一起清掉，后面几项要用
+      await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`);
+      await waitFor(`$box('CHD2005') && ${isRed}`);
+      let f0 = await setCfm("123");
+      await sleep(400);
+      check("Cfm 标记跟着换：填 3 位短号 123 存好 ⇒ 还是标红、红条写 too short", (await evaluate(`return ${isRed};`)) && (await softReason()).includes(SHORT_R));
+      f0 = await setCfm("1234567");
+      const cleared = await waitFor(`!${isRed}`, 5000);
+      const quiet = await evaluate("return !document.body.textContent.includes('Loading') && $cfm('CHD2005').value === '1234567';");
+      const bg = (await since(f0, isList)).length;
+      check("Cfm 标记跟着换：改成 7 位 1234567 存好，不刷新页面 ⇒ 不再标红、不出 Loading（后台重读一次列表）", cleared && quiet && bg === 1, `${cleared} ${quiet} lists=${bg} / ${JSON.stringify((await mockLog()).slice(f0).map((e) => e.method + " " + e.path + " " + JSON.stringify(e.body ?? "").slice(0, 80)))}`);
+      check("Cfm 标记跟着换：再点 Send reminder ⇒ 没有 too short 红条，直接开弹窗", (await softReason()) === "dialog");
+      await setCfm("");
+      check("Cfm 标记跟着换：清空 staff 号 ⇒ 回到 Rezdy 的 RZ-2005（4 位）⇒ 又标红、写 too short", (await waitFor(isRed, 5000)) && (await softReason()).includes(SHORT_R));
+      // cfm_mismatch 同理：staff 填了号就不再按 Rezdy 的号判不符（mock 同后端）。
+      await ctl({ mismatch: ["CHD2005"] });
+      await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`);
+      await waitFor(`$box('CHD2005') && ${row}.querySelector('[data-cfm-mismatch]')`);
+      await setCfm("7654321");
+      check("Cfm 标记跟着换：Rezdy 号不符的 CHD2005 填对的 staff 号存好，不刷新页面 ⇒ 红格消失", await waitFor(`!${row}.querySelector('[data-cfm-mismatch]')`, 5000), await evaluate(`return ${row}.innerHTML.slice(0, 300);`));
+      await setCfm(""); // 只清 CHD2005 自己的 staff 号，回到原样
+      await ctl({ mismatch: null });
+    }
     await ctl({ cfmRule: null });
   }
   await ctl({ rezdyTix: false });
@@ -1868,7 +1926,11 @@ async function run() {
   await waitFor("document.querySelector('[data-hidden-section]')");
   await evaluate(`${hidToggle}.click();`);
   await waitFor("!document.querySelector('[data-hidden-pill]') && !document.querySelector('[data-hidden-section]')");
-  hreq = await since(hbefore, (e) => e.path === "/api/manifests");
+  // 灰色胶囊一取消勾选就拿掉（不等新数据），请求这时可能还在去 mock 的路上：等它到了再看（最多 5 秒），不然偶发 → []。
+  for (let end = Date.now() + 5000; ; await sleep(100)) {
+    hreq = await since(hbefore, (e) => e.path === "/api/manifests");
+    if (hreq.length || Date.now() > end) break;
+  }
   check("取消勾选：灰色胶囊和隐藏表都没了，回到正常表，请求不再带 include_hidden", !!(await evaluate("return !!document.querySelector('tr[data-row]');")) && hreq.length >= 1 && hreq.every((e) => !e.query.includes("include_hidden")), JSON.stringify(hreq.map((e) => e.query)));
   // 以后的样子：Fees 和边界行
   await ctl({ hiddenMode: "future" });
@@ -2223,6 +2285,20 @@ async function unsentChecks() {
   await waitFor(`new URLSearchParams(location.search).get('date') === '${D3}' && $box('CHD2002')`, 8000);
   const t3 = await evaluate(`return { pill: $pills().find(p => p.on)?.text, tab: document.querySelector('[role=tab][aria-selected=true]')?.textContent, n: document.querySelectorAll('tbody input[type=checkbox]:checked').length, has: !!$box('CHD2002') };`);
   check("G380 Tickets 点 D3：留在 Tickets，开 CHD2002 的团，不勾选", t3.tab?.startsWith("Tickets") && t3.n === 0 && t3.has, JSON.stringify(t3));
+  check("G380 Tickets 点 D3 之后：红框还在（红数字 2）、D3 那颗胶囊是红的", (await waitFor(`${shownAlert}?.querySelector('[data-unsent-count]')?.textContent === '2' && document.querySelectorAll('[data-unsent-pill]').length === 1`, 8000)));
+
+  // Annie 2026-11-25「Tickets 点红框里的单跳过去后，红框和红胶囊都没了」：跳过去会重读 /api/manifests/unsent，
+  // 重读出错（500 / 502 / 超时）时以前清空 ⇒ 红框、红胶囊全藏。现在保留上一次读到的（403 照旧不出，见下面）。
+  await openPage(`${APP}/manifests?date=${D1}&tab=tickets`);
+  await waitFor(shownAlert, 8000);
+  from = (await mockLog()).length;
+  await ctl({ unsent500: true });
+  await evaluate(`[...${shownAlert}.querySelectorAll('button[data-unsent-day]')].find(b => b.dataset.unsentDay === '${D3}').click();`);
+  await waitFor(`new URLSearchParams(location.search).get('date') === '${D3}' && $box('CHD2002')`, 8000);
+  await waitFor("false", 1200);
+  const e500 = await evaluate(`const a = ${shownAlert}; return { n: a?.querySelector('[data-unsent-count]')?.textContent, days: a ? [...a.querySelectorAll('[data-unsent-day]')].map(e => e.dataset.unsentDay + (e.hasAttribute('data-here') ? '*' : '')) : null, red: document.querySelectorAll('[data-unsent-pill]').length, text: document.body.textContent.includes('Internal Server Error') };`);
+  check("G380 跳过去后重读出错（500）：红框照旧（红数字 2、D3 加粗）、D3 胶囊照旧红、不出报错文字", (await since(from, (e) => e.path === "/api/manifests/unsent")).length >= 1 && e500.n === "2" && JSON.stringify(e500.days) === JSON.stringify([D1, `${D3}*`]) && e500.red === 1 && !e500.text, JSON.stringify(e500));
+  await ctl({ unsent500: false });
 
   // Annie「现在ticket那边没有3天内没发送的新单，但是那个提醒一直挂在那里」：只有 Bus 有新单 ⇒ Tickets 页不出红框。
   await ctl({ unsentList: [["CHD1003", "bus", "g:7", 1], ["CHD1001", "bus", "g:3", 2]] });
