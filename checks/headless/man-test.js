@@ -1426,6 +1426,56 @@ async function run() {
     );
     await evaluate("$btn('Done', $dialog()).click();");
     await waitFor("!$dialog()");
+    // ── 2026-11-26 bug（Annie 截图 AACT CHDL19M5H / CHDE5CPNW）：存 / 清空 Cfm # 后，太短 / 不符的标记要跟着后端换，
+    //    不刷新页面红框就该对（以前只换格里的号，cfm_short / cfm_mismatch 停在打开页面时的值）──
+    {
+      const SHORT_R = "Cfm # is too short (under 6 digits)";
+      const row = "$box('CHD2005').closest('tr')";
+      const isRed = `${row}.className.includes('bg-[#fdeceb]')`;
+      const setCfm = async (v) => {
+        const f0 = (await mockLog()).length;
+        await evaluate(`const el = $cfm('CHD2005'); $setValue(el, ${JSON.stringify(v)});`);
+        await waitFor(`$cfm('CHD2005').parentElement.querySelector('[data-cfm-save]')`);
+        await evaluate("$cfm('CHD2005').parentElement.querySelector('[data-cfm-save]').click();");
+        await waitFor("$cfm('CHD2005').parentElement.querySelector('[data-cfm-saved]')");
+        return f0;
+      };
+      const softReason = async () => {
+        await evaluate("for (const b of document.querySelectorAll('tbody input[type=checkbox]')) if (b.checked) b.click(); $box('CHD2005').click();");
+        await evaluate("$btn('Send reminder', $bar()).click();");
+        await waitFor("document.querySelector('[data-soft-blocked]') || $dialog()");
+        const r = await evaluate("return document.querySelector('[data-soft-block=\"CHD2005\"]')?.textContent ?? (\$dialog() ? 'dialog' : '');");
+        if (await evaluate("return !!$dialog();")) {
+          await evaluate("$btn('Cancel', $dialog().lastElementChild).click();");
+          await waitFor("!$dialog()");
+        } else {
+          await evaluate("$btn('Go fill them in').click();");
+        }
+        return r;
+      };
+      // 上一段 Send anyway 发过 CHD2005（行变淡黄、不显示红）：清掉「已发」再看红不红。
+      await ctl({ clearCfm: true, mismatch: null, resetSent: true });
+      await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`);
+      await waitFor(`$box('CHD2005') && ${isRed}`);
+      let f0 = await setCfm("123");
+      await sleep(400);
+      check("Cfm 标记跟着换：填 3 位短号 123 存好 ⇒ 还是标红、红条写 too short", (await evaluate(`return ${isRed};`)) && (await softReason()).includes(SHORT_R));
+      f0 = await setCfm("1234567");
+      const cleared = await waitFor(`!${isRed}`, 5000);
+      const quiet = await evaluate("return !document.body.textContent.includes('Loading') && $cfm('CHD2005').value === '1234567';");
+      const bg = (await since(f0, isList)).length;
+      check("Cfm 标记跟着换：改成 7 位 1234567 存好，不刷新页面 ⇒ 不再标红、不出 Loading（后台重读一次列表）", cleared && quiet && bg === 1, `${cleared} ${quiet} lists=${bg} / ${JSON.stringify((await mockLog()).slice(f0).map((e) => e.method + " " + e.path + " " + JSON.stringify(e.body ?? "").slice(0, 80)))}`);
+      check("Cfm 标记跟着换：再点 Send reminder ⇒ 没有 too short 红条，直接开弹窗", (await softReason()) === "dialog");
+      await setCfm("");
+      check("Cfm 标记跟着换：清空 staff 号 ⇒ 回到 Rezdy 的 RZ-2005（4 位）⇒ 又标红、写 too short", (await waitFor(isRed, 5000)) && (await softReason()).includes(SHORT_R));
+      // cfm_mismatch 同理：staff 填了号就不再按 Rezdy 的号判不符（mock 同后端）。
+      await ctl({ mismatch: ["CHD2005"] });
+      await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`);
+      await waitFor(`$box('CHD2005') && ${row}.querySelector('[data-cfm-mismatch]')`);
+      await setCfm("7654321");
+      check("Cfm 标记跟着换：Rezdy 号不符的 CHD2005 填对的 staff 号存好，不刷新页面 ⇒ 红格消失", await waitFor(`!${row}.querySelector('[data-cfm-mismatch]')`, 5000), await evaluate(`return ${row}.innerHTML.slice(0, 300);`));
+      await ctl({ mismatch: null, clearCfm: true });
+    }
     await ctl({ cfmRule: null });
   }
   await ctl({ rezdyTix: false });

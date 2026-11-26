@@ -643,6 +643,8 @@ export function ManifestsView() {
     );
   }
 
+  // 每行最近一次存 Cfm # 的编号：连着存两次时，先回来的旧结果不盖掉新的。
+  const cfmFlagSeq = useRef(new Map<string, number>());
   function onCfmSaved(rowKey: string, values: ManifestRow["values"]) {
     setData((d) =>
       d
@@ -656,6 +658,44 @@ export function ManifestsView() {
           }
         : d,
     );
+    // 太短 / 跟产品不符这两个标记是后端按当时的号算的（manifest_list.cfm_value()：staff 号非空用它，否则用 Rezdy 号）。
+    // 存完号不跟着换，红框就一直写旧原因、要刷新才对（2026-11-26 AACT CHDL19M5H / CHDE5CPNW 清空误填的 3 位号后仍写
+    // too short）。存好后在后台重读这一页，只换这一行的 cfm_short / cfm_mismatch，不出 Loading、别的格不动。
+    if (!date) return;
+    const seq = (cfmFlagSeq.current.get(rowKey) ?? 0) + 1;
+    cfmFlagSeq.current.set(rowKey, seq);
+    fetchManifestPage({
+      date,
+      tab,
+      pill,
+      fields: requestFields(reqSaved, tab),
+      includeHidden: showHidden,
+    })
+      .then((page) => {
+        if (cfmFlagSeq.current.get(rowKey) !== seq) return;
+        const fresh = page.rows.find((r) => r.row_key === rowKey);
+        if (!fresh) return;
+        setData((d) =>
+          d
+            ? {
+                ...d,
+                rows: d.rows.map((r) =>
+                  r.row_key === rowKey
+                    ? {
+                        ...r,
+                        cfm_short: fresh.cfm_short,
+                        cfm_mismatch: fresh.cfm_mismatch,
+                      }
+                    : r,
+                ),
+              }
+            : d,
+        );
+      })
+      .catch((error: unknown) => {
+        // 读不到：标记照旧（真发送时后端会按当时的号重判），只有 401 去登录。
+        if (isStatus(error, 401)) redirectToLogin();
+      });
   }
 
   const today = date ? laToday() : "";

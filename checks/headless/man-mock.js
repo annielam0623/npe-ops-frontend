@@ -841,7 +841,8 @@ http
     if (p === "/api/manifests/cfm" && req.method === "PUT") {
       const body = await readBody(req);
       entry.body = body;
-      const r = ROWS.find((x) => x.order_number === body.order_number && x.product_code === body.product_code);
+      // 页面上看得到的行都能存（同后端；以前只找 ROWS，rezdyTix 的 CHD2005 等存不了、回 404）。
+      const r = allRows().find((x) => x.order_number === body.order_number && x.product_code === body.product_code);
       if (!r || body.tour_date !== today || ctl.cfm404) return send(res, 404, { detail: "Not found in Rezdy" });
       const no = String(body.confirmation_no ?? "").trim();
       if (no.length > 100) return send(res, 400, { detail: "Too long" });
