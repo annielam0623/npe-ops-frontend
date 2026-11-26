@@ -521,6 +521,28 @@ async function run() {
   check("G198 午餐表：列头写各口味总数、defaulted 整行黄；节标题照后端原文「LOWER ANTELOPE 1:00P - 4 PAX」、底色用这一节的颜色", await evaluate("const l = document.querySelector('section[data-lunch]'); const ths = [...l.querySelectorAll('thead th')].map(t => t.textContent); const st = [...l.querySelectorAll('td[colspan]')].find(td => td.textContent === 'LOWER ANTELOPE 1:00P - 4 PAX'); return ths.includes('3Turkey') && ths.includes('1Veggie') && l.querySelector('tr[data-lunch-row=\"ZZ Test1\"]').className.includes('fff200') && !l.querySelector('tr[data-lunch-row=\"ZZ Test3\"]').className.includes('fff200') && !!st && getComputedStyle(st).backgroundColor === 'rgb(191, 227, 176)';"));
   check("G198 午餐表底部：Bus # / Tour Guide / Driver 一行、亮黄两行页脚（换行照印）", await evaluate("const l = document.querySelector('section[data-lunch]'); const row = l.querySelectorAll('[data-lunch-info] tr'); const n = l.querySelector('[data-lunch-note]'); return row.length === 1 && row[0].children.length === 6 && getComputedStyle(n).backgroundColor === 'rgb(255, 255, 0)' && getComputedStyle(n).whiteSpace === 'pre-line' && n.textContent.includes('\\n');"));
   check("G198 B 车 lunch = null：不出午餐表", await evaluate("return document.querySelectorAll('section[data-lunch]').length === 1;"));
+  // ── 整团午餐单（Annie 2026-11-25「同意推荐。动手」）：没分车的人也出午餐单；M3 只给电话；M8 Counted at；M7 date=tomorrow ──
+  // 前面的检查把 CHD2 存到了 B 车；这里先放回「没分车」，测完再放回 B。
+  await fetch(`${MOCK}/api/dispatch/manifests/guest-bus`, { method: "POST", body: JSON.stringify({ guest_id: 2, bus_label: null }) });
+  await ctl({ unplacedLunch: true });
+  await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+  await waitFor("document.querySelector('section[data-lunch=\"not-on-bus\"]')");
+  check("整团午餐单 M1：没分车卡片后面出一张，样子同每车（日期黄条、抬头、名单、页脚）", await evaluate("const l = document.querySelector('section[data-lunch=\"not-on-bus\"]'); const np = document.querySelector('section[aria-label=\"Not on a bus yet\"]'); return !!l && !!np && !!(np.compareDocumentPosition(l) & Node.DOCUMENT_POSITION_FOLLOWING) && l.children[0].textContent === 'Mon, Oct 5, 2026' && l.children[1].textContent === \"NPE Lunch Box - ZZ Test Bee's\" && !!l.querySelector('tr[data-lunch-row=\"ZZ Test2\"]') && !!l.querySelector('[data-lunch-note]') && document.querySelectorAll('section[data-lunch]').length === 2;"));
+  check("整团午餐单：Bus # 写 Not on a bus yet，Tour Guide / Driver 写 —", await evaluate("const c = [...document.querySelectorAll('section[data-lunch=\"not-on-bus\"] [data-lunch-info] td')].map(t => t.textContent); return JSON.stringify(c) === JSON.stringify(['Bus #', 'Not on a bus yet', 'Tour Guide', '—', 'Driver', '—']);"));
+  check("整团午餐单 M8：抬头下写 Counted at（洛杉矶时间）；每车的那张没有", await evaluate("const c = document.querySelector('section[data-lunch=\"not-on-bus\"] [data-lunch-counted]'); return !!c && /^Counted at \\w{3}, \\w{3} \\d{1,2}, \\d{1,2}:\\d{2}\\s[AP]M$/.test(c.textContent) && !document.querySelector('section[data-lunch=\"\"] [data-lunch-counted]');"), await evaluate("return document.querySelector('[data-lunch-counted]')?.textContent;"));
+  check("整团午餐单 M3：店名 + Phone，点了拨号（tel:+19285550110），显示 (928) 555-0110；每车的那张没有", await evaluate("const p = document.querySelector('section[data-lunch=\"not-on-bus\"] [data-lunch-phone]'); const a = p && p.querySelector('a'); return !!a && a.getAttribute('href') === 'tel:+19285550110' && a.textContent === '(928) 555-0110' && p.textContent === \"ZZ Test Bee's · Phone (928) 555-0110\" && !document.querySelector('section[data-lunch=\"\"] [data-lunch-phone]');"), await evaluate("return document.querySelector('[data-lunch-phone]')?.textContent;"));
+  await ctl({ unplacedLunch: "nophone" });
+  await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+  await waitFor("document.querySelector('section[data-lunch=\"not-on-bus\"]')");
+  check("整团午餐单：店没填电话 ⇒ 不出电话那行", await evaluate("return !document.querySelector('[data-lunch-phone]');"));
+  await ctl({ unplacedLunch: false });
+  await fetch(`${MOCK}/api/dispatch/manifests/guest-bus`, { method: "POST", body: JSON.stringify({ guest_id: 2, bus_label: "B" }) });
+  await goto(`${APP}/dispatch/manifest?date=tomorrow&tour=3`);
+  await waitFor("document.querySelector('[data-text-size-toolbar]')");
+  check("M7：date=tomorrow ⇒ 打开洛杉矶的明天，网址换成具体日期；旧后端（没有 unplaced.lunch）不出整团午餐单", await evaluate("const s = new URLSearchParams(location.search); const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()); const t = new Date(p + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + 1); return s.get('date') === t.toISOString().slice(0, 10) && s.get('tour') === '3' && !document.querySelector('section[data-lunch=\"not-on-bus\"]');"), await evaluate("return location.search;"));
+  await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+  await waitFor("document.querySelector('[data-text-size-toolbar]')");
+  await helpers();
   check("G197 存好的设定照画：Pick-up Location 整列 +3（19.5px）；别的列照旧 16.5px", await evaluate("const r = document.querySelector('tr[data-guest=CHD1]'); return getComputedStyle(r.children[2]).fontSize === '19.5px' && getComputedStyle(r.children[1]).fontSize === '16.5px';"));
   // 置顶 114（Annie「我不要二级菜单，不要隐藏」→「1.A 2 动手」）：没有 Aa 键，编辑卡一直显示在每台车色条下面；电脑没有 Cancel / Done。
   const TA = `${A}.querySelector('[data-text-size-toolbar]')`;

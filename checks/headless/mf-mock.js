@@ -129,7 +129,9 @@ function view0() {
     mode: "lettered", bus_labels: ["A", "B"],
     // g198：A 车多一节没开格的 UPPER（有 Tour time 也不写进标题，heading 照旧），测「没开格的节照旧」。
     blocks: [block(41, "A", onA, ctl.g198 ? [{ key: "UPPER ANTELOPE", kind: "tour", title: "UPPER ANTELOPE", heading: "UPPER ANTELOPE {0}", name: "", pax: 0, color: "#f3dcb4", guests: [], show_cfm: false, cfm_no: null, tour_time: "12:40P", checkin_time: "12:10P" }, shuttle] : [shuttle]), block(42, "B", onB)],
-    unplaced: { sections: un.length ? [sec(un, false)] : [], totals: { pax: un.reduce((a, g) => a + g.pax, 0), guests: un.length, boarded: 0, no_show: 0 }, empty_notes: false },
+    unplaced: { sections: un.length ? [sec(un, false)] : [], totals: { pax: un.reduce((a, g) => a + g.pax, 0), guests: un.length, boarded: 0, no_show: 0 }, empty_notes: false,
+      // 整团午餐单（Annie 2026-11-25「同意推荐。动手」）：ctl.unplacedLunch = 后端给没分车的人也算 lunch（形状同每车）+ 店的 phone；"nophone" = 店没填电话。
+      ...(ctl.unplacedLunch && un.length ? { lunch: { sections: [{ title: "LOWER ANTELOPE 1:00P - 3 PAX", rows: [{ name: "ZZ Test2", pax: 3, turkey: 3, veggie: 0, beef: 0, defaulted: true, notes: "1 Turkey ??", notes_check: true }] }], totals: { pax: 3, turkey: 3, veggie: 0, beef: 0 }, note: "(TEXT) POC: ZZ TEST 555-0100", title: "NPE Lunch Box - ZZ Test Bee's", restaurant: "ZZ Test Bee's", phone: ctl.unplacedLunch === "nophone" ? "" : "+19285550110" } } : {}) },
     totals: ctl.affiliate ? { pax: 14, guests: 6, boarded: 2, no_show: 0, pax_ours: 8, pax_farm_out: 6 } : { pax: 8, guests: 4, boarded: 2, no_show: 0 },
     ...(ctl.affiliate ? { affiliate: { sections: [{ key: "LOWER KEN'S 1:00PM", kind: "tour", title: "LOWER KEN'S 1:00PM", heading: "LOWER KEN'S 1:00PM {6}", pax: 6, color: "#bfe3b0",
       guests: [guest(71, "CHD71", { pax: 2, first_name: "Fran", last_name: "Affil", pickup_time: "7:30 AM", pickup_location: "Paris Las Vegas", bus_label: null }), guest(72, "CHD72", { pax: 4, first_name: "Gale", last_name: "Affil", pickup_time: "7:50 AM", pickup_location: "Venetian", bus_label: null })] }],

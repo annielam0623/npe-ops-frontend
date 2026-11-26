@@ -34,7 +34,8 @@ import {
   saveTextSize,
   setGuestBus,
 } from "@/lib/dispatch-manifest-api";
-import { isYmd } from "@/lib/la-date";
+import { isYmd, laToday, shiftYmd } from "@/lib/la-date";
+import { prettyPhone } from "@/components/supplier/restaurant-view";
 import { replaceUrl, useLeaveGuard } from "@/lib/use-leave-guard";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { tourColorFor } from "@/lib/tour-colors";
@@ -353,6 +354,8 @@ export function ManifestView() {
     null,
   );
   const [view, setView] = useState<ViewState>({ kind: "loading" });
+  // 整团午餐单 M8（Annie 2026-11-25「同意推荐。动手」）：这一份名单是几点拉的（打开 Dispatch 时同步过），写在没分车那张午餐单上。
+  const [countedAt, setCountedAt] = useState<Date | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [actionError, setActionError] = useState<string | null>(null);
   // 整页 Save（Annie 2026-10-29「缓存，然后等整页存」）：版式、字号、换车、黄框都先放在这里。
@@ -457,7 +460,16 @@ export function ManifestView() {
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
-    const date = q.get("date");
+    let date = q.get("date");
+    // 整团午餐单 M7（Annie 2026-11-25「同意推荐。动手」）：date=tomorrow = 洛杉矶的明天，给 Tasks 里「打电话给 Bee's」
+    // 那条的固定链接用（/dispatch/manifest?date=tomorrow&tour=<团>）。打开后网址换成具体日期，刷新还是同一天。
+    if (date === "tomorrow") {
+      date = shiftYmd(laToday(), 1);
+      q.set("date", date);
+      replaceUrl(
+        `${window.location.pathname}?${q.toString()}${window.location.hash}`,
+      );
+    }
     const tour = Number(q.get("tour"));
     if (!isYmd(date) || !Number.isInteger(tour) || tour <= 0) {
       setView({ kind: "bad-link" });
@@ -474,7 +486,10 @@ export function ManifestView() {
       if (!params) return;
       try {
         const data = await fetchManifest(params.date, params.tour, signal);
-        if (!signal?.aborted) setView({ kind: "ready", data });
+        if (!signal?.aborted) {
+          setView({ kind: "ready", data });
+          setCountedAt(new Date());
+        }
       } catch (error) {
         if (signal?.aborted) return;
         if (isStatus(error, 401)) redirectToLogin();
@@ -760,7 +775,10 @@ export function ManifestView() {
     // 当场画完（离开提醒跟着撤掉），再交回去：「Save 再离开」接着就放行跳页，要等提醒撤了才跳得对。
     flushSync(() => {
       setPending(next);
-      if (fresh) setView({ kind: "ready", data: fresh });
+      if (fresh) {
+        setView({ kind: "ready", data: fresh });
+        setCountedAt(new Date());
+      }
     });
     if (fails.length) {
       const total =
@@ -1406,6 +1424,18 @@ export function ManifestView() {
                             attraction={null}
                           />
                         </section>
+                      ) : null}
+                      {/* 整团午餐单 M1 / M5（Annie 2026-11-25「同意推荐。动手」）：没分车的人也出一张午餐单，样子同每车的，长就长；
+                          一台车都没排时就是整团完整那张（头一天 17:00 打电话给餐厅报数用）。 */}
+                      {shown.unplaced.sections.length > 0 &&
+                      data.unplaced.lunch ? (
+                        <LunchSheet
+                          lunch={data.unplaced.lunch}
+                          paper={data.paper_colors}
+                          dateLabel={data.date_label}
+                          tourSections={data.unplaced.sections}
+                          countedAt={countedAt}
+                        />
                       ) : null}
                     </Stage.Provider>
 
@@ -3075,23 +3105,45 @@ function LunchSheet({
   dateLabel,
   block,
   tourSections,
+  countedAt,
 }: {
   lunch: ManifestLunch;
   /** 纸本颜色（后端 paper_colors）；没带 ⇒ 照旧写死的颜色。 */
   paper?: ManifestPaperColors;
   dateLabel: string;
-  block: ManifestBlock;
+  /** 这一张是哪台车的；没有 = 还没分车的人那张（整团午餐单，Annie 2026-11-25「同意推荐。动手」）。 */
+  block?: ManifestBlock;
   tourSections: ManifestSection[];
+  /** 没分车那张：名单几点拉的（M8 「Counted at …」，只在屏幕上）。 */
+  countedAt?: Date | null;
 }) {
   const look = useManifestLook();
   const LTD =
     "border border-[#c8ced2] px-1.5 leading-6 text-[16.5px] font-bold whitespace-nowrap";
   const N = cn(LTD, "w-[72px] text-center text-[17px]");
   const t = lunch.totals;
+  const info: [string, string][] = block
+    ? [
+        ["Bus #", block.bus_number],
+        ...((sameCrew(block.bus)
+          ? [["Driver Guide", block.bus.driver]]
+          : [
+              ["Tour Guide", block.bus.guide || "—"],
+              ["Driver", block.bus.driver || "—"],
+            ]) as [string, string][]),
+      ]
+    : [
+        ["Bus #", "Not on a bus yet"],
+        ["Tour Guide", "—"],
+        ["Driver", "—"],
+      ];
+  const phone = !block && lunch.phone ? lunch.phone : "";
   return (
     <section
-      aria-label={`Lunch ${block.bus_number}`}
-      data-lunch
+      aria-label={
+        block ? `Lunch ${block.bus_number}` : "Lunch not on a bus yet"
+      }
+      data-lunch={block ? "" : "not-on-bus"}
       className={cn(CARD, "max-w-[820px]")}
     >
       <div
@@ -3107,6 +3159,22 @@ function LunchSheet({
         {lunch.title ||
           `NPE Lunch Box${lunch.vendor ? ` - ${lunch.vendor}` : ""}`}
       </div>
+      {!block && countedAt ? (
+        <div
+          data-lunch-counted
+          className="-mt-1 mb-1.5 text-center text-[12px] text-[#555]"
+        >
+          Counted at{" "}
+          {countedAt.toLocaleString("en-US", {
+            timeZone: "America/Los_Angeles",
+            hour: "numeric",
+            minute: "2-digit",
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+          })}
+        </div>
+      ) : null}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[600px] border-collapse">
           <thead>
@@ -3210,17 +3278,7 @@ function LunchSheet({
       <table data-lunch-info className="border-collapse">
         <tbody>
           <tr>
-            {(
-              [
-                ["Bus #", block.bus_number],
-                ...((sameCrew(block.bus)
-                  ? [["Driver Guide", block.bus.driver]]
-                  : [
-                      ["Tour Guide", block.bus.guide || "—"],
-                      ["Driver", block.bus.driver || "—"],
-                    ]) as [string, string][]),
-              ] as const
-            ).flatMap(([k, v]) => [
+            {info.flatMap(([k, v]) => [
               <td
                 key={k}
                 className="border border-[#999] px-2.5 py-[3px] text-[15px]"
@@ -3248,6 +3306,18 @@ function LunchSheet({
         >
           {lunch.note}
         </div>
+      ) : null}
+      {phone ? (
+        // M3 选 B（Annie 2026-11-25：staff 是打电话报数）：只给电话、点了拨号；只在屏幕上，不印。
+        <p
+          data-lunch-phone
+          className="mt-2.5 border-t border-dashed border-[#bbb] pt-2 text-[14px]"
+        >
+          {lunch.restaurant ? `${lunch.restaurant} · ` : ""}Phone{" "}
+          <a href={`tel:${phone}`} className="font-bold text-[#1d4ed8]">
+            {prettyPhone(phone)}
+          </a>
+        </p>
       ) : null}
     </section>
   );

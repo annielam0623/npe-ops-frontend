@@ -217,6 +217,8 @@ export interface ManifestLunch {
   title?: string;
   /** G199：店名。 */
   restaurant?: string;
+  /** 整团午餐单 M3（Annie 2026-11-25「同意推荐。动手」）：店的 Phone（E.164，空 = ''）。只在没分车那张的屏幕上显示；旧后端没有。 */
+  phone?: string;
   /** title 后端已拼好，例「LOWER 1P - 12 PAX」，照原文显示。 */
   /** color：这一节标题的颜色（后端照纸本午餐单取色，没有 ⇒ 同 Bus Manifest 节色）；没带（旧后端）⇒ 前端按节名找。 */
   sections: {
@@ -397,6 +399,11 @@ export interface ManifestView {
     sections: ManifestSection[];
     totals: ManifestTotals;
     empty_notes: boolean;
+    /**
+     * 整团午餐单 M1（Annie 2026-11-25「同意推荐。动手」）：还没分车的人的午餐单，形状同每车的 lunch。
+     * 一台车都没排时就是整团完整那张。旧后端没有 / 团没设午餐店 ⇒ 不出。
+     */
+    lunch?: ManifestLunch | null;
   };
   totals: ManifestTotals;
   affiliate?: ManifestAffiliate;
