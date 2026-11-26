@@ -217,8 +217,15 @@ async function run() {
     await evaluate(`${th(toLabel)}.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: window.__dt })); ${th(fromLabel)}?.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: window.__dt }));`);
     await sleep(200);
   };
+  // 拖表头 / Apply 马上存账号，但 PUT 经 next dev 转到 mock 要时间：等它到了再看（最多 5 秒），不然偶发 → null（同 f963ef70）。
+  const prefPuts = async (since0) => {
+    for (let end = Date.now() + 5000; ; await sleep(100)) {
+      const puts = await since(since0, (e) => e.path === "/api/user-prefs/manifest_cols_bus" && e.method === "PUT");
+      if (puts.length || Date.now() > end) return puts;
+    }
+  };
   const colPut = async (since0) => {
-    const p = (await since(since0, (e) => e.path === "/api/user-prefs/manifest_cols_bus" && e.method === "PUT"))[0];
+    const p = (await prefPuts(since0))[0];
     return p ? colsOf(p.body.value).join(",") : null;
   };
   check("表头可拖（draggable、提示 Drag to move this column）", await evaluate("const t = [...document.querySelectorAll('thead th[data-col]')]; return t.length === 10 && t.every(x => x.draggable && x.title === 'Drag to move this column');"));
@@ -320,7 +327,7 @@ async function run() {
   check("Cancel：不存、列不变", (await evaluate("return $heads().length;")) === 8);
 
   // ── 置顶 71（Annie「1 A 2 A 3 apply for this page 用蓝色 apply for all 用白色」）：☰ Columns 可以只存给这颗胶囊 ──
-  const busPut = async (since0) => { const p = (await since(since0, (e) => e.path === "/api/user-prefs/manifest_cols_bus" && e.method === "PUT")).at(-1); return p ? JSON.parse(p.body.value) : null; };
+  const busPut = async (since0) => { const p = (await prefPuts(since0)).at(-1); return p ? JSON.parse(p.body.value) : null; };
   const ownPills = () => evaluate("return [...document.querySelectorAll('[data-own-cols]')].map(o => o.closest('button').textContent.split(' ')[0]).join('|');");
   const goPill = async (label) => {
     await evaluate("$btn(" + JSON.stringify(label) + ").click();");
@@ -345,7 +352,7 @@ async function run() {
   from = (await mockLog()).length;
   await dragHead("Phone", "Guest");
   cv = await busPut(from);
-  check("71：有自己设置的页拖表头 ⇒ 存进这一页，共用的不动", cv && JSON.stringify(cv.shared) === "[]" && cv.pages["g:3"].indexOf("phone") === cv.pages["g:3"].indexOf("guest_name") - 1, JSON.stringify(cv));
+  check("71：有自己设置的页拖表头 ⇒ 存进这一页，共用的不动", cv && JSON.stringify(cv.shared) === "[]" && cv.pages["g:3"].indexOf("phone") === cv.pages["g:3"].indexOf("guest_name") - 1, JSON.stringify(cv) + " / " + (await evaluate("return $heads().join('|');")));
   await evaluate("$btn('☰ Columns').click();");
   await waitFor("$dialog()");
   check("71：有自己设置时弹窗写 This page has its own columns. + Use the shared columns", await evaluate("return $dialog().querySelector('[data-cols-scope]').textContent.startsWith('This page has its own columns.') && !!$dialog().querySelector('[data-use-shared]');"));
