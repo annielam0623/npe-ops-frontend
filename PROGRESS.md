@@ -27,6 +27,8 @@
 - ✅ Annie 在 f2 答（原话）「14是最小字号」⇒ **F3 = A**（人少的车放大撑满一页，人多的压留白 / 行距 / 纸边再缩到 14pt，再不行分页；R3 并入）。非动手。
 - Annie 在 f2（原话）「这份打印件就是给司机的Hard copy，对应的司机和导游的链接也应该是看不到的。但是有个边界你要非常清楚就是：这个只是for bus tour的bus，不是relay的pick up，那个还是要全部显示的」⇒ 隐藏列也管司机页 / 导游页的团车客人卡片（driver_home.html:256-345、guide_home.html:138-195）；relay 接人（driver_home.html:352 起）、Relay list、relay 打印照旧全显示。需要后端多一项：field.py driver_home / guide_home 把团的隐藏列带给模板，只改团车那块。新题 H6–H9（preview 第 4 版同链接，f2 分支 fbe7f942；已加进前端表）：H6 藏电话后 Call / WhatsApp / Text 键 A 留 / B 不出；H7 藏 ✓ 后 Boarded / No show 键 A 留 / B 不出；H8 藏 Lunch A 只藏每人餐小标 + ✎ Change / B 全藏 / C 手机不藏；H9 藏 First Name A 手机只出姓 / B 全名。推荐全 A。📌 等答 + 动手。
 - 🐞 Annie 转 staff 报（原话）「main manifest那边发送了以后弹窗无法下滑查看已经发送的订单，弹窗的上下滚动条没有」⇒ 当 bug，派 f2 插队 task/manifest-send-dialog-scroll：找哪个弹窗 / 原因、修成能滚、共用组件的其他发送弹窗一起查，样子不变直接合。
+  - Annie（原话）「你可以再开个窗口来处理bug啊」⇒ f2 停手（没提交，分支已删），等新窗口接。f2 线索（未复现）：send-dialogs.tsx:218 DialogFrame 面板 flex max-h-[90vh] overflow-hidden（:238），中间 overflow-y-auto flex-col（:245），子卡片 legacy-ui.tsx:143 overflow-hidden 被压扁 ⇒ 疑 shrink；broadcast-dialog.tsx :1131 / :1170、import-dialog.tsx:277 结构类似要一起查；复现用 man-test.js 约 1573「13 位分两批」+ 矮窗口。
+- Annie 在 f2 补隐藏列（原话）①「对不起，藏这些列是为了可以打印在一页纸上，不是藏功能啊」②「打勾那个在纸上不管打不打都不会反馈到系统里」⇒ 隐藏列是为纸上排版；司机 / 导游链接上的功能键（Call / WhatsApp / Text、Boarded / No show、✎ Change）都不藏 = H6 A、H7 A。f2 在问她：链接上的「字」（单号、票型、名、餐小标）还跟不跟着藏，还是链接整个不受影响、只管纸 + Excel（+ 屏幕按 H1 C）。
 - 不用等答就能做的：Tickets 跳过去红框消失（当 bug 复现找根因）、Bus manifest 打印隐藏列 preview、G382 两个前端分支合最新 main + 改旧 sch / leave headless。
 - 更正 David H（第 16 项）：Annie（原话）「我说过David H的身份很复杂，他是老板，有时候又会帮忙做relay」⇒ 11-22 定的「另开 staff 账号只勾 Dispatch Read only」不够（PROGRESS 里没找到她之前这句的记录）。📌 已问她：他的 staff 账号要多大权限、司机账号是否保留做 relay。一人同时是 staff + 司机后端支不支持：未核。
 
