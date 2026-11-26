@@ -635,6 +635,8 @@ http
     // 团期都用 today（mock 只有今天有行），点了能跳到真行、勾上。
     if (p === "/api/manifests/unsent") {
       if (ctl.partner || ctl.unsent403) return send(res, 403, { detail: "You do not have permission to do this." });
+      // G380 跳日期后红框没了（Annie 2026-11-25）：ctl.unsent500 = 重拉时后端出错 / 超时（Railway 502 等）。
+      if (ctl.unsent500) return send(res, 500, { detail: "Internal Server Error" });
       const POOL = [["CHD1003", "bus", "g:7"], ["CHD2001", "tickets", "t:antelope"], ["CHD1001", "bus", "g:3"], ["CHD1004", "bus", "g:none"], ["CHD2002", "tickets", "t:none"]];
       // ctl.unsentFuture：团期轮流放在明天 / 后天 / 大后天（同生产 Q1）；不开时都放今天（检查套用）。
       // G380 分标签：ctl.unsentList = [[单号, tab, pill, 隔几天]…] 自定义（同一单号 + 团期在两颗胶囊里也能造）。
