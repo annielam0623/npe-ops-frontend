@@ -181,7 +181,41 @@ const out = (p) => p.evaluate(() => window.__out);
   t = await txt(page);
   check("types: Saved shown", t.includes("Saved"));
 
-  /* 7. phone width */
+  /* 7. Shift change requests（N1） */
+  await open(page, "req");
+  t = await txt(page);
+  check("req: title", t.includes("Shift change request · Jing"));
+  check("req: line", t.includes("Jing asks to swap Mon 12/7 Close with Veronica (Veronica has agreed)."), t.match(/Jing asks[^\n]*/)?.[0]);
+  check("req: after line", !!(await page.$("[data-request-after]")));
+  check("req: Approve enabled", !(await disabled(page, "[data-request-approve]")));
+  await page.click("[data-request-approve]");
+  await sleep(400);
+  c = (await calls(page)).pop();
+  check("req: POST approve", c && c.url.endsWith("/confirmation-requests/81/approve") && c.method === "POST");
+  check("req: onDone approved", (await out(page)).pop() === "approved");
+
+  await open(page, "reqrest");
+  t = await txt(page);
+  check("req rest: red rule + Approve disabled", !!(await page.$("[data-request-rest]")) && (await disabled(page, "[data-request-approve]")), t.match(/can't work[^\n]*/)?.[0]);
+  await page.click("[data-request-decline]");
+  await sleep(400);
+  c = (await calls(page)).pop();
+  check("req rest: Decline still works", c && c.url.endsWith("/confirmation-requests/82/decline"));
+
+  await open(page, "reqwait");
+  t = await txt(page);
+  check("req waiting: no Approve, says waiting", !(await page.$("[data-request-approve]")) && t.includes("Waiting for Veronica to agree"));
+
+  await page.goto(`${BASE}/zz-g382-leave-harness?d=bar`, { waitUntil: "networkidle0" });
+  await page.waitForSelector("[data-change-requests-bar]");
+  t = await txt(page);
+  check("bar: count only open ones", t.includes("Shift change requests · 2"));
+  const items = await page.$$eval("[data-change-request]", (b) => b.map((x) => x.textContent));
+  check("bar: newest first", items[0].startsWith("Jing asks to add a Mid shift on Wed 12/9"), JSON.stringify(items));
+  await page.click('[data-change-request="81"]');
+  check("bar: click opens", (await out(page)).pop() === 81);
+
+  /* 8. phone width */
   await page.setViewport({ width: 390, height: 800 });
   await open(page, "day");
   const sw = await page.evaluate(() => document.documentElement.scrollWidth);
