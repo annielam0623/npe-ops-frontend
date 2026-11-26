@@ -2223,6 +2223,20 @@ async function unsentChecks() {
   await waitFor(`new URLSearchParams(location.search).get('date') === '${D3}' && $box('CHD2002')`, 8000);
   const t3 = await evaluate(`return { pill: $pills().find(p => p.on)?.text, tab: document.querySelector('[role=tab][aria-selected=true]')?.textContent, n: document.querySelectorAll('tbody input[type=checkbox]:checked').length, has: !!$box('CHD2002') };`);
   check("G380 Tickets 点 D3：留在 Tickets，开 CHD2002 的团，不勾选", t3.tab?.startsWith("Tickets") && t3.n === 0 && t3.has, JSON.stringify(t3));
+  check("G380 Tickets 点 D3 之后：红框还在（红数字 2）、D3 那颗胶囊是红的", (await waitFor(`${shownAlert}?.querySelector('[data-unsent-count]')?.textContent === '2' && document.querySelectorAll('[data-unsent-pill]').length === 1`, 8000)));
+
+  // Annie 2026-11-25「Tickets 点红框里的单跳过去后，红框和红胶囊都没了」：跳过去会重读 /api/manifests/unsent，
+  // 重读出错（500 / 502 / 超时）时以前清空 ⇒ 红框、红胶囊全藏。现在保留上一次读到的（403 照旧不出，见下面）。
+  await openPage(`${APP}/manifests?date=${D1}&tab=tickets`);
+  await waitFor(shownAlert, 8000);
+  from = (await mockLog()).length;
+  await ctl({ unsent500: true });
+  await evaluate(`[...${shownAlert}.querySelectorAll('button[data-unsent-day]')].find(b => b.dataset.unsentDay === '${D3}').click();`);
+  await waitFor(`new URLSearchParams(location.search).get('date') === '${D3}' && $box('CHD2002')`, 8000);
+  await waitFor("false", 1200);
+  const e500 = await evaluate(`const a = ${shownAlert}; return { n: a?.querySelector('[data-unsent-count]')?.textContent, days: a ? [...a.querySelectorAll('[data-unsent-day]')].map(e => e.dataset.unsentDay + (e.hasAttribute('data-here') ? '*' : '')) : null, red: document.querySelectorAll('[data-unsent-pill]').length, text: document.body.textContent.includes('Internal Server Error') };`);
+  check("G380 跳过去后重读出错（500）：红框照旧（红数字 2、D3 加粗）、D3 胶囊照旧红、不出报错文字", (await since(from, (e) => e.path === "/api/manifests/unsent")).length >= 1 && e500.n === "2" && JSON.stringify(e500.days) === JSON.stringify([D1, `${D3}*`]) && e500.red === 1 && !e500.text, JSON.stringify(e500));
+  await ctl({ unsent500: false });
 
   // Annie「现在ticket那边没有3天内没发送的新单，但是那个提醒一直挂在那里」：只有 Bus 有新单 ⇒ Tickets 页不出红框。
   await ctl({ unsentList: [["CHD1003", "bus", "g:7", 1], ["CHD1001", "bus", "g:3", 2]] });

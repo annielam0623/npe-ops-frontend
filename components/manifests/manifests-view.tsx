@@ -363,8 +363,16 @@ export function ManifestsView() {
       .then((res) => setUnsent(res))
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
-        if (isStatus(error, 401)) redirectToLogin();
-        setUnsent(null);
+        if (isStatus(error, 401)) {
+          redirectToLogin();
+          setUnsent(null);
+        } else if (isStatus(error, 403)) {
+          // 没有发送权限：什么都不出。
+          setUnsent(null);
+        }
+        // 其他出错（500 / 502 / 网络断、超时）：保留上一次读到的（Annie 2026-11-25「Tickets 点红框里的日子跳过去后，
+        // 红框和红胶囊都没了」——名单本来就不随日期 / 标签 / 团变，跳过去只是重读一次；以前一出错就清空，红框、红胶囊全藏）。
+        // 第一次就读不到 = 本来就是 null，照旧不出；样子不变，不加提示文字。
       });
     return () => controller.abort();
   }, [date, tab, pill, reloadKey, noConfirm, redirectToLogin]);
