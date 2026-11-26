@@ -36,12 +36,13 @@ export function ShiftChangeRequestsBar({
       data-change-requests-bar
       className="flex items-start gap-2.5 rounded-[8px] border border-[#d3d9e1] bg-[#f5f7fa] px-2.5 py-[7px] text-[12.5px] text-[#334155] max-sm:px-2 max-sm:py-1.5"
     >
-      <span className="min-w-[150px] font-extrabold whitespace-nowrap max-sm:min-w-0">
+      {/* 手机 390 上标题被内容压住、跟第一条叠在一起（ab 2026-11-26 报）：标题不缩，内容占剩下的宽度、自己截断。 */}
+      <span className="min-w-[150px] shrink-0 font-extrabold whitespace-nowrap max-sm:min-w-0">
         Shift change requests · {open.length}
       </span>
       <span
         className={cn(
-          "flex min-w-0 flex-wrap gap-x-3.5 gap-y-1",
+          "flex min-w-0 flex-1 flex-wrap gap-x-3.5 gap-y-1",
           !expanded && "max-sm:block max-sm:truncate",
         )}
       >
