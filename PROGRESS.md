@@ -14,6 +14,7 @@
 - Bus manifest 合并表 Annie 已填：R1「起点直接用excel的14号」、R2「A」；R3–R7 空。
 - 分题（跟 f1 商定，避免重复问）：后端表 C:\Users\annzh\Downloads\Annie_待答题_2026-11-26_后端合并表.xlsx（G381-A / D1–D4、G333、G368 v2、G380-1 CHDDQS9GQ 口径、G380-3「Antelope 规则」、G370、G371）前端不问。
 - 📌 前端表 **C:\Users\annzh\Downloads\Annie_待答题_2026-11-26_前端合并表.xlsx**（13 题 + 2 行参考）：F1 G382 总览 v3（最急）、F2 Leave 标签、F3 R1「14号」= 最小（A，推荐，人少的车放大撑满一页、人多缩到 14pt 再分页，R3 并入）还是固定（B）、F4–F7 原 R4–R7、F8 第一轮三团 B 默认 TI / A' 不标、F9 TI 14 / 33、F10 已排好的车、F11 Notice 补发 a / b、F12 RULE-1 写不写、F13 David H（f1 核：一账号一个 role、司机页只认 driver，auth.py:485-493 ⇒ A 另开 staff 账号今天能用，B 合一要改代码）、F14 146 读图方案动手 / 先不做（照片约 $0.10–0.25 / 次，每月 < $3）；参考：排序（公司表 24 处）、导游页 D。G361 + G372 没有待答题，后端今天出整体设计后请她确认。
+- 派工（Annie 开了 4 个窗口）：**e2** [e6fde9] G382 task/g382-fe 合 6e c01c928f + 61 4ed9005b + 最新 main、对后端 c336d008 合同、改旧 sch / leave headless；**ab** [92c9ed] G382 总览本体（等 Annie F1 点头才写，先读合同 / mock）；**09** [3b5d07] Tickets 跳过去红框消失（复现找根因，样子不变才修）；**f2** [048ee8] 打印隐藏列 preview + 照 0129_001.pdf 模拟 F3 A / B。都不自己合 main、不直接问 Annie。另有后端 86 [2a7c3f]。
 - 不用等答就能做的：Tickets 跳过去红框消失（当 bug 复现找根因）、Bus manifest 打印隐藏列 preview、G382 两个前端分支合最新 main + 改旧 sch / leave headless。
 - 更正 David H（第 16 项）：Annie（原话）「我说过David H的身份很复杂，他是老板，有时候又会帮忙做relay」⇒ 11-22 定的「另开 staff 账号只勾 Dispatch Read only」不够（PROGRESS 里没找到她之前这句的记录）。📌 已问她：他的 staff 账号要多大权限、司机账号是否保留做 relay。一人同时是 staff + 司机后端支不支持：未核。
 
