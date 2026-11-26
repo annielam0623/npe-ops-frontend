@@ -129,8 +129,11 @@ export interface ScheduleSlotCreateInput {
   note?: string | null;
 }
 
-/** 休假的三种类型（后端值）；页面显示名见 `TIME_OFF_LABEL`。 */
-export type ScheduleTimeOffKind = "pto" | "sick" | "personal";
+/**
+ * 休假类别的 key（后端值）。G382 起类别可以自己建（leave_categories 表，Q7 B），所以放宽成任意字符串；
+ * 上线三种 pto / sick / personal（personal 显示成 Leave，Q8 备注）。显示名优先用行上的 `kind_label`。
+ */
+export type ScheduleTimeOffKind = "pto" | "sick" | "personal" | (string & {});
 
 /** 周视图里的一条休假；类型和备注对所有员工可见（Annie 2026-10-18 定）。一人一天最多一条。 */
 export interface ScheduleTimeOff {
@@ -140,6 +143,11 @@ export interface ScheduleTimeOff {
   date: string;
   kind: ScheduleTimeOffKind;
   note: string | null;
+  /** G382 显示名（读 leave_categories，例「PTO」「Leave」）；旧后端没有。 */
+  kind_label?: string | null;
+  /** G382 按小时请假："HH:MM"；两个都 null / 没带 = 整天（后端 interface.md 第 1 节）。 */
+  start_time?: string | null;
+  end_time?: string | null;
 }
 
 /** PUT /api/schedule/time-off 的请求体（supervisor 及以上）：一次最多 31 天，整批要么都成要么都拒。 */
@@ -148,6 +156,9 @@ export interface ScheduleTimeOffInput {
   dates: string[];
   kind: ScheduleTimeOffKind;
   note: string | null;
+  /** G382 按小时：两个都给时 dates 只能一天；不带 = 整天。 */
+  start_time?: string | null;
+  end_time?: string | null;
 }
 
 /** PUT /api/schedule/weeks/{week_start}/slots/{id} 的请求体：改这个时段的时间（不改派的人）。 */
@@ -167,6 +178,32 @@ export interface ScheduleGap {
   date: string;
   start_time: string;
   end_time: string;
+  /** G382：为什么空出来（后端 interface.md 第 1 节）；旧后端没有。 */
+  reason?: ScheduleGapReason | null;
+}
+
+/** leave = 有人按小时请假空出来的；nobody = 这段本来就没人（其余三个键 null）。 */
+export interface ScheduleGapReason {
+  kind: "leave" | "nobody";
+  employee_id: number | null;
+  employee_name: string | null;
+  leave_kind_label: string | null;
+}
+
+/** G382 规则违规的一行（后端 interface.md 第 1 节）；message 是后端拼好的英文，原样显示。 */
+export interface ScheduleViolation {
+  rule: string;
+  employee_id: number | null;
+  employee_name: string | null;
+  dates: string[];
+  slot_ids: number[];
+  message: string;
+  /** 后端 schedule_rule_check._v（c336d008）：规则文档里那条的 id。 */
+  rule_id?: number | null;
+  /** 只有 blocking 的「新」违规会让保存 409 rule_violation；其余只列在 Rule problems。 */
+  blocking?: boolean;
+  /** 按周算的规则（days_per_week 等、weekly_hours_alert）：那一周的周日（CR-5，同一人同一周算一条）。 */
+  week?: string;
 }
 
 export type ScheduleWeekStatus = "draft" | "published";

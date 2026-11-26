@@ -432,6 +432,16 @@ http
     if (p === "/__sends") return send(res, 200, sendLog);
     if (p === "/__ctl") {
       Object.assign(ctl, await readBody(req));
+      // G382（6e 2026-11-25）：ctl.g382Seed = 周日 "YYYY-MM-DD" ⇒ 那周已发布：Anita 周一 Mid + 2–4 PM 按小时请假（PTO），
+      // Lizzie 周二整天 Sick（带 kind_label）；下一周是草稿。用来查 Staff Schedule 搬家后的只读样子（g382-staff-test.js）。
+      if (ctl.g382Seed) {
+        const w = ctl.g382Seed;
+        setWeek(w, "published", [slot(addDays(w, 1), "mid", "08:00", "17:00", 5), slot(addDays(w, 1), "close", "16:00", "21:30", 2)], { at: "2026-11-22T17:00:00+00:00", by: 1 });
+        setWeek(addDays(w, 7), "draft", [slot(addDays(w, 8), "open", "02:00", "10:00", 1)]);
+        timeOff.push({ id: nextTimeOffId++, employee_id: 5, date: addDays(w, 1), kind: "pto", kind_label: "PTO", start_time: "14:00", end_time: "16:00", note: null });
+        timeOff.push({ id: nextTimeOffId++, employee_id: 2, date: addDays(w, 2), kind: "sick", kind_label: "Sick", start_time: null, end_time: null, note: null });
+        delete ctl.g382Seed;
+      }
       // G298（2026-11-19）：ctl.futurePublished = "YYYY-MM-DD" ⇒ 那周是已发布、还没开始、从上周复制来的（员工去 Your schedule 换班那行字）。
       if (ctl.futurePublished) {
         const fw = ctl.futurePublished;
