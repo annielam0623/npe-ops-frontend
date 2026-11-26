@@ -143,7 +143,7 @@ export function WeekBlock(p: WeekBlockProps) {
         <span
           data-ov-time
           style={{ "--tlen": (time.length * 0.55).toFixed(2) } as CSSProperties}
-          className="overflow-hidden font-mono text-[10.5px] font-semibold whitespace-nowrap sm:text-[clamp(6px,calc(100cqi/var(--tlen)),10.5px)] max-sm:text-[9.5px]"
+          className="overflow-hidden font-mono text-[clamp(6px,calc(100cqi/var(--tlen)),10.5px)] font-semibold whitespace-nowrap"
         >
           {time}
         </span>

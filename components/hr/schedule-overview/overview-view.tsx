@@ -94,7 +94,10 @@ import { addDaysYmd, md, WeekBlock } from "./week-block";
  */
 
 const WEEK_CHOICES = [2, 4, 6, 8] as const;
-const BTN_SM = "h-[26px] px-2 py-0 text-[12px]";
+const BTN_SM = "inline-flex h-[26px] items-center px-2! py-0! text-[12px]!";
+const BTN_XS = "inline-flex h-[24px] items-center px-2! py-0! text-[11.5px]!";
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const mdy = (ymd: string) => `${MON[Number(ymd.slice(5, 7)) - 1]} ${Number(ymd.slice(8, 10))}`;
 
 type Load =
   | { kind: "loading" }
@@ -483,7 +486,7 @@ export function ScheduleOverview() {
               ‹
             </button>
             <span className="text-[13px] font-bold" data-ov-range>
-              {md(r.from)} – {md(end)}, {end.slice(0, 4)}
+              {mdy(r.from)} – {mdy(end)}, {end.slice(0, 4)}
             </span>
             <button type="button" aria-label="Later" className={cn(HR_BTN_CLASS, BTN_SM)} onClick={() => go(addDaysYmd(from, 7))}>
               ›
@@ -585,7 +588,7 @@ export function ScheduleOverview() {
                 slots={draft.slots}
                 timeOff={draft.timeOff}
                 gaps={r.gaps}
-                violations={r.violations}
+                violations={r.violations.filter(isBlocking)}
                 pending={pending}
                 shiftTypes={shiftTypes}
                 categories={categories}
@@ -595,7 +598,7 @@ export function ScheduleOverview() {
                   canEdit ? (
                     <>
                       {published ? (
-                        <button type="button" data-ov-edit data-ov-send={w} className={cn(HR_BTN_CLASS, "h-[24px] px-2 py-0 text-[11.5px]")} onClick={() => afterSave(() => setDialog({ kind: "send", week: w }))}>
+                        <button type="button" data-ov-edit data-ov-send={w} className={cn(HR_BTN_CLASS, BTN_XS)} onClick={() => afterSave(() => setDialog({ kind: "send", week: w }))}>
                           Send to confirm
                         </button>
                       ) : null}
@@ -604,7 +607,7 @@ export function ScheduleOverview() {
                           type="button"
                           data-ov-edit
                           data-ov-publish={w}
-                          className={cn(published ? HR_BTN_CLASS : BTN_BLUE, "h-[24px] px-2 py-0 text-[11.5px]")}
+                          className={cn(published ? HR_BTN_CLASS : BTN_BLUE, BTN_XS)}
                           onClick={() => afterSave(() => setDialog({ kind: "publish", week: w, allowGaps: false }))}
                         >
                           {published ? "Publish again" : "Publish"}

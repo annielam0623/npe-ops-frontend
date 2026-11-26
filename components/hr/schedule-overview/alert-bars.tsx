@@ -39,14 +39,22 @@ function Bar({
       data-ov-alert={tone}
       {...attr}
       className={cn(
-        "flex items-start gap-2.5 rounded-[8px] border px-2.5 py-[7px] text-[12.5px] max-sm:px-2 max-sm:py-1.5",
+        "flex min-w-0 items-start gap-2.5 rounded-[8px] border px-2.5 py-[7px] text-[12.5px] max-sm:flex-wrap max-sm:gap-x-2 max-sm:gap-y-0.5 max-sm:px-2 max-sm:py-1.5",
+        open && "max-sm:[&>span:last-child]:flex-wrap",
         TONE[tone],
       )}
     >
       <span className="min-w-[150px] font-extrabold whitespace-nowrap max-sm:min-w-0">{title}</span>
-      <span className="flex min-w-0 flex-wrap gap-x-3.5 gap-y-1">
+      <span className="flex min-w-0 flex-1 flex-wrap gap-x-3.5 gap-y-1 max-sm:flex-nowrap">
         {items.map((it, i) => (
-          <span key={i} className={cn(i > 0 && !open && "max-sm:hidden", "min-w-0 max-sm:truncate")}>
+          <span
+            key={i}
+            className={cn(
+              i > 0 && !open && "max-sm:hidden",
+              "min-w-0",
+              !open && "max-sm:block max-sm:flex-1 max-sm:truncate max-sm:[&>*]:inline",
+            )}
+          >
             {it}
           </span>
         ))}
@@ -54,7 +62,7 @@ function Bar({
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="cursor-pointer font-bold underline sm:hidden"
+            className="shrink-0 cursor-pointer font-bold underline sm:hidden"
           >
             +{items.length - 1}
           </button>
@@ -115,7 +123,7 @@ export function AlertBars({
     pendingLeave.length || gaps.length || violations.length || (canEdit && changeRequests.length);
   if (!hasAny) return null;
   return (
-    <div className="grid gap-1.5 px-3.5 py-2.5 max-sm:px-2.5 max-sm:py-2">
+    <div className="grid grid-cols-1 gap-1.5 px-3.5 py-2.5 max-sm:px-2.5 max-sm:py-2 [&>*]:min-w-0">
       {pendingLeave.length ? (
         <Bar
           tone="leave"

@@ -14,6 +14,14 @@ import { requiredForPath, usePermissions } from "@/lib/staff-permissions";
  *   partner 不看 dashboard.view，/dashboard 就是 partner 首页（lib/staff-permissions.ts）。
  * 总开关关着时：等总开关读完（和侧栏同一个请求）就照旧画页面。
  */
+/**
+ * 页面自己判权限、这里不拦的路径（勾不够时也先画页面，侧栏 / shortcut 照旧按勾）：
+ * - /settings/hr：G382 Q6 A，能批假的人（Manager / Team lead，只有 schedule.view）没有 settings.hr.view 也要能打开
+ *   Schedule 总览（请假通知的链接 /settings/hr?tab=schedule）。hr-view 没 HR 勾时只出 Schedule 页签，
+ *   能不能看由后端 GET /api/schedule/range 判（403 写原话）。
+ */
+const SELF_GATED = new Set(["/settings/hr"]);
+
 export function PermissionGate({
   pathname,
   children,
@@ -49,7 +57,7 @@ export function PermissionGate({
       </CenteredPage>
     );
   }
-  if (!allowed) {
+  if (!allowed && !SELF_GATED.has(pathname)) {
     return (
       <CenteredPage>
         <div
