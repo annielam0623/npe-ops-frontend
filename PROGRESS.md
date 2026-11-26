@@ -6,6 +6,24 @@
 
 > **下一个主窗口：先读最上面的收工交接，再读当天记录，开工照 CLAUDE.md 开工必做第 4 条先列「Annie 提过没做完的」问她。**
 
+## 2026-11-25 收工交接：前端主窗口 `前端主窗口-3d`[70a1a9]（公司电脑，今天 17:30 下班）
+**今天上 main（都等 Annie 线上验）**
+- 整团午餐单（G385）：前端 2807c609（61，be PASS）+ 后端 3fbd215c。明天没排车的团 Dispatch › Bus manifest「Not on a bus yet」下整张午餐单 + 餐厅电话 + Counted at；打印页 / Excel 也有。
+- Team leads / Manager 存不进 422：后端 ee177467（G386，be）；前端 344b4df9（422 显示哪一格）。Annie 再按一次 Save。
+- 未发新单 Notice：开关已开、Send to team = Operations；已自动发 24 条（18 张单，只到 Lizzie / Nadia）。📌 补发给 Operations 其他人：a6 给 Annie 看 SQL，她本人执行。
+
+**🔴 今天必做没做完：G382 Staff Schedule（Annie「staff schedule今天一定要做完」）——家里接着做**
+- 前端分支（都没合 main，要一起上）：6e task/g382-leave-dialogs **c01c928f**（四个请假框 + 改班栏 + Staff Schedule 搬家，worktree C:\Code\npe-ops-g382-leave）；61 task/g382-ov-checks **4ed9005b**（总览 mock + headless + 合同核对）；53 总览本体**还没写**。
+- 后端 7d task/g382-hr-schedule **d9a78076**（要先跑 migrate_v185；还没做 gap reason、weeks/{w} violations、PUT /time-off/{id}）。合同 interface.md 2f8735ef / f77fbb57。
+- 📌 等 Annie 两句（问过一次，不滚动问）：① 总览 preview v3 https://claude.ai/artifact/B2WxdSVvzdQATs53tkzp7B 行不行（点头 53 才写）；② Staff Schedule 去掉 Leave 标签 A（推荐，6e 已按 A）/ B 留。
+- 剩下：53 写总览（components/hr/schedule-overview/*、hr-view.tsx 换页签、只能批假的人看法）→ 挂 6e 的框 → 改 sch / leave 旧 headless → 对后端合同 → 合最新 main 跑检查 → 后端核对 PASS → 前后端一起上（6e 的 Staff Schedule 搬家不能早于总览上线）。
+
+**📌 等 Annie 填 / 答**
+- 合并表 C:\Users\annzh\Downloads\Annie_待答题_2026-11-25_合并表.xlsx：R1–R7 Bus manifest 自动适配（preview https://claude.ai/artifact/T7CHqsFu8ehaWHUS1bNjah v4）；TB-1~4 作废（Annie 已答第一轮三团不要酒店）；L1–L6 作废（午餐已做）。
+- Tour bus 酒店：Annie「第一轮的三台bus都不需要assign酒店，west需要，hoover已经有默认」；53 问她 B（三团默认带 TI 14）还是 A'（不标），未答。
+
+**窗口**：53 [4cd388]、6e [cb6820]、61 [b5ec85] 各自收尾推分支；后端主窗口 a6 [0c3ec1]、7d [dc0b68]（G382）、be [aa468b]。
+
 ## 2026-11-25（周三）前端主窗口 `npe-ops-frontend-3d`[70a1a9]（公司电脑；只分工和汇报，不写代码；今天 17:30 下班——Annie 经后端 7d 转：只今天，17:15 收尾、17:25 推完）
 - 开工 12:58：origin/main 72184956（主目录 detached 干净；main 在 ops-74 worktree，不用）。资源：空闲内存 35.3 / 61.8 GB，node 0、chrome 65。前端工作窗口：无。后端主窗口-a6 [0c3ec1]（今天后端上了 G384 顶栏按 agent ref 搜单 93692ed7，前端不用改）。
 - 7 天清单（11-18 至 11-24，Annie 提过的）已列给 Annie，等她选今天做哪几件。
