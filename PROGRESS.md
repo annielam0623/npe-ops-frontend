@@ -22,6 +22,14 @@
 - 合并表 C:\Users\annzh\Downloads\Annie_待答题_2026-11-25_合并表.xlsx：R1–R7 Bus manifest 自动适配（preview https://claude.ai/artifact/T7CHqsFu8ehaWHUS1bNjah v4）；TB-1~4 作废（Annie 已答第一轮三团不要酒店）；L1–L6 作废（午餐已做）。
 - Tour bus 酒店：Annie「第一轮的三台bus都不需要assign酒店，west需要，hoover已经有默认」；53 问她 B（三团默认带 TI 14）还是 A'（不标），未答。
 
+**17:30 后 Annie 又提的（她说「算了，写交接，晚上回去做吧」⇒ 家里接着做）**
+- **Bus manifest 打印样例**：Annie 发了 staff 实际在用的打印件 **C:\Users\annzh\Downloads\0129_001.pdf**（公司电脑；11-25 Relay splits、B+Z、两台 West、两台 Antelope、Bee's 午餐单），原话「这是员工用的版本，你可以参考以下」。特点：一车一页 A4 横向；客人行字大加粗、格内上下留白几乎没有；页头 / 列名小、不放大；人少的车字更大撑满一页。⇒ 给出 preview 的窗口照这份核 R1 目标字号 / R3 下限的推荐值，必要时把模拟单调成同样大小，再请 Annie 填 R1–R7。（家里没有这个 PDF 的话请 Annie 带过去或重发。）Annie 问「客人字往下缩」= 留白 / 行距 / 纸边压到底仍放不下时只缩客人行字号到刚好一页，下限 24pt，再不行分页；已解释。
+- 🆕 **Bus manifest 打印隐藏列（新功能，非动手，要先 preview）**：Annie 原话「对了，你把bus manifest里的ASSIT 和打勾那一列拿掉吧」→「加一个功能，在打印的时候可以隐藏一些colum，就在lunch那个选项旁边放，打勾了就可以不用打印那一列，可以逞drop down菜单」→「都放到隐藏吧」（= ASSIST 和打勾列不彻底拿掉，放进隐藏下拉）。
+  - 现在（查过代码）：页头「Columns: ☐ Lunch」只能勾 Lunch（manifest-view.tsx:3543，How to use :3367），按团、每天生效，屏幕 / 打印 / Excel 一起不出；后端 manifest_setup.py BUS_HIDEABLE_COLUMNS 只有 ("lunch","Lunch")，settings 键 bus_manifest_hidden_columns {manifest_id: [键]}，注释写「以后加列只改这份清单」。ASSIST 列：manifests.assist_column（v145），现只有 Antelope，紧跟 Special Requirements（tour_manifest.py:1539、:1754-1769；前端 manifest-view.tsx:2192、:2289）。打勾列 = 客人行最右的小列，**未逐行核**。
+  - 拟：Lunch 旁改成下拉菜单列出所有列，勾哪列隐藏哪列，先选后存按 Save。preview 题：① 只管打印还是屏幕 / 打印 / Excel 一起（现 Lunch 是一起）；② 按团一直生效（同现在）还是只管当天；③ 哪些列不能隐藏（客人名、人数？）。
+  - 估时（已告诉 Annie）：preview 30 分钟；选法同现在的话前后端各 1–2 小时并行，「动手」后约 2–3 小时上线；选「只管打印」或「只管当天」各多 1–2 小时。
+  - 需要后端：BUS_HIDEABLE_COLUMNS 加列、打印页 / Excel 照隐藏列出。
+
 **窗口**：53 [4cd388]、6e [cb6820]、61 [b5ec85] 各自收尾推分支；后端主窗口 a6 [0c3ec1]、7d [dc0b68]（G382）、be [aa468b]。
 
 ## 2026-11-25（周三）前端主窗口 `npe-ops-frontend-3d`[70a1a9]（公司电脑；只分工和汇报，不写代码；今天 17:30 下班——Annie 经后端 7d 转：只今天，17:15 收尾、17:25 推完）
