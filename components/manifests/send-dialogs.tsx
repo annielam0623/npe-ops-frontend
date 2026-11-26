@@ -237,15 +237,17 @@ function DialogFrame({
       // 不传 night：里面用的是发送页的白底表格 / 标签，全深色主题下也和发送页一样保持白底。
       panelClassName="flex max-h-[90vh] max-w-[720px] flex-col overflow-hidden"
     >
-      <div className="border-b border-stone-200 px-5 py-3.5 night:border-white/10">
+      <div className="shrink-0 border-b border-stone-200 px-5 py-3.5 night:border-white/10">
         <h2 id={titleId} className="text-base font-semibold text-stone-900">
           {title}
         </h2>
       </div>
-      <div className="flex flex-col gap-3 overflow-y-auto px-5 py-4 text-[13px] text-[#1a1a1a]">
+      {/* 子块一律 shrink-0：结果卡（CARD）是 overflow-hidden，作 flex 子项会被压扁裁掉、中间块就没东西可滚
+          （staff 2026-11-26「发送了以后弹窗无法下滑查看已经发送的订单」）。 */}
+      <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-5 py-4 text-[13px] text-[#1a1a1a] [&>*]:shrink-0">
         {children}
       </div>
-      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-stone-200 px-5 py-3 night:border-white/10">
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-stone-200 px-5 py-3 night:border-white/10">
         {footer}
       </div>
     </Modal>
