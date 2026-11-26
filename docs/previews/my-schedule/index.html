@@ -1,0 +1,127 @@
+<title>My schedule 页面预览</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+SC:wght@400;600;700&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+/* 版式：一栏文档，截图靠左大、说明表格跟在下面；跟 ops 后台的深色同一个色系（#06101c 底），浅色主题另给一套 */
+:root {
+  --bg: #f4f6f9; --panel: #ffffff; --fg: #142033; --muted: #5b6777; --line: #dde3ea;
+  --accent: #2563eb; --ok: #15803d; --warn: #b45309; --bad: #b91c1c; --chip: #eef2f7;
+  --sans: "Inter", "Noto Sans SC", system-ui, sans-serif; --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #06101c; --panel: #0d1a2b; --fg: #e6edf5; --muted: #93a1b3; --line: #1f2f44;
+  --accent: #60a5fa; --ok: #4ade80; --warn: #fbbf24; --bad: #f87171; --chip: #13233a; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #06101c; --panel: #0d1a2b; --fg: #e6edf5; --muted: #93a1b3; --line: #1f2f44;
+  --accent: #60a5fa; --ok: #4ade80; --warn: #fbbf24; --bad: #f87171; --chip: #13233a; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); line-height: 1.6; }
+.wrap { max-width: 1080px; margin: 0 auto; padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 28px; }
+h1 { font-size: 28px; margin: 0; text-wrap: balance; }
+h2 { font-size: 20px; margin: 0 0 4px; text-wrap: balance; }
+h3 { font-size: 15px; margin: 0; }
+p { margin: 0; }
+.lead { color: var(--muted); max-width: 70ch; }
+section { display: flex; flex-direction: column; gap: 14px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.note { border-left: 3px solid var(--warn); padding: 8px 12px; background: var(--chip); border-radius: 0 8px 8px 0; font-size: 14px; }
+figure { margin: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+figure img { border: 1px solid var(--line); border-radius: 8px; display: block; }
+figcaption { font-size: 13px; color: var(--muted); }
+.shots { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 760px) { .shots, .pair { grid-template-columns: minmax(0, 1fr); } }
+.tbl { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+th { font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: .02em; white-space: nowrap; }
+code, .src { font-family: var(--mono); font-size: 12px; }
+.src { color: var(--muted); white-space: nowrap; }
+.en { font-family: var(--sans); background: var(--chip); padding: 0 5px; border-radius: 4px; font-size: 13px; }
+.same { color: var(--ok); font-weight: 600; }
+.diff { color: var(--warn); font-weight: 600; }
+ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+</style>
+
+<div class="wrap">
+  <header style="display:flex;flex-direction:column;gap:8px">
+    <h1>My schedule：员工点进去看到的页面</h1>
+    <p class="lead">点侧栏 <span class="en">My schedule</span>、Dashboard 排班块的 <span class="en">My schedule →</span>、或 Staff Schedule 页头的 <span class="en">My schedule →</span> 都进这一页（<code>/my-schedule</code>，11-19 上线）。下面的图都是<strong>真页面截图</strong>：本地跑 ops 代码，接模拟数据（假名字 Jing、Lizzie、Nadia、Veronica，审批人 Tessa），没连生产。</p>
+    <p class="note">这一页的前端代码，线上 main 和 G382 分支一模一样（<code>my-schedule-view.tsx</code>、<code>confirm-view.tsx</code>、<code>leave-view.tsx</code>、<code>lib/leave-api.ts</code>、<code>lib/schedule-confirm-api.ts</code> 都没改）。G382 上线后看到的不同，只来自后端多出来的数据（按小时的假）和通知跳转。第 3 节逐条写。截图左下角黑底白字的 N 是本地开发模式的标记，线上没有。</p>
+  </header>
+
+  <section>
+    <h2>1. 现在线上的样子 · 电脑</h2>
+    <div class="shots">
+      <figure><img src="a_draft_d.png" alt="My schedule desktop, draft week" width="1280" height="1579"><figcaption>草稿周（11/1–11/7 draft）：上面班表，下面 My leave，最底 How to use（这里展开了）。</figcaption></figure>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <figure><img src="b_form_d.png" alt="My leave form open" width="1280" height="1346"><figcaption>点 <span class="en">+ Request leave</span> 展开表单。</figcaption></figure>
+        <figure><img src="e_none_d.png" alt="Nothing to confirm" width="1280" height="900"><figcaption>读不到这一周的班：只写 <span class="en">Nothing to confirm right now.</span>（这张同时开了「不在排班名单」，所以 My leave 也换成提示；真不在名单的人一般没有旧申请。）</figcaption></figure>
+      </div>
+    </div>
+    <figure><img src="c_swap_d.png" alt="Published week, swap mode" width="1280" height="1552"><figcaption>已发布、还没开始的周：只能换班。蓝框说明，班表下多一块 <span class="en">Your swaps</span>（各种状态的例子）。</figcaption></figure>
+  </section>
+
+  <section>
+    <h2>1b. 现在线上的样子 · 手机 390</h2>
+    <div class="pair">
+      <figure><img src="d_draft_m.png" alt="Phone, draft week" width="390" height="1281"><figcaption>班表在框里左右滑（一次看到约两天），整页不晃。My leave 的说明收进 i，申请变卡片。</figcaption></figure>
+      <figure><img src="d2_form_m.png" alt="Phone, leave form open" width="390" height="1507"><figcaption>手机上点 <span class="en">+ Request leave</span>：表单两列。</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>2. 页面上有哪几块、各个键（现在）</h2>
+    <div class="card tbl">
+      <table>
+        <thead><tr><th>块</th><th>看到什么 / 键</th><th>数据从哪来</th><th>到哪去</th><th>代码</th></tr></thead>
+        <tbody>
+          <tr><td>入口</td><td>侧栏 Operations 下 Staff Schedule 下面一项 <span class="en">My schedule</span>；Dashboard 排班块 <span class="en">My schedule →</span>；Staff Schedule 页头 <span class="en">My schedule →</span>；旧网址 <code>/schedule/confirm</code> 自动跳过来。要有 <code>schedule.view</code>，可见性跟 Confirm your schedule 同一个开关。</td><td>—</td><td>—</td><td class="src">nav-config.ts:178-186<br>schedule-section.tsx:176-184<br>schedule-view.tsx:1176-1182<br>app/schedule/confirm/page.tsx:19<br>staff-permissions.ts:61<br>app/my-schedule/page.tsx:13</td></tr>
+          <tr><td>换周</td><td><span class="en">‹ 11/1 – 11/7 ›</span> <span class="en">This week</span> <span class="en">Next week</span>；换周 = 换网址整页重开，有没发的改动先拦下问。</td><td>网址 <code>?week=</code></td><td>—</td><td class="src">confirm-view.tsx:849-858, 871-914</td></tr>
+          <tr><td>Your schedule（草稿周）</td><td>标题带 <span class="en">(draft)</span>；<span class="en">Please confirm by …</span>、状态字；<span class="en">Looks good</span>（白）、<span class="en">Send my changes</span>（蓝，提交）。全员整周的班；自己的班能拖到别的天，自己 off 的格子能 <span class="en">+ Work this day</span>。改动先攒在下面 <span class="en">Your changes</span>，按 Send 才发。</td><td><code>GET /api/schedule/confirmation?week=</code>（后端 get_confirmation：全员的班、我的回应、我的请求、别人找我换班）</td><td><code>POST …/confirmation/accept</code>、<code>…/confirmation/changes</code> ⇒ 排班的人在 Staff Schedule（G382 后在总览）的改班请求里批</td><td class="src">confirm-view.tsx:520-690, 778-812<br>schedule-confirm-api.ts:159-163</td></tr>
+          <tr><td>Your schedule（已发布、没开始的周）</td><td>蓝框 <span class="en">This week is published. You can still swap…</span>；只能把自己的班拖到同事的班上提换班 ⇒ 弹框确认 ⇒ 同事 <span class="en">Agree / Decline</span> ⇒ Tessa 批。<span class="en">Your swaps</span> 列各状态，没批前可 <span class="en">Withdraw</span>。晚接早的换班挡下、红字。</td><td>同上</td><td>同事收到站内提醒 + 邮件；批准后改到排班</td><td class="src">confirm-view.tsx:526-560, 733-776, 963-1060<br>schedule-confirm-api.ts:246-250</td></tr>
+          <tr><td>假在班表上</td><td>自己的假：格子里虚线框 <span class="en">Leave</span>；别人的假：<span class="en">Off</span>（员工看不到别人是什么假）。</td><td>同一个接口的 <code>time_off</code>，后端只给 <code>{employee_id, date, kind}</code>，别人那条 kind 是 null</td><td>—</td><td class="src">confirm-view.tsx:1263-1294<br>config.ts:79-83<br>后端 services/schedule.py:2651-2652</td></tr>
+          <tr><td>My leave</td><td>右上 <span class="en">+ Request leave</span> / <span class="en">Hide form</span>；表单：<span class="en">First day</span>、<span class="en">Last day</span>、<span class="en">Type</span>（PTO / Sick / Personal）、天数、<span class="en">Note</span>、<span class="en">Send request</span>（蓝）。下面我的申请表：Days / Type / Note / Status，Pending 可 <span class="en">Withdraw</span>（再问一次）。只能整天请。</td><td><code>GET /api/schedule/leave-requests/mine</code></td><td><code>POST /api/schedule/leave-requests</code> ⇒ 我的 manager / team lead / Super Admin 收到 Dashboard 提醒 + 邮件；<code>…/{id}/withdraw</code></td><td class="src">leave-view.tsx:202-258, 300-410, 505-600<br>lib/leave-api.ts:16-20, 83</td></tr>
+          <tr><td>How to use</td><td>折叠；前 8 条讲班表 / 换班，后 5 条讲请假。手机上本来就在最底。</td><td>—</td><td>—</td><td class="src">confirm-view.tsx:816-839<br>leave-view.tsx:190-196</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>看不到的情况</h3>
+    <div class="card tbl">
+      <table>
+        <thead><tr><th>情况</th><th>页面显示</th><th>代码</th></tr></thead>
+        <tbody>
+          <tr><td>这个账号不在排班名单上（排班名单没连到这个账号）</td><td>班表：后端 404 <span class="en">You are not on the schedule roster.</span> ⇒ 页面只写 <span class="en">Nothing to confirm right now.</span>；My leave：<span class="en">You are not on the staff schedule, so you can't request leave here. Ask whoever makes the schedule to add you.</span>，没有 + Request leave。</td><td class="src">后端 routers/schedule.py:810-816<br>confirm-view.tsx:479-483<br>schedule-confirm-api.ts:152-157<br>leave-view.tsx:250-256</td></tr>
+          <tr><td>没有 HR 档案</td><td>这一页不读 HR 档案，靠排班名单对人（排班名单里的人连着登录账号）。有 HR 档案、但不在排班名单的人，按上一行显示。</td><td class="src">后端 routers/schedule.py:810-816（只查 schedule_employees.admin_user_id）</td></tr>
+          <tr><td>这一周还没建（没排班）</td><td>后端 404 <span class="en">This week's schedule isn't ready yet.</span> ⇒ 同样只写 <span class="en">Nothing to confirm right now.</span>；My leave 照常能用。</td><td class="src">后端 services/schedule.py:2502-2510<br>confirm-view.tsx:479-483, 836-838</td></tr>
+          <tr><td>草稿周</td><td><strong>员工看得到</strong>（这一页就是确认草稿用的），标题带 <span class="en">(draft)</span>。这点跟 Staff Schedule 不同，Staff Schedule 的草稿周员工看不到。</td><td class="src">confirm-view.tsx:520-525<br>后端 services/schedule.py:2502-2504</td></tr>
+          <tr><td>过了周四 12 点 / 已发布 / 周已开始</td><td>蓝框分别写 <span class="en">The deadline (…) has passed…</span> / <span class="en">This week is published, so requests are closed…</span> / <span class="en">This week has started, so requests are closed.</span>，键都不出。</td><td class="src">confirm-view.tsx:506-513, 549-558</td></tr>
+          <tr><td>请假接口读不到（403 / 404）</td><td>整块 My leave 不出。</td><td class="src">leave-view.tsx:220-227</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>3. G382 上线后会不会变</h2>
+    <p class="lead">G382 = 前端 <code>task/g382-fe</code>（d8455e8c）+ ab 写的 Settings › HR › Schedule 总览 + 后端 <code>task/g382-hr-schedule</code>。My schedule 的前端代码没改，所以版面、键、文字都不变；下面只有两处会看到不同。</p>
+    <div class="card tbl">
+      <table>
+        <thead><tr><th>项目</th><th>现在</th><th>G382 后</th><th>代码</th></tr></thead>
+        <tbody>
+          <tr><td>版面、各个键、文字</td><td>见第 1、2 节</td><td class="same">不变</td><td class="src">这一页的文件在两个分支一样</td></tr>
+          <tr><td>员工请假入口</td><td>已经在 My schedule 的 My leave（11-19 从 Staff Schedule › Leave 搬来的）</td><td class="same">不变</td><td class="src">leave-view.tsx:202-258</td></tr>
+          <tr><td>按小时请假（员工自己申请）</td><td>表单只有 First day / Last day，只能整天</td><td class="same">不变：后端开始收 start_time / end_time，但这一页的表单不送，员工在这里还是只能整天请。按小时的假只能由主管在总览上录、或批的时候改成按小时。</td><td class="src">leave-view.tsx:315-345<br>后端 interface.md §3</td></tr>
+          <tr><td>请假类别</td><td>下拉写死三个：PTO / Sick / Personal；申请表 Type 列也照这三个名字显示</td><td class="diff">前端不变，但跟总览对不上：总览和后端把 personal 叫 <span class="en">Leave</span>（Q8），管类别的人还能加新类别；这一页的下拉仍写 <span class="en">Personal</span>，也看不到新加的类别</td><td class="src">lib/leave-api.ts:16-24<br>leave-view.tsx:349-362, 550, 576</td></tr>
+          <tr><td>按小时的假在班表上</td><td>现在没有按小时的假</td><td class="diff">有了以后：那一格照旧出班卡，上面多一条虚线小框 <span class="en">Leave</span>，<strong>不写几点到几点</strong>（这一页的接口只给日期和类别，不给时间）；别人的按小时假显示 <span class="en">Off</span></td><td class="src">confirm-view.tsx:1290-1294<br>后端 services/schedule.py:2651-2652</td></tr>
+          <tr><td>批完以后员工收到的通知链接</td><td><code>/schedule?tab=leave</code> ⇒ 不批假的员工自动跳 My schedule</td><td class="same">普通员工不变</td><td class="src">后端 leave_requests.py:38, 579, 584<br>schedule-view.tsx（main）:385-386</td></tr>
+          <tr><td>同上，但收通知的人自己也是批复人 / Super Admin</td><td>同一个链接打开 Staff Schedule 的 Leave 标签</td><td class="diff">跳到总览 <code>/settings/hr?tab=schedule</code>，不是 My schedule（Staff Schedule 没有 Leave 标签了）</td><td class="src">schedule-view.tsx（g382-fe）:395-404</td></tr>
+          <tr><td>Staff Schedule、Dashboard 上的 <span class="en">My schedule →</span> 键</td><td>有</td><td class="same">不变（Staff Schedule 搬家后这个键照留）</td><td class="src">sch-test「My schedule 6A」G382 版照过</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <figure><img src="f_hourly_d.png" alt="Hourly leave on My schedule after G382" width="1280" height="1183"><figcaption>G382 后的样子（同一份代码，模拟后端给 Jing 周二一条自己的 PTO，那天她有 Mid 班）：周二格子顶上一条虚线 <span class="en">Leave</span>，下面照旧 Mid 10:00 AM – 6:00 PM，看不出是几点到几点的假。</figcaption></figure>
+  </section>
+</div>
