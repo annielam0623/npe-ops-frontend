@@ -1,12 +1,14 @@
 # G382 前端 ↔ 后端合同核对包（给后端 86）
 
 - 前端：`task/g382-ov-ab` @ a94f171b（总览 = ab；请假框 / 改班栏 / Staff Schedule 搬家 / My leave = e2 在 `task/g382-fe` 上，已合进 a94f171b）。
-  改班栏手机「+1」修好以后另有一笔（见文末），只动样式。
+  之后 e2 在 `task/g382-fe` 又推了两笔（cf10418d 改班栏手机「+1」点得到，只动样式；a418dd48 g382-staff / g382-leave 能从 run-all 直接跑），
+  跟 a94f171b、最新 main 合在 `task/g382-ov-checks-e2`（这份文件也在这个分支）。
 - 后端：`task/g382-hr-schedule` @ 77404fa0 的 `docs/g382-hr-schedule/interface.md` 和代码（后端分支现在到 85af458e，只多 SA-6 测试，不动契约）。
 - 做法：逐条看前端发的请求（路径、body）和读的字段，对照合同和后端代码。下面「前端」列写 `文件:行`（a94f171b），「后端」列写 77404fa0 的 `文件:行`。
   没查到底的写「未核」。CR-6（`would_gap` 做还是删）定了再补。
-- 检查结果（a94f171b + e2 的检查）：g382ov-test 10/10（连跑 3 次）、g382ov-contract-check 37/37、g382-leave-test 67/67、g382-staff-test 14/14、
-  sch-test 82/82（21 段 SKIP，管理功能搬到总览）、leave-test 54/54（6 段 SKIP）。
+- 检查结果（合并后的 `task/g382-ov-checks-e2`，`node run-all.js g382-staff g382-leave sch leave g382ov hr`）：
+  g382-staff 14/14、g382-leave 67/67、sch 82/82（21 段 SKIP，管理功能搬到总览）、leave 54/54（6 段 SKIP）、g382ov 10/10、hr 138/138，6/6 clean；
+  g382ov-contract-check 37/37；tsc 0、eslint 0 错（3 个旧 warning）、build 过。
 
 ## 结论
 
