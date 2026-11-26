@@ -32,6 +32,7 @@ import {
   type LeaveShift,
   type MyLeave,
 } from "@/lib/leave-api";
+import { fetchLeaveCategories } from "@/lib/schedule-leave-api";
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/types";
 
@@ -265,6 +266,21 @@ function RequestForm({ onSent }: { onSent: () => void }) {
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
   const [kind, setKind] = useState<LeaveKind>("pto");
+  // G382 Q7 B / Q8：类别读后端类别表（只要在用的，同总览 LeaveTypesDialog 同一个接口）；读不到就用兜底 PTO / Sick / Leave。
+  const [kinds, setKinds] = useState(LEAVE_KINDS);
+  useEffect(() => {
+    const ctl = new AbortController();
+    fetchLeaveCategories({ activeOnly: true, signal: ctl.signal }).then(
+      (cats) => {
+        if (ctl.signal.aborted || !cats.length) return;
+        const next = cats.map((c) => ({ value: c.key, label: c.label }));
+        setKinds(next);
+        setKind((k) => (next.some((c) => c.value === k) ? k : next[0].value));
+      },
+      () => undefined,
+    );
+    return () => ctl.abort();
+  }, []);
   const [note, setNote] = useState("");
   const [state, setState] = useState<
     | { kind: "idle" }
@@ -351,7 +367,7 @@ function RequestForm({ onSent }: { onSent: () => void }) {
           id="leave-kind"
           value={String(kind)}
           options={[
-            ...LEAVE_KINDS.map((k) => ({
+            ...kinds.map((k) => ({
               value: String(k.value),
               label: String(k.label),
             })),
@@ -547,7 +563,9 @@ function MyRequests({
                         {daysText(r)}
                       </div>
                     </Td>
-                    <Td className="text-amber-200">{leaveKindLabel(r.kind)}</Td>
+                    <Td className="text-amber-200">
+                      {leaveKindLabel(r.kind, r.kind_label)}
+                    </Td>
                     <Td className="break-words">
                       {r.note || <span className={MUTED}>—</span>}
                     </Td>
@@ -573,7 +591,7 @@ function MyRequests({
                 <div className="flex justify-between gap-2">
                   <b>{leaveRangeLabel(r.date_from, r.date_to)}</b>
                   <span className="text-amber-200">
-                    {leaveKindLabel(r.kind)}
+                    {leaveKindLabel(r.kind, r.kind_label)}
                   </span>
                 </div>
                 {r.note ? (
@@ -846,7 +864,9 @@ function QueueRows({
                     {daysText(r)} · sent {leaveTimeLabel(r.created_at)}
                   </div>
                 </Td>
-                <Td className="text-amber-200">{leaveKindLabel(r.kind)}</Td>
+                <Td className="text-amber-200">
+                  {leaveKindLabel(r.kind, r.kind_label)}
+                </Td>
                 <Td className="min-w-[160px] break-words">
                   {r.note || <span className={MUTED}>—</span>}
                   {decided ? null : <ShiftWarning r={r} />}
@@ -869,7 +889,9 @@ function QueueRows({
           >
             <div className="flex justify-between gap-2">
               <b className="text-white">{r.employee_name}</b>
-              <span className="text-amber-200">{leaveKindLabel(r.kind)}</span>
+              <span className="text-amber-200">
+                {leaveKindLabel(r.kind, r.kind_label)}
+              </span>
             </div>
             <div>
               {leaveRangeLabel(r.date_from, r.date_to)}{" "}

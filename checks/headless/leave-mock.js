@@ -66,12 +66,23 @@ function fresh() {
     candidates: [1, 2, 3, 10, 11, 12, 13, 14, 15].map((id) => ({ user_id: id, name: NAMES[id], role: id <= 3 ? "admin" : "staff" })),
   };
   ctl.race = false;
+  ctl.catFail = false;
 }
 fresh();
 
 const meUserId = () => (ctl.viewer === "staff" ? 10 : ctl.viewer === "superadmin" ? 1 : 2);
 const daysOf = (r) => Math.round((Date.parse(r.date_to) - Date.parse(r.date_from)) / 864e5) + 1;
-const pub = (r) => { const { shifts, user_id, ...rest } = r; return { ...rest, days: daysOf(r) }; };
+// G382（e2 2026-11-26）：类别表（GET /api/schedule/leave-categories，同后端种子 + 一个新加的 Bereavement，证明下拉真读表）；
+// ctl.catFail ⇒ 读类别 500（页面用兜底 PTO / Sick / Leave）。行上带 kind_label（同后端 leave_requests._out 读类别表）。
+const CATS = [
+  { key: "pto", label: "PTO", sort_order: 1, is_active: true },
+  { key: "sick", label: "Sick", sort_order: 2, is_active: true },
+  { key: "personal", label: "Leave", sort_order: 3, is_active: true },
+  { key: "bereavement", label: "Bereavement", sort_order: 4, is_active: true },
+  { key: "jury", label: "Jury duty", sort_order: 5, is_active: false },
+];
+const catLabel = (k) => CATS.find((c) => c.key === k)?.label ?? k;
+const pub = (r) => { const { shifts, user_id, ...rest } = r; return { ...rest, kind_label: catLabel(r.kind), days: daysOf(r) }; };
 function queueItem(r) {
   const route = ctl.viewer === "superadmin" ? "super_admin" : "manager";
   return { ...pub(r), user_id: r.user_id, team_names: [], route, approver_names: ["Tessa"], shifts: r.shifts || [], blocked: (r.shifts || []).length > 0, can_decide: true };
@@ -116,10 +127,17 @@ http.createServer(async (req, res) => {
   if (p === "/__ctl") {
     const b = json();
     if (b.reset) { fresh(); log.length = 0; }
-    for (const k of ["upstream", "viewer", "notOnSchedule", "race", "failDecide", "failLead", "fail422", "hrDuty"]) if (k in b) ctl[k] = b[k];
+    for (const k of ["upstream", "viewer", "notOnSchedule", "race", "failDecide", "failLead", "fail422", "hrDuty", "catFail"]) if (k in b) ctl[k] = b[k];
     if (b.sch) await fetch(`http://127.0.0.1:${SCH_PORT}/__ctl`, { method: "POST", body: JSON.stringify(b.sch) });
     if (b.tp) await fetch(`http://127.0.0.1:${TP_PORT}/__control?${b.tp}`);
     return send(res, 200, { ok: true, ctl });
+  }
+
+  if (p === "/api/schedule/leave-categories" && req.method === "GET") {
+    log.push({ op: "categories", active: url.searchParams.get("active") });
+    if (ctl.catFail) return send(res, 500, { detail: "mock: categories down" });
+    const active = url.searchParams.get("active") === "1";
+    return send(res, 200, { categories: CATS.filter((c) => !active || c.is_active) });
   }
 
   // ── leave-requests ──

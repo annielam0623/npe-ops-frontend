@@ -231,6 +231,14 @@ async function run() {
   await sleep(200);
   check("超过 31 天：红字", (await evaluate("return document.querySelector('[data-leave-form-msg]')?.textContent || '';")).includes("up to 31 days"));
 
+  // G382 Q7 B / Q8（Annie「Personal算Leave，所以把personal换成Leave」）：Type 下拉读后端类别表（只要在用的），personal 显示 Leave。
+  const kindOpts = await evaluate("return (await $selOptions(document.querySelector('#leave-kind'))).map((o) => o.value + '=' + o.label).join(',');");
+  check("G382 · Type 下拉读类别表（?active=1）：PTO / Sick / Leave / Bereavement，停用的 Jury duty 不出，没有 Personal",
+    kindOpts === "pto=PTO,sick=Sick,personal=Leave,bereavement=Bereavement" && (await mockLog()).some((l) => l.op === "categories" && l.active === "1"), kindOpts);
+  check("G382 · 我的申请 Type 列：personal 那条写 Leave（行上 kind_label），不写 Personal",
+    await evaluate("const tr = document.querySelector(\"[data-leave-mine='2']\"); return !!tr && tr.innerText.includes('Leave') && !document.querySelector('[data-leave-section=my-leave]').innerText.includes('Personal');"),
+    await evaluate("return document.querySelector(\"[data-leave-mine='2']\")?.innerText ?? 'none';"));
+
   // 发一条
   await setField("#leave-from", "2026-12-10");
   await setField("#leave-to", "2026-12-11");
@@ -264,6 +272,13 @@ async function run() {
   await waitFor(`document.querySelector("[data-leave-mine='${newId}'] [data-leave-status=approved]")`);
   check("撤回撞上已批：红字后端原话 + 状态变 Approved", (await text()).includes("This request was already approved by Tessa."));
   await ctl({ race: false });
+
+  // G382：读不到类别表（500）⇒ 下拉用兜底 PTO / Sick / Leave，照样能发
+  await ctl({ catFail: true });
+  await openMyLeave();
+  const fallbackOpts = await evaluate("return (await $selOptions(document.querySelector('#leave-kind'))).map((o) => o.value + '=' + o.label).join(',');");
+  check("G382 · 读不到类别表：Type 下拉用兜底 PTO / Sick / Leave（没有 Personal）", fallbackOpts === "pto=PTO,sick=Sick,personal=Leave", fallbackOpts);
+  await ctl({ catFail: false });
 
   // 不在排班名单上
   await ctl({ notOnSchedule: true });
