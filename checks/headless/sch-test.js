@@ -147,7 +147,8 @@ async function main() {
   await cdp("Page.addScriptToEvaluateOnNewDocument", { source: "window.__scheduleNow = '2026-09-01T00:00';" });
 
   try {
-    await run();
+    if (READ_ONLY) await runReadOnly();
+    else await run();
     // run() 最后几段可能把 mock 留在别的状态（员工身份 / 401）：先回到默认的 supervisor。
     await ctl({ role: "supervisor", fail401: false, rulesMissing: false, tick: null });
     await halfScreenChecks({ cdp, evaluate, openPage, check, sleep, url: `${APP}/schedule?week=2026-10-04`, sel: "[data-slot-id]", label: "Staff Schedule", fitAt: [1920, 950, 760], scrollAt: [640, 390] });
@@ -159,10 +160,12 @@ async function main() {
       await openPage(`${APP}/schedule?week=2026-10-04`);
       await waitFor("!!document.querySelector('[data-slot-id]')", 20000);
       await sleep(500);
-      const m = await evaluate(`const tag = document.querySelector('[data-not-counted-tag]'); const row = tag?.closest('[class*="sticky"]'); const name = row ? [...row.querySelectorAll('span')].find((s) => s.textContent === 'Anita') : null;
+      const m = await evaluate(`const tag = document.querySelector('[data-not-counted-tag]'); const row = tag?.closest('[class*="sticky"]') ?? [...document.querySelectorAll('[data-sch-grid] .sticky')].find((r) => [...r.querySelectorAll('span')].some((s) => s.textContent === 'Anita')); const name = row ? [...row.querySelectorAll('span')].find((s) => s.textContent === 'Anita') : null;
         const times = [...document.querySelectorAll('[data-slot-time]')].map((b) => ({ fs: parseFloat(getComputedStyle(b).fontSize), lines: Math.round(b.getBoundingClientRect().height / (parseFloat(getComputedStyle(b).lineHeight) || parseFloat(getComputedStyle(b).fontSize) * 1.25)) }));
         return { nameH: name ? Math.round(name.getBoundingClientRect().height) : null, tagBelow: !!tag && !!name && tag.getBoundingClientRect().top >= name.getBoundingClientRect().bottom - 1, min: Math.min(...times.map((t) => t.fs)), max: Math.max(...times.map((t) => t.fs)), twoLine: times.filter((t) => t.lines > 1).length, n: times.length };`);
-      check(`半屏适配 Staff Schedule ${w}px：Anita 整个名字一行（不再一个字母一行），Not counted 在名字下面`, m.nameH !== null && m.nameH < 30 && m.tagBelow, JSON.stringify(m));
+      // G382 搬家后这页只读：Not counted 标签只在能改排班的地方（总览）出 ⇒ 这里只查名字一行、没有标签。
+      if (READ_ONLY) check(`半屏适配 Staff Schedule ${w}px（只读）：Anita 整个名字一行，没有 Not counted 标签`, m.nameH !== null && m.nameH < 30 && !(await evaluate("return !!document.querySelector('[data-not-counted-tag]');")), JSON.stringify(m));
+      else check(`半屏适配 Staff Schedule ${w}px：Anita 整个名字一行（不再一个字母一行），Not counted 在名字下面`, m.nameH !== null && m.nameH < 30 && m.tagBelow, JSON.stringify(m));
       if (w === 1920) check("半屏适配 Staff Schedule 1920px：时间照旧 10.5px、一行", m.min === 10.5 && m.max === 10.5 && m.twoLine === 0, JSON.stringify(m));
       if (w === 950) check("半屏适配 Staff Schedule 950px：时间一行，字缩小（约 8–9px）", m.min >= 8 && m.max <= 10.5 && m.min < 10.5 && m.twoLine === 0, JSON.stringify(m));
       if (w === 760) check("半屏适配 Staff Schedule 760px：时间照样一行，字缩到 6px 起（不换行）", m.min >= 6 && m.max < 8 && m.twoLine === 0, JSON.stringify(m));
@@ -171,14 +174,215 @@ async function main() {
     // 还原：Anita 照旧算人头，不然 runTicks 用的 2026-09-27 会多出空档、Publish 变灰。
     await fetch(`${MOCK}/api/schedule/employees/5`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ counts_for_coverage: true }) });
     await axisLabelChecks();
-    await runTicks();
+    if (READ_ONLY) await runTicksReadOnly();
+    else await runTicks();
   } finally {
     ws.close();
     chrome.kill();
   }
   const failed = results.filter((r) => !r.ok);
   console.log(`\n${results.length - failed.length}/${results.length} passed`);
+  if (skipped.length) console.log(`${skipped.length} old sections SKIP (management moved to the overview, listed above with SKIP)`);
   process.exit(failed.length ? 1 : 0);
+}
+
+// ── G382 搬家（设计第 3 节，6e schedule-view.tsx MANAGE_IN_OVERVIEW = true）：Staff Schedule 只读，排班 / 发布 / 设置 / 加人 / 请假
+// 都在 Settings › HR › Schedule 总览上做（总览检查 = g382ov-test.js，归 ab）。开关打开时不跑上面旧的 run()（不删，开关关回去还能跑），
+// 改跑 runReadOnly()：还适用的只读检查照旧查，搬走的段落逐段打 SKIP 写原因，不算通过。（e2 2026-11-26）
+const READ_ONLY = /const MANAGE_IN_OVERVIEW = true;/.test(
+  require("fs").readFileSync(path.join(__dirname, "../../components/schedule/schedule-view.tsx"), "utf8"),
+);
+const skipped = [];
+function skip(name, why) {
+  skipped.push({ name, why });
+  console.log(`SKIP  ${name}  → ${why}`);
+}
+const MOVED = "moved to the overview (G382 §3); covered by g382ov-test once the overview is written";
+const MOVED_SECTIONS = [
+  "空档提醒：Gap summary / 列头红点 / Gaps on … / Day timeline 红点 / Nobody 行 / now 竖线跟空档（只给能改排班的人看）",
+  "直接调发布接口有空档被拒（发布在总览）",
+  "改时间小窗 A8 + 整周 Save / Discard / Not saved yet / 404 红字",
+  "卡片上直接标空档（改时间 / 删班 / 拖到 Unassigned）",
+  "点卡片再点别人的格子（换人）、选中后换周",
+  "加时段 Add shift",
+  "Employees 框（补邮箱 / 改名 / 停用 / 加人）",
+  "发布确认框 / Publish / 谁没收到 / Publish anyway",
+  "每个人的往来记录（Send to confirm、N changes）",
+  "新的一周自动照上一周排好、Add employee",
+  "⚙ Settings：工作时段 / Working hours 按星期 / Default shift times / Shift types",
+  "Rules 标签 + Auto-fill、置顶 110 / 118 / 110 续（Max people 例外）",
+  "置顶 117 Leave（休假录入）、二期时段备注 / 休假 / 班次默认时间",
+  "置顶 119 Overview 标签、按基础周排、Period 标签",
+  "周三确认下周排班的回应（Responses 卡）、G298 / 142 发布后换班 Swap requests",
+  "编辑锁（一周同时一个人改）、409 stale / locked / coverage_gap、指派不在职 400",
+  "自绘时间选择器、离开页面问 Save、Save and publish",
+  "拖员工行排顺序",
+  "手机 ⋯ 里的 Auto-fill / Employees / + Add employee / ⚙ Settings、Save 露在外面",
+  "127 页头第 2 行（Discard / Save / Auto-fill / Employees / + Add employee / ⚙ Settings）、Overview 页签",
+  "全部按照勾选：Auto-fill / + Add employee / Publish 按勾出（改成查 Manage 链接按勾出，见 runTicksReadOnly）",
+];
+
+async function runReadOnly() {
+  const text = () => evaluate("return document.body.innerText;");
+  // 只读页看不到草稿周 ⇒ 把种子的 10/4 周原样改成已发布（ctl.publishAs，不查空档）。
+  await ctl({ role: "supervisor", fail401: false, meName: "", publishAs: "2026-10-04" });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor(`${cell("1|2026-10-04")}?.querySelector('[data-slot-id]')`, 20000);
+  await helpers();
+
+  check("G382 · supervisor：页顶「Manage the schedule in Settings › Human Resource › Schedule →」，链到 /settings/hr?tab=schedule",
+    await evaluate("const l = document.querySelector('[data-manage-link]'); return !!l && l.textContent.includes('Manage the schedule in Settings › Human Resource › Schedule →') && l.querySelector('a')?.getAttribute('href') === '/settings/hr?tab=schedule';"),
+    await evaluate("return document.querySelector('[data-manage-link]')?.outerHTML ?? 'none';"));
+  // Day timeline 上「Working hours … — gaps are checked inside these hours.」只给能改排班的人（schedule-view.tsx canEdit），空档搬到总览 ⇒ 只读页没有。
+  check("G382 · 只读：Day timeline 上没有「Working hours … gaps are checked」那句（空档在总览）", !(await evaluate("return !!document.querySelector('[data-working-hours]');")));
+  check("内容区左右各留约 10%", await evaluate(`const el = document.querySelector('[data-centered-page]'); if (!el) return false; const par = el.parentElement; const ps = getComputedStyle(par); const w = par.clientWidth - parseFloat(ps.paddingLeft) - parseFloat(ps.paddingRight); const cs = getComputedStyle(el); return Math.abs(parseFloat(cs.paddingLeft) / w - 0.1) < 0.005 && Math.abs(parseFloat(cs.paddingRight) / w - 0.1) < 0.005 && Math.abs(el.getBoundingClientRect().width - w) < 1;`));
+  check("地址栏带上 ?week=", (await evaluate("return location.search;")) === "?week=2026-10-04");
+  check("周范围显示 Oct 4 – Oct 10, 2026", (await text()).includes("Oct 4 – Oct 10, 2026"));
+  const names = await evaluate(`return ${rowNames};`);
+  check("G382 · 只读：一行一个人、按名单顺序，没有 Unassigned 行", names.join(",") === "Veronica,Lizzie,Nadia,Jing,Anita", JSON.stringify(names));
+  const tabs = await evaluate("return [...document.querySelectorAll('[role=tab]')].map((b) => b.textContent.trim());");
+  check("G382 · 只读：没有 Overview / Period / Rules / Leave 页签", !tabs.some((x) => /^(Overview|Period|Rules|Leave)/.test(x)), JSON.stringify(tabs));
+  const keys = await evaluate("const bs = [...document.querySelectorAll('button')].map((b) => b.textContent.trim()); return ['Publish', 'Auto-fill', 'Employees', '+ Add employee', '⚙ Settings'].filter((k) => bs.some((t) => t.startsWith(k)));");
+  check("G382 · 只读：没有 Publish / Auto-fill / Employees / + Add employee / ⚙ Settings 键", keys.length === 0, JSON.stringify(keys));
+  check("G382 · 只读：没有整周 Save / Discard、没有 + / ×、卡片不能拖、没有拖行把手",
+    await evaluate("return !document.querySelector('[data-week-save]') && !document.querySelector('[data-week-discard]') && !document.querySelector('button[aria-label=\"Add a shift\"]') && !document.querySelector('button[title=\"Remove this shift\"]') && ![...document.querySelectorAll('[data-slot-id]')].some((e) => e.draggable) && ![...document.querySelectorAll('[data-row-handle]')].some((h) => h.offsetWidth > 0);"));
+  check("G382 · 只读：点时间不能改（时间按钮 disabled）", await evaluate("const b = [...document.querySelectorAll('[data-slot-id] button.font-mono')]; return b.length > 0 && b.every((x) => x.disabled);"));
+  check("G382 · 只读：不标空档（Gap 提示、列头红点、Day timeline 红点都没有；空档只在总览）",
+    await evaluate("return !document.querySelector('[data-gap-summary]') && !document.querySelector('[data-grid-gap]') && !document.querySelector('[data-has-gap]') && !document.querySelector('[data-gap-note]');"));
+  check("G382 · 只读：没有「Started from last week… drag people to change it.」", !(await text()).includes("drag people to change it"));
+  check("没有班的人 / 天：浅黄 Off 格（周日 Jing 没班）",
+    await evaluate(`const o = ${cell("4|2026-10-04")}.querySelector('[data-off]'); return !!o && o.textContent.trim() === 'Off' && getComputedStyle(o).color === 'rgb(253, 230, 138)';`));
+  check("有班的格子没有 Off", await evaluate(`return !${cell("1|2026-10-04")}.querySelector('[data-off]');`));
+  check("周一 Jing 的时段写着 11:30 PM", (await evaluate(`return ${cell("4|2026-10-05")}.querySelector('[data-slot-id]').textContent;`)).includes("11:30 PM"));
+
+  // Day timeline（只读照旧有）
+  await evaluate("$btn('Wed').click();");
+  await sleep(300);
+  const tl = await text();
+  check("Day timeline 10/7 显示 Veronica + Lizzie、Lizzie + Nadia 重叠", tl.includes("Veronica + Lizzie") && tl.includes("Lizzie + Nadia"));
+  check("Day timeline 顶上一行刻度：电脑每 2 小时一个整点，两头写 2 AM / 9:30 PM", await evaluate(`const a = document.querySelector('[data-axis-step="2"]'); const labels = [...a.querySelectorAll('span')].map((s) => s.textContent); return JSON.stringify(labels) === JSON.stringify(['2 AM', '4 AM', '6 AM', '8 AM', '10 AM', '12 PM', '2 PM', '4 PM', '6 PM', '8 PM', '9:30 PM']) && a.offsetWidth > 0;`), await evaluate("return [...document.querySelectorAll('[data-axis-step=\"2\"] span')].map((s) => s.textContent).join(',');"));
+  check("每一行底下有每小时一条淡竖线（19 条）", await evaluate("const r = document.querySelector('[data-timeline-row]'); return !!r && r.querySelectorAll('[data-hour-line]').length === 19;"));
+
+  // 草稿周：supervisor 也只看到 not published
+  await openPage(`${APP}/schedule?week=2026-10-11`);
+  await waitFor("document.body.innerText.includes('hasn')");
+  check("G382 · supervisor 看草稿周：也只写「This week's schedule hasn't been published yet.」", (await text()).includes("This week's schedule hasn't been published yet."));
+
+  // ── staff：只读，能翻周（原 1064 段，照新行为）──
+  await ctl({ role: "staff", meName: "Jing" });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor(`${cell("4|2026-10-05")}`);
+  check("staff 能看已发布的这一周（不是 not published 提示）", !(await text()).includes("hasn't been published"));
+  check("staff：没有 Manage the schedule 链接", !(await evaluate("return !!document.querySelector('[data-manage-link]');")));
+  check("staff 看不到 Send to confirm、N changes、改过的格子框", await evaluate("return !document.querySelector('[data-person-changes]') && !document.querySelector('[data-send-to-confirm]') && !document.querySelector('[data-changed]');"));
+  check("staff 看不到 Publish / Add employee / + / × / Unassigned", await evaluate("return !$btn('Publish') && !$btn('Add employee') && !document.querySelector('button[aria-label=\"Add a shift\"]') && !document.querySelector('button[title=\"Remove this shift\"]') && !document.body.innerText.includes('Unassigned');"));
+  const firstRow = await evaluate(`return ${rowNames}[0];`);
+  check("自己（Jing）这一行固定在最上面，只写名字、没有 You", firstRow.startsWith("Jing") && !firstRow.includes("You"), firstRow);
+  check("staff 有 This week / Next week 键", await evaluate("return !!$btn('This week') && !!$btn('Next week');"));
+  await ctl({ role: "supervisor" });
+  await fetch(`${MOCK}/api/schedule/employees/5`, { method: "PUT", body: JSON.stringify({ counts_for_coverage: false }) });
+  await ctl({ role: "staff" });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor(`${cell("5|2026-10-10")}?.querySelector('[data-slot-id]')`);
+  check("staff：Anita 设成不算人头，员工看到的只有正常名字，没有 Not counted", await evaluate("return !document.querySelector('[data-not-counted-tag]') && !document.querySelector('[data-not-counted]') && !document.body.innerText.includes('Not counted') && [...document.querySelectorAll('[data-sch-grid] .sticky')].some((r) => r.textContent.trim() === 'Anita');"));
+  await ctl({ role: "supervisor" });
+  await fetch(`${MOCK}/api/schedule/employees/5`, { method: "PUT", body: JSON.stringify({ counts_for_coverage: true }) });
+  await ctl({ role: "staff", meName: "Jing", futurePublished: "2027-01-03" });
+  await openPage(`${APP}/schedule?week=2027-01-03`);
+  await waitFor(`${cell("1|2027-01-03")}`);
+  check("My schedule 3A / 5A · staff：页头最右白底 My schedule →，链到 /my-schedule?week=2027-01-03",
+    await evaluate("const k = document.querySelector('[data-my-schedule-key]'); const cs = k && getComputedStyle(k); return !!k && k.textContent === 'My schedule →' && k.getAttribute('href') === '/my-schedule?week=2027-01-03' && cs.backgroundColor === 'rgb(255, 255, 255)' && cs.color === 'rgb(11, 23, 39)';"),
+    await evaluate("return document.querySelector('[data-my-schedule-key]')?.outerHTML ?? 'none';"));
+  check("G298 · staff 看已发布、从上周复制来的周：没有「drag people to change it」，卡片不能拖", await evaluate("return !document.body.innerText.includes('drag people to change it') && ![...document.querySelectorAll('[data-slot-id]')].some((e) => e.draggable);"));
+  await ctl({ role: "supervisor", meName: "" });
+  await openPage(`${APP}/schedule?week=2027-01-03`);
+  await waitFor(`${cell("1|2027-01-03")}`);
+  check("G382 · 排班人看同一周：也没有「drag people to change it」（拖班在总览）", !(await text()).includes("drag people to change it"));
+  check("My schedule 6A · 排班人也有 My schedule → 键", await evaluate("return document.querySelector('[data-my-schedule-key]')?.getAttribute('href') === '/my-schedule?week=2027-01-03';"));
+  await ctl({ role: "staff", meName: "Jing" });
+  await openPage(`${APP}/schedule?week=2026-10-11`);
+  await waitFor("document.body.innerText.includes('hasn')");
+  check("staff 查还没发布的周：显示提示，不是空表", (await text()).includes("hasn't been published yet"));
+
+  // ── Dashboard 上的排班表（原 2319 段，跟搬家无关，照旧）──
+  await ctl({ role: "staff", meName: "Jing", fail401: false });
+  const fake = await cdp("Page.addScriptToEvaluateOnNewDocument", {
+    source: `(() => { const R = Date; const F = Date.UTC(2026, 9, 6, 19, 0, 0);
+      class D extends R { constructor(...a) { if (a.length) super(...a); else super(F); } static now() { return F; } }
+      globalThis.Date = D; })();`,
+  });
+  await goto(`${APP}/dashboard`);
+  await waitFor(`document.querySelector('[data-dashboard-schedule] .w-max') || (() => { const p = document.querySelector('[data-dashboard-schedule] p'); return p && !p.textContent.includes('Loading'); })()`, 30000);
+  await helpers();
+  const dash = `document.querySelector('[data-dashboard-schedule]')`;
+  check("Dashboard 有单独的 Schedule 区块、标题带日期范围", await waitFor(`${dash} && ${dash}.textContent.includes('Schedule · Oct 4 – Oct 10')`));
+  const dashNames = await evaluate(`return [...${dash}.querySelectorAll('.w-max > div')].filter((d) => d.className.includes('min-h-[56px]') && d.className.includes('px-2')).map((d) => d.textContent.trim()).join(',');`);
+  // 旧 run() 的 Add employee 段会加 ZZ Test Helper；只读版不加人 ⇒ 名单就是种子的 5 个。
+  check("Dashboard 一行一个人：自己（Jing）在最上面，其他人按名字排", dashNames === "Jing,Anita,Lizzie,Nadia,Veronica", dashNames);
+  check("Dashboard Open schedule → 链到 /schedule?week=2026-10-04", await evaluate(`return [...${dash}.querySelectorAll('a')].find(a => a.textContent.includes('Open schedule'))?.getAttribute('href') === '/schedule?week=2026-10-04';`));
+  check("Dashboard 只读：没有 Publish / + / × / 拖拽", await evaluate(`return !${dash}.querySelector('[draggable=true]') && ![...${dash}.querySelectorAll('button')].some((b) => ['Publish', '+', '×'].includes(b.textContent.trim()));`));
+  await evaluate(`[...${dash}.querySelectorAll('button')].find(b => b.textContent.trim() === 'Next week').click();`);
+  check("Dashboard Next week：没发布 ⇒ Next week's schedule hasn't been published yet.", await waitFor(`${dash}.textContent.includes("Next week's schedule hasn't been published yet.")`));
+  await cdp("Page.removeScriptToEvaluateOnNewDocument", { identifier: fake.identifier });
+
+  // ── 手机 / 127 页头（只读版）──
+  await ctl({ fail401: false, role: "superadmin", meName: "" });
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor("!!document.querySelector('[data-slot-id]')", 30000);
+  await sleep(600);
+  check("手机：Schedule 整页不左右晃", await evaluate("return document.documentElement.scrollWidth <= innerWidth + 1;"), await evaluate("return document.documentElement.scrollWidth + ' > ' + innerWidth;"));
+  check("手机：‹ 日期 › This week / Next week 在外面；没有 Save", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0; const p = document.querySelector('[aria-label="Previous week"]').getBoundingClientRect(), n = document.querySelector('[aria-label="Next week"]').getBoundingClientRect(); const outside = (t) => [...document.querySelectorAll('button')].some((b) => b.textContent.trim() === t && vis(b) && !b.closest('[data-phone-more-menu]')); return Math.abs(p.top - n.top) < 2 && outside('This week') && outside('Next week') && !document.querySelector('[data-week-save]');`));
+  check("手机：员工行没有拖动把手", await evaluate("return ![...document.querySelectorAll('[data-row-handle]')].some((h) => getComputedStyle(h).display !== 'none');"));
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 1400, height: 900, deviceScaleFactor: 1, mobile: false });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor("!!document.querySelector('[data-slot-id]') && !!document.querySelector('[data-schedule-head]')", 30000);
+  await sleep(500);
+  const head = await evaluate(`
+    const top = (el) => el ? Math.round(el.getBoundingClientRect().top) : null;
+    const btn = (t) => [...document.querySelectorAll('[data-schedule-head] button')].find((b) => b.textContent.trim() === t);
+    const vc = document.querySelector('[data-schedule-head] [data-visibility-control]');
+    const all = [...document.querySelectorAll('[data-schedule-head] button')].filter((b) => b.getBoundingClientRect().height > 0 && !b.closest('[data-visibility-control]'));
+    return { r1: [top(document.querySelector('[aria-label="Previous week"]')), top(btn('This week')), top(btn('Next week'))], vc: top(vc),
+      heights: [...new Set(all.map((b) => Math.round(b.getBoundingClientRect().height)))],
+      loneVis: [...document.querySelectorAll('[data-visibility-control]')].filter((v) => !v.closest('[data-schedule-head]')).length,
+      phoneMore: !!document.querySelector('[data-phone-more]') && document.querySelector('[data-phone-more]').getBoundingClientRect().height > 0 };`);
+  check("127：‹ 日期 › This week / Next week 同一行", head.r1.every((x) => x !== null && x === head.r1[0]), JSON.stringify(head));
+  check("127：页头的键都是 28px", head.heights.length === 1 && head.heights[0] === 28, JSON.stringify(head.heights));
+  check("127：Visible to 没有单独占一行（只在页头里）", head.loneVis === 0, JSON.stringify(head));
+  check("电脑：没有 ⋯", !head.phoneMore, JSON.stringify(head));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+
+  // 401：跳旧后台登录页。
+  await ctl({ fail401: true, role: "superadmin" });
+  await goto(`${APP}/schedule`);
+  check("未登录跳旧后台登录页，带 next", await waitFor("location.pathname === '/auth/login' && location.search.includes('next=')"));
+  await ctl({ fail401: false, role: "supervisor" });
+
+  for (const s of MOVED_SECTIONS) skip(s, MOVED);
+}
+
+// 全部按照勾选（原 runTicks，搬家后）：这页不再出 Auto-fill / + Add employee / Publish；改查 Manage 链接——有 schedule.edit 勾或 Super Admin 才出
+// （批假的人也出，在 leave-test 里查）。
+async function runTicksReadOnly() {
+  const BASE = ["dashboard.view", "schedule.view"];
+  const CASES = [
+    ["员工没勾 ⇒ 没有 Manage 链接", "staff", [], false],
+    ["员工勾了 schedule.edit ⇒ 有 Manage 链接", "staff", ["schedule.edit"], true],
+    ["员工只勾 schedule.publish ⇒ 没有（总览要 schedule.edit / 批假 / settings.hr.view / Super Admin；这页只按 edit / 批假 / Super Admin 出）", "staff", ["schedule.publish"], false],
+    ["admin 没勾 ⇒ 没有", "admin", [], false],
+    ["Super Admin 没勾 ⇒ 有", "superadmin", [], true],
+  ];
+  for (const [name, role, codes, link] of CASES) {
+    await ctl({ fail401: false, rulesMissing: false, changesLocked: false, inactiveEmployee: 0, role, meName: "", tick: { switchOn: false, codes: [...BASE, ...codes] } });
+    await goto(`${APP}/schedule?week=2026-09-27`);
+    await waitFor("[...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Next week')", 30000);
+    await sleep(800);
+    const got = await evaluate(`const bs = [...document.querySelectorAll('button')].map((b) => b.textContent.trim());
+      return { link: !!document.querySelector('[data-manage-link]'), keys: ['Auto-fill', '+ Add employee'].filter((k) => bs.includes(k)).concat(bs.some((t) => /^Publish/.test(t)) ? ['Publish'] : []) };`);
+    check(`G382 · 按勾 · Staff Schedule：${name}；不管勾什么都没有 Auto-fill / + Add employee / Publish`, got.link === link && got.keys.length === 0, JSON.stringify(got));
+  }
+  await ctl({ role: "supervisor", meName: "", tick: null });
 }
 
 const cell = (key) => `document.querySelector('[data-cell="${key}"]')`;
