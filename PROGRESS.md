@@ -20,6 +20,7 @@
 - 86 答 ab 契约：base_version 是字符串（= weeks_info[].version，updated_at ISO）；lock_token 同现有 weeks/{w}/edit-lock；只能批假的人 range 放行（can_edit=false）、批拒请假放行、批改班不放行。
 - Annie 定（f1 转）：这台公司电脑 ANNIELAM 11-26 至 11-29 带回家用，不走 14:30 交接，每晚 22:30 收工；合上电脑所有窗口会断 ⇒ 已通知 e2 / ab / 09 / f2 勤推 WIP，听到「马上推」立刻推。
 - G370 接口形状备用（后端 32 写，**只在 Annie 选 B 后做**，在后端表里）：GET /api/notifications/morning-pickup/live-drivers driver 列 segments[] 每位 relay 客人加 boarded_on_bus_at（ISO UTC 或 null；司机没点过且团车 boarded 才有）；前端在客人下加小字「Boarded on bus 5:26 AM」（洛杉矶时间），不改计数 / 颜色，导游列没有。键缺 / null 不显示。
+- e2 推 **task/g382-fe @ ef7b334f**（worktree C:\Code\npe-ops-g382-fe，从 main d3ffbc96）：合 6e 3909dc66（比 c01c928f 多「cover shift type = 最早那一班」）+ 61 4ed9005b，无冲突；对 c336d008 改：409 rule_violation / coverage_gap 红框逐行列后端违规原句 / 空档（同 v3「Can't save: rule problems」列出谁）、ScheduleViolation 加 rule_id / blocking / week。tsc 0、eslint 0。旧 sch / leave headless 在改。ab mock 在 task/g382-ov-ab @ 5e3560bc（36/36）。
 - 不用等答就能做的：Tickets 跳过去红框消失（当 bug 复现找根因）、Bus manifest 打印隐藏列 preview、G382 两个前端分支合最新 main + 改旧 sch / leave headless。
 - 更正 David H（第 16 项）：Annie（原话）「我说过David H的身份很复杂，他是老板，有时候又会帮忙做relay」⇒ 11-22 定的「另开 staff 账号只勾 Dispatch Read only」不够（PROGRESS 里没找到她之前这句的记录）。📌 已问她：他的 staff 账号要多大权限、司机账号是否保留做 relay。一人同时是 staff + 司机后端支不支持：未核。
 
