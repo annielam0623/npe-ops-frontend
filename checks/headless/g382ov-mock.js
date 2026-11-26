@@ -272,6 +272,7 @@ function violationsFor(slots, timeOff) {
           rule: "weekly_hours_alert",
           rule_id: 2,
           blocking: false,
+          week: w,
           employee_id: emp,
           employee_name: NAMES[emp],
           dates: [...new Set(v.dates)],
@@ -281,7 +282,13 @@ function violationsFor(slots, timeOff) {
   }
   return out;
 }
-const vKey = (v) => `${v.rule}|${v.employee_id}|${v.dates.join(",")}`;
+// 后端 c336d008 CR-5（schedule_rule_check._key / new_blocking）：按周的规则（带 week）身份 = (rule, rule_id, employee_id, week)，
+// 同人同周本来就超了，只有 dates 数变多才算新；其余规则身份带 dates。
+const vKey = (v) => (v.week ? `${v.rule}|${v.rule_id}|${v.employee_id}|w${v.week}` : `${v.rule}|${v.employee_id}|${v.dates.join(",")}`);
+function newBlocking(before, after) {
+  const old = new Map(before.map((v) => [vKey(v), v]));
+  return after.filter((v) => v.blocking && (!old.has(vKey(v)) || (v.week && v.dates.length > old.get(vKey(v)).dates.length)));
+}
 
 function rangeDates(from, weeks) {
   return Array.from({ length: weeks * 7 }, (_, i) => addDays(from, i));
@@ -487,9 +494,8 @@ http
       const freshGaps = afterGaps.filter((g) => weekStatus(weekOf(g.date)) === "published" && !beforeGaps.some((b) => b.date === g.date && b.start_time <= g.start_time && g.end_time <= b.end_time));
       if (freshGaps.length) return conflict(res, "This change would leave a gap in coverage, so it wasn't saved.", "coverage_gap", { gaps: freshGaps });
       // 只拦「这次新造成的、blocking 的」（后端 schedule_rule_check.new_blocking）；weekly_hours_alert 等只列不拦。
-      const beforeV = new Set(violationsFor(state.slots, state.time_off).map(vKey));
       const afterV = violationsFor(work, off);
-      const freshV = afterV.filter((v) => v.blocking && !beforeV.has(vKey(v)));
+      const freshV = newBlocking(violationsFor(state.slots, state.time_off), afterV);
       if (freshV.length) return conflict(res, "This change breaks a schedule rule, so it wasn't saved.", "rule_violation", { violations: freshV });
       state.slots = work;
       state.time_off = off;
@@ -575,6 +581,32 @@ http
       if (r.status !== "pending") return conflict(res, "This request was already decided.", "already_decided", { request: r });
       const note = body && body.note;
       if (note && String(note).length > 120) return send(res, 400, { detail: "Note must be at most 120 characters." });
+      // approve 的 shifts / cover（后端 c336d008，e2 核）：slot 不在这条假上 / 给不在职的人 ⇒ 400；按天、那天有班没处理 ⇒ 400；
+      // 已发布周按小时、没给 cover ⇒ 400。规则 / 空档这里不再查（总览 Save 那条路查）。
+      const work = state.slots.map((x) => ({ ...x }));
+      if (lm[2] === "approve") {
+        const mine = work.filter((x) => x.employee_id === r.employee_id && x.date >= r.date_from && x.date <= r.date_to);
+        const hourly = r.start_time != null;
+        for (const sh of (body && body.shifts) || []) {
+          const slot = mine.find((x) => x.id === sh.slot_id);
+          if (!slot) return send(res, 400, { detail: "One of the shifts isn't on this leave. Reload and try again." });
+          if (sh.action === "give") {
+            if (!NAMES[sh.employee_id]) return send(res, 400, { detail: "Pick an active person to give the shift to." });
+            slot.employee_id = sh.employee_id;
+          } else if (sh.action === "delete") work.splice(work.indexOf(slot), 1);
+          else return send(res, 400, { detail: 'action must be "give" or "delete".' });
+        }
+        if (!hourly) {
+          const left = work.find((x) => x.employee_id === r.employee_id && x.date >= r.date_from && x.date <= r.date_to);
+          if (left) return send(res, 400, { detail: `${NAMES[r.employee_id]} has a shift on ${left.date}. Choose what happens to it before approving.` });
+        } else if (weekStatus(weekOf(r.date_from)) === "published") {
+          const c = body && body.cover;
+          if (!c || !NAMES[c.employee_id]) return send(res, 400, { detail: `Pick who covers ${r.start_time} – ${r.end_time} on ${dayLabel(r.date_from)}.` });
+          const base = mine[0];
+          work.push({ id: nextId++, date: r.date_from, shift_type: base ? base.shift_type : "mid", start_time: r.start_time, end_time: r.end_time, employee_id: c.employee_id, note: `Cover for ${NAMES[r.employee_id]}`, updated_by: 1, updated_at: new Date().toISOString() });
+        }
+        state.slots = work;
+      }
       r.status = lm[2] === "approve" ? "approved" : "rejected";
       r.decided_by = 1;
       r.decided_by_name = "ZZ Test Approver";

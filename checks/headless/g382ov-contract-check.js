@@ -72,6 +72,8 @@ const keys = (o, ks) => ks.every((k) => k in o);
   ok("time-off 不存在 ⇒ 404 原话", r.s === 404 && r.b.detail === "Time off not found.");
   // 请假 / 改班请求
   r = await j("/api/schedule/leave-requests/71/approve", { method: "POST", body: { note: "Feel better soon" } });
+  ok("已发布周按小时、没给 cover ⇒ 400 Pick who covers", r.s === 400 && /^Pick who covers /.test(r.b.detail), JSON.stringify(r.b));
+  r = await j("/api/schedule/leave-requests/71/approve", { method: "POST", body: { note: "Feel better soon", cover: { employee_id: 4 } } });
   ok("批 Nadia 的假 ⇒ 200，生成按小时的 time_off", r.s === 200 && r.b.request.status === "approved" && (await j("/api/schedule/range?from=2026-11-15&weeks=4")).b.time_off.some((t) => t.employee_id === 3 && t.date === "2026-11-27" && t.start_time === "15:00"));
   r = await j("/api/schedule/leave-requests/71/reject", { method: "POST", body: {} });
   ok("再批一次 ⇒ 409 already_decided", r.s === 409 && r.b.detail.code === "already_decided");
