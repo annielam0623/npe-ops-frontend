@@ -174,6 +174,10 @@ http.createServer(async (req, res) => {
     return send(res, 200, { ...pick, versions: all.map((s) => ({ version: s.version, trigger: s.trigger, created_at: s.created_at })) });
   }
   if (ctl.writeForbidden && req.method !== "GET" && p.startsWith("/api/hr/"))return send(res, 403, { detail: "Admin access required" });
+  // G382 总览（Settings › HR › Schedule）：这个 mock 只回 staff 不能看的 403（后端原话，interface.md 2.1）；总览本身的检查在 g382ov-*。
+  if (p === "/api/schedule/range" && req.method === "GET") {
+    return send(res, 403, { detail: "You don't have access to the schedule overview." });
+  }
   if (p === "/api/hr/profiles" && req.method === "GET") {
     if (ctl.fail500) return send(res, 500, { detail: "Human Resource is misconfigured and has been disabled: x This needs a code fix, not a settings change." });
     return send(res, 200, { profiles: [...profiles].sort((a, b) => a.legal_name.localeCompare(b.legal_name)).map(withSpellings) });

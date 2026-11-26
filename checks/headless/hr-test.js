@@ -405,9 +405,13 @@ async function run() {
   check("加载失败：显示后端原因和 Retry", await evaluate("return document.body.textContent.includes('misconfigured') && [...document.querySelectorAll('button')].some(b => b.textContent === 'Retry');"));
   await ctl({ fail500: false, staff: true });
   await goto(`${APP}/settings/hr`);
-  // 只看勾（2026-11-01）：没有 settings.hr.view ⇒ 门口拦（You don't have access to this page.）。
-  await waitFor("document.querySelector('[data-no-access]')");
-  check("staff：没有 settings.hr.view ⇒ 门口拦住、没有 Edit list", await evaluate("return !!document.querySelector('[data-no-access]') && !document.body.textContent.includes('Edit list');"));
+  // G382 Q6 A（2026-11-26）：门口不再按 settings.hr.view 拦（能批假的人要能打开 Schedule 总览）；
+  // 没有这个勾 ⇒ 只出 Schedule 页签，People / Edit list 都不出，能不能看由 GET /api/schedule/range 判（staff 403 原话）。
+  await waitFor("document.querySelector('[data-schedule-overview-forbidden]')");
+  check(
+    "staff：没有 settings.hr.view ⇒ 只有 Schedule 页签、没有 People / Edit list，总览写后端 403 原话",
+    await evaluate("const tabs=[...document.querySelectorAll('[role=tab]')].map(t=>t.textContent.trim()); return tabs.join()==='Schedule' && !document.body.textContent.includes('Edit list') && !document.body.textContent.includes('Drivers —') && document.querySelector('[data-schedule-overview-forbidden]').textContent.includes(\"You don't have access to the schedule overview.\");"),
+  );
 
   // 主管（supervisor）：能看所有字段，也能改（Annie 2026-10-17）；后端写接口还只给 admin 时，页面给友好提示。
   // 只看勾（2026-11-01）：主管标准里只有 settings.hr.view；这里当作 Super Admin 给他特批了 settings.hr.edit、开关对他开着。
@@ -436,16 +440,13 @@ async function run() {
   await evaluate(`$btn('Cancel', ${dialog}).click();`);
   await waitFor("!document.querySelector('[role=dialog]')");
   await ctl({ writeForbidden: false });
-  await evaluate("[...document.querySelectorAll('button[role=tab]')].find(b => b.textContent.trim() === 'Schedule example').click();");
-  await waitFor("document.querySelector('[data-schedule-example]')");
+  // G382：「Schedule example」样稿换成真的排班总览（页签改名 Schedule；总览本身的检查在 g382ov-test.js，这个 mock 没有 range 接口）。
+  await evaluate("[...document.querySelectorAll('button[role=tab]')].find(b => b.textContent.trim() === 'Schedule').click();");
   check(
-    "Schedule example 标签：4 周参考样稿、标明不是实际排班",
-    await evaluate(`
-      const t = document.querySelector('[data-schedule-example]').textContent;
-      return t.includes('Week 1') && t.includes('Week 4') && t.includes('reference') && t.includes('Veronica');
-    `),
+    "Schedule 标签：挂的是排班总览（不再是 Schedule example 样稿）",
+    await waitFor("document.querySelector('[data-schedule-overview], [data-schedule-overview-forbidden], [role=alert]') && !document.querySelector('[data-schedule-example]')"),
   );
-  check("切到 Schedule example 时 People 表藏起来", await evaluate("return [...document.querySelectorAll('div[hidden]')].some(d => d.textContent.includes('Drivers —'));"));
+  check("切到 Schedule 时 People 表藏起来", await evaluate("return [...document.querySelectorAll('div[hidden]')].some(d => d.textContent.includes('Drivers —'));"));
   await ctl({ supervisor: false, tick: null });
   await goto(`${APP}/settings/hr`);
   await waitFor("document.body.textContent.includes('Drivers —')");
