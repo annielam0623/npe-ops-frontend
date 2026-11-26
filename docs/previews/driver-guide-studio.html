@@ -1,0 +1,218 @@
+<title>Driver &amp; Guide Studio Card</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one reading column; mock blocks copy the ops dark frame + white Content Studio cards. Single dark look by choice (same as ops). */
+:root{
+  --bg:#06101c; --panel:#0d1b2c; --line:#1f3147; --fg:#e5edf6; --mute:#94a3b8;
+  --card:#ffffff; --ink:#1a1a1a; --ink2:#5b6472; --blue:#3b82f6; --ok:#16a34a; --bad:#dc2626;
+  --gold:#eab308; --chip:#f1f5f9; --q:#13263b;
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-head:"Space Grotesk","Inter",system-ui,sans-serif;
+  color-scheme:dark;
+}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.55}
+.wrap{max-width:980px;margin:0 auto;padding-block:24px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:28px}
+h1,h2,h3{font-family:var(--f-head);text-wrap:balance;margin:0}
+h1{font-size:24px} h2{font-size:18px;border-bottom:1px solid var(--line);padding-bottom:6px} h3{font-size:14px}
+p{margin:0} .mute{color:var(--mute)} .zh{color:var(--mute);font-size:13px}
+section{display:flex;flex-direction:column;gap:12px}
+table{border-collapse:collapse;width:100%;font-size:13px} th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top} th{background:var(--panel)}
+.tw{overflow-x:auto}
+.tag{display:inline-block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border-radius:3px;background:var(--panel);border:1px solid var(--line);color:var(--mute)}
+.tag.new{color:#fde68a;border-color:#a16207}
+/* home cards */
+.home{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.big{background:var(--card);color:var(--ink);border-radius:10px;padding:12px;border-top:4px solid var(--a,#ccc);display:flex;flex-direction:column;gap:4px;min-width:0}
+.big b{font-family:var(--f-head);font-size:15px} .big small{color:var(--ink2);font-size:11px;text-transform:uppercase;letter-spacing:.05em} .big span{font-size:12px;color:var(--ink2)}
+.big.hl{outline:3px solid var(--gold);outline-offset:2px}
+.big .tb{font-size:11px;color:#475569}
+/* studio panel */
+.studio{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tabs button{font:inherit;font-size:12px;padding:5px 12px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--fg);cursor:pointer}
+.tabs button[aria-selected="true"]{background:#fff;color:var(--ink);border-color:#fff;font-weight:600}
+.tabs button:focus-visible,.seg button:focus-visible,.save:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px}
+@media (max-width:760px){.cols{grid-template-columns:minmax(0,1fr)}}
+.wcard{background:var(--card);color:var(--ink);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.seg{display:flex;flex-wrap:wrap;gap:4px}
+.seg button{font:inherit;font-size:12px;padding:4px 10px;border-radius:5px;border:1px solid #cbd5e1;background:#fff;color:var(--ink);cursor:pointer}
+.seg button[aria-pressed="true"]{background:#1e293b;color:#fff;border-color:#1e293b}
+.row{display:flex;align-items:center;gap:8px;font-size:13px;padding:4px 0;border-bottom:1px dashed #e2e8f0}
+.row:last-child{border-bottom:0}
+.row .lk{margin-left:auto;font-size:11px;color:var(--ink2)}
+.row input{width:16px;height:16px}
+.savebar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.save{font:inherit;font-size:13px;font-weight:600;padding:6px 16px;border-radius:6px;border:0;background:var(--blue);color:#fff;cursor:pointer}
+.st{font-size:12px} .st.ok{color:var(--ok)} .st.dirty{color:#b45309}
+.note{font-size:12px;color:var(--ink2)}
+.fixed{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px;font-size:12px;color:var(--ink2)}
+/* phone */
+.phone{background:#0b1622;border:1px solid var(--line);border-radius:22px;padding:12px 10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.phone .bar{font-size:11px;color:var(--mute);text-align:center}
+.stn{background:#13263b;border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:6px}
+.stn-h{display:flex;justify-content:space-between;font-size:12px}
+.stn-h b{color:#fde68a}
+.g{background:#0f1f33;border-radius:8px;padding:7px;display:flex;flex-direction:column;gap:4px}
+.g-top{display:flex;justify-content:space-between;font-size:13px;font-weight:600}
+.g-sub{display:flex;flex-wrap:wrap;gap:6px;font-size:11px;color:var(--mute);align-items:center}
+.lun{background:#334155;color:#e2e8f0;border-radius:9px;padding:0 6px}
+.chg{font-size:10px;border:1px solid #475569;border-radius:4px;padding:0 4px;color:#cbd5e1}
+.btns{display:flex;flex-wrap:wrap;gap:4px}
+.btns span{font-size:10px;border:1px solid #475569;border-radius:4px;padding:2px 6px;color:#cbd5e1}
+.nums{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.nums div{background:#13263b;border-radius:8px;padding:8px;font-size:11px;color:var(--mute)} .nums b{display:block;font-size:20px;color:var(--fg)}
+/* questions */
+.q{background:var(--q);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.q ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.rec{color:#86efac;font-weight:600}
+.done{border-left-color:var(--ok)}
+code{font-size:12px;background:var(--panel);padding:0 4px;border-radius:3px}
+</style>
+
+<div class="wrap">
+<header style="display:flex;flex-direction:column;gap:6px">
+  <span class="tag">Preview · not built · 2026-11-26</span>
+  <h1>Content Studio › Driver &amp; Guide</h1>
+  <p class="zh">Annie 原话：「这样吧，我们以后把打印的显示和司机导游链接的手机显示都分开吧，你在content studio把司机和Diver的单独拿出来，因为他们的内容太多了」「不用分两张，就用Driver&amp;GUide，因为我们还有一个DriverGuide的角色」。以下是按这两句做的样稿，页面上的字是英文，说明是中文。还没写代码。</p>
+</header>
+
+<section>
+  <h2>1. 已定的</h2>
+  <div class="tw"><table>
+    <tr><th>事</th><th>定了什么</th></tr>
+    <tr><td>打印 vs 手机</td><td>分开管。Bus manifest 的隐藏列只管 Bus manifest 屏幕（H1 C）、打印、Excel；司机 / 导游链接不再跟着它变。原来的 H8、H9 作废。</td></tr>
+    <tr><td>放在哪</td><td>Content Studio 新加<b>一张</b>卡「Driver &amp; Guide」（不分两张，因为还有 Driver&amp;Guide 这个角色）。</td></tr>
+    <tr><td>功能键</td><td>一律不能关：Call / WhatsApp / Text、Boarded / No show、✎ Change、餐厅的 Send message / Call（H6 A、H7 A）。</td></tr>
+    <tr><td>relay 接人</td><td>不受影响，一律全部显示。</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <h2>2. Content Studio 首页：现在 → 改后</h2>
+  <p class="zh">现在（查 <code>components/content-studio/content-studio-view.tsx:120-187</code>、<code>team-messages.tsx:26</code>）：6 张卡，司机 / 导游的短信和快捷回复都在 Team Messages 里（4 个标签：Driver &amp; Guide SMS / Restaurant / Schedule Email / Driver Quick Replies）；手机页显示什么，没有地方设置。</p>
+  <p class="zh">改后：加第 7 张卡；Team Messages 只留 Restaurant 和 Schedule Email。黄框是新卡。</p>
+  <div class="home">
+    <div class="big" style="--a:#22c55e"><small>Bus Tours</small><b>Tour Confirmation</b><span class="tb">Global · Email · Last Minute Email · SMS · Guest Page</span></div>
+    <div class="big" style="--a:#6d5bd0"><small>Self-Drive</small><b>Tickets Reminder</b><span class="tb">Global · Email · SMS · Guest Page</span></div>
+    <div class="big" style="--a:#f97316"><small>SMS / Email</small><b>Broadcasting</b><span class="tb">Tour · Tickets</span></div>
+    <div class="big" style="--a:#94a3b8"><small>Partners</small><b>Farm out Notice</b><span class="tb">Email · SMS</span></div>
+    <div class="big" style="--a:#0ea5e9"><small>SMS / Email / Guest Page</small><b>Shuttle</b><span class="tb">(unchanged)</span></div>
+    <div class="big" style="--a:#eab308"><small>SMS / Email</small><b>Team Messages</b><span>Manage the texts we send to restaurants and the schedule emails.</span><span class="tb">Restaurant · Schedule Email</span></div>
+    <div class="big hl" style="--a:#14b8a6"><small>SMS / Phone pages</small><b>Driver &amp; Guide</b><span>Manage what drivers and guides get from Dispatch: the text with their link, what their phone page shows, and the drivers' quick replies to guests.</span><span class="tb">Texts · Phone Pages · Quick Replies</span></div>
+  </div>
+</section>
+
+<section>
+  <h2>3. Driver &amp; Guide 卡里面（可点的样稿）</h2>
+  <p class="zh">三个标签。Texts、Quick Replies 是原样搬过来的，内容和存法都不变；Phone Pages 是新的。Phone Pages 里分三种手机页，因为现在线上就是三种（查后端只读代码，见下面表）。勾掉的先暂存，按 Save 才存（全站先选后存）；右边手机样稿跟着你的勾变。</p>
+  <div class="studio">
+    <div class="tabs" role="tablist">
+      <button role="tab" aria-selected="false" data-t="texts">Texts</button>
+      <button role="tab" aria-selected="true" data-t="pages">Phone Pages</button>
+      <button role="tab" aria-selected="false" data-t="qr">Quick Replies</button>
+    </div>
+    <div id="p-texts" hidden><div class="wcard"><b>Driver text</b><p class="note">Same field as today's Team Messages › Driver &amp; Guide SMS (<code>field_driver_sms</code>). Sent from Dispatch › Send.</p><b>Guide text</b><p class="note">Same field as today (<code>field_guide_sms</code>). Moved, not changed.</p></div></div>
+    <div id="p-qr" hidden><div class="wcard"><b>Driver Quick Replies</b><p class="note">Same list as today's Team Messages › Driver Quick Replies, with its own How to use and Action Log. The old link <code>?module=team&amp;tab=driver-quick-replies</code> will open this tab.</p></div></div>
+    <div id="p-pages" class="cols">
+      <div class="wcard">
+        <p class="note">Choose a tour and a page, untick what you don't want on it, then press Save. It applies to that tour every day. Buttons always stay. Relay pickups always show everything.</p>
+        <label class="note" for="tour" style="display:flex;gap:8px;align-items:center">Tour <select id="tour" style="font:inherit;font-size:13px;padding:3px 6px;min-width:0;max-width:100%"></select></label>
+        <div class="seg" id="role">
+          <button aria-pressed="true" data-r="guide">Guide page</button>
+          <button aria-pressed="false" data-r="dg">Driver &amp; Guide</button>
+          <button aria-pressed="false" data-r="drv">Driver with a guide on board</button>
+        </div>
+        <div id="items"></div>
+        <div class="savebar"><button class="save" id="save">Save</button><span class="st" id="st"></span></div>
+      </div>
+      <div class="phone" aria-label="Phone sample">
+        <div class="bar" id="ph-t">Guide page · sample</div>
+        <div id="ph"></div>
+      </div>
+    </div>
+  </div>
+  <div class="tw"><table>
+    <tr><th>手机页</th><th>谁看到</th><th>现在团车客人卡片上的字（已查）</th><th>依据</th></tr>
+    <tr><td>Guide page</td><td>单独的导游</td><td>名字、人数、relay 标的 ✓ On board / ✗ No show、每人的餐短写 + Changed、单号 + 团简称</td><td><code>field/guide_home.html:138-195</code></td></tr>
+    <tr><td>Driver &amp; Guide</td><td>司机兼导游；没排导游的车也算这种</td><td>名字、人数、单号 + 团简称、票型、每人的餐短写 + Changed、客人没读的短信</td><td><code>field/driver_home.html:256-345</code>、<code>services/tour_manifest.py:3133</code></td></tr>
+    <tr><td>Driver with a guide on board</td><td>车上另有导游的司机</td><td>只看数字：整车人数、TI 上车人数、relay 送到 TI 的人数、No show 合计；没有名单</td><td><code>services/driver_tour_view.py:1-25</code>（G209，你已定「不再问」）</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <h2>4. 数据从哪来、到哪去</h2>
+  <div class="tw"><table>
+    <tr><th>数据</th><th>从哪来</th><th>到哪去</th></tr>
+    <tr><td>Texts（司机 / 导游短信）</td><td>原来的 template settings（<code>tmpl__global__field_driver_sms</code> / <code>field_guide_sms</code>），不动</td><td>Dispatch › Send 发出去，同现在</td></tr>
+    <tr><td>Quick Replies</td><td>原来的快捷回复接口，不动</td><td>司机页 Text 对话框，同现在</td></tr>
+    <tr><td>Phone Pages 的勾</td><td>在这里选团、勾，按 Save 存（新的设置，每个团 × 每种手机页一份）</td><td>后端出司机页、导游页时读它，不显示被勾掉的字。<b>不</b>进打印、Excel、Bus manifest 屏幕</td></tr>
+    <tr><td>Bus manifest 隐藏列</td><td><code>bus_manifest_hidden_columns</code>（每个团一份）</td><td>只到 Bus manifest 屏幕、打印、Excel；跟上面那份互不影响</td></tr>
+    <tr><td>客人的字（名字、单号、餐…）</td><td>Main manifest（订单流不变）</td><td>同现在，只是显示 / 不显示</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <h2>5. 需要后端</h2>
+  <ul style="margin:0;padding-left:18px">
+    <li>一份新设置：每个团、每种手机页（Guide page、Driver &amp; Guide）记下哪几样不显示（名字 / 单号 / 票型 / 餐）；读 / 存接口（可以放在 template settings 里，由后端定）。</li>
+    <li>导游页 <code>guide_home.html</code>、司机页 <code>driver_home.html</code> 的团车客人卡片读这份设置，不出被勾掉的字；功能键、relay 那块不读它。</li>
+    <li>前端只做 Content Studio 这张卡，以及把 Texts、Quick Replies 两个标签搬过来（不改内容和接口）。</li>
+  </ul>
+</section>
+
+<section>
+  <h2>6. 要你定的（剩 1 题）</h2>
+  <div class="q done"><h3>Q1 · 放在哪 ✓ B</h3><p>已答：一张卡「Driver &amp; Guide」。</p></div>
+  <div class="q done"><h3>Q2 · 按什么设置 ✓ B</h3><p>已答：每个团各一份，跟打印一样；进来先选团，每天都照这份。</p></div>
+  <div class="q done"><h3>Q3 · 哪些字可以关 ✓ A</h3><p>已答：名字、单号（连团简称）、票型、每人的餐短写都可以单独关。人数、relay 的 ✓ / ✗、客人没读的短信和所有功能键照留。</p></div>
+  <div class="q">
+    <h3>Q4 · 标签怎么排</h3>
+    <p>页面：同上。为什么问：样稿里把三种手机页放在一个 Phone Pages 标签里，用上面那排按钮切换。</p>
+    <ul>
+      <li><span class="rec">A（推荐）</span>：照样稿，三个标签 Texts / Phone Pages / Quick Replies。</li>
+      <li>B：每种手机页一个标签：Texts / Guide Page / Driver &amp; Guide Page / Quick Replies（「Driver with a guide on board」只看数字，没有可设的，不单开标签）。</li>
+    </ul>
+  </div>
+</section>
+</div>
+
+<script>
+const ITEMS={
+  guide:[["name","Name",0],["pax","Pax",1],["relay","Relay ✓ On board / ✗ No show",1],["lunch","Lunch (each guest) + Changed",0],["order","Order number + short tag",0]],
+  dg:[["name","Name",0],["pax","Pax",1],["order","Order number + short tag",0],["ticket","Ticket type",0],["lunch","Lunch (each guest) + Changed",0],["msg","Unread guest text",1]],
+};
+const TOURS=["Grand Canyon West Rim","Antelope Canyon & Horseshoe Bend","Bryce & Zion"];
+const blank=()=>({guide:{},dg:{}});
+const saved={}, draftAll={}; TOURS.forEach(t=>{saved[t]=blank();draftAll[t]=blank()});
+let tour=TOURS[0]; let draft=draftAll[tour]; let role="guide";
+const $=s=>document.querySelector(s);
+const dirty=()=>JSON.stringify(saved)!==JSON.stringify(draftAll);
+function renderItems(){
+  const box=$("#items");
+  if(role==="drv"){box.innerHTML='<div class="fixed">Drivers with a separate guide on board see numbers only (no guest list). Nothing to set here. This page is decided (G209).</div>';renderPhone();return}
+  box.innerHTML=ITEMS[role].map(([k,l,lock])=>{
+    const id=`it-${role}-${k}`;
+    return `<label class="row" for="${id}"><input type="checkbox" id="${id}" data-k="${k}" ${draft[role][k]?"":"checked"} ${lock?"disabled":""}> ${l}${lock?'<span class="lk">always shown</span>':""}</label>`}).join("")
+    +'<p class="note">Ticked = shown on the phone. Call / WhatsApp / Text, Boarded / No show and ✎ Change always stay. With Name off, guests are listed by order number; with Lunch off, tap ✎ Change to see that guest\'s lunch.</p>';
+  box.querySelectorAll("input:not([disabled])").forEach(i=>i.onchange=()=>{draft[role][i.dataset.k]=!i.checked||undefined;if(!draft[role][i.dataset.k])delete draft[role][i.dataset.k];status();renderPhone()});
+  renderPhone();
+}
+function status(){const s=$("#st");if(dirty()){s.textContent="Not saved yet";s.className="st dirty"}else if(s.dataset.did){s.textContent="Saved";s.className="st ok"}else{s.textContent="";s.className="st"}}
+const G=[["Maria Lopez",3,"R-48213 · GCW","2 B 1 V","Adult x3","✓ On board"],["Ken Tanaka",2,"R-48227","1 T 1 V","Adult x2",""]];
+function renderPhone(){
+  const h=draft[role]||{}; const t={guide:"Guide page",dg:"Driver & Guide (driver link)",drv:"Driver with a guide on board"}[role];
+  $("#ph-t").textContent=t+" · sample";
+  if(role==="drv"){$("#ph").innerHTML='<div class="nums"><div><b>38</b>pax on bus</div><div><b>12</b>board at TI</div><div><b>26</b>relay to TI</div><div><b>1</b>no show</div></div>';return}
+  const card=([n,p,o,l,tk,rs])=>`<div class="g"><div class="g-top"><span>${h.name?(h.order?"Guest":o.split(" ")[0]):n}</span><span>${p} pax</span></div>
+    <div class="g-sub">${role==="guide"&&rs?`<span style="color:#86efac">${rs}</span>`:""}${h.lunch?"":`<span class="lun">${l}</span>`}<span class="chg">✎ Change</span>${h.order?"":`<span>${o}</span>`}${role==="dg"&&!h.ticket?`<span>${tk}</span>`:""}</div>
+    <div class="btns"><span>Call</span><span>WhatsApp</span>${role==="dg"?"<span>Text</span>":""}<span>Boarded</span><span>No show</span></div></div>`;
+  $("#ph").innerHTML=`<div class="stn"><div class="stn-h"><span><b>7:05</b> Excalibur</span><span>5 pax</span></div>${G.map(card).join("")}</div>`;
+}
+$("#role").onclick=e=>{const b=e.target.closest("button");if(!b)return;role=b.dataset.r;document.querySelectorAll("#role button").forEach(x=>x.setAttribute("aria-pressed",x===b));renderItems()};
+$("#save").onclick=()=>{TOURS.forEach(t=>{saved[t]={guide:{...draftAll[t].guide},dg:{...draftAll[t].dg}}});$("#st").dataset.did=1;status()};
+$("#tour").onchange=e=>{tour=e.target.value;draft=draftAll[tour];renderItems()};
+$("#tour").innerHTML=TOURS.map(t=>`<option>${t}</option>`).join("");
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tabs button").forEach(x=>x.setAttribute("aria-selected",x===b));["texts","pages","qr"].forEach(k=>$("#p-"+k).hidden=k!==b.dataset.t)});
+renderItems();status();
+</script>
