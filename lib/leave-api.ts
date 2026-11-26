@@ -10,17 +10,26 @@ import { apiFetch } from "@/lib/api-client";
  * 后端 21 做（两张新表 + 迁移），形状照 21 2026-11-11 发的定稿草案。
  */
 
-export type LeaveKind = "pto" | "sick" | "personal";
+/** 类别 key。G382 起类别表由 Settings 管（Q7 B），可以新加 ⇒ 放宽成任意字符串；上线三种 pto / sick / personal。 */
+export type LeaveKind = "pto" | "sick" | "personal" | (string & {});
 export type LeaveStatus = "pending" | "approved" | "rejected" | "withdrawn";
 
+/**
+ * 读不到类别表（GET /api/schedule/leave-categories）时的兜底，同后端上线种子。
+ * G382 Q8（Annie「Personal算Leave，所以把personal换成Leave」）：personal 显示 Leave，key 不变。
+ */
 export const LEAVE_KINDS: { value: LeaveKind; label: string }[] = [
   { value: "pto", label: "PTO" },
   { value: "sick", label: "Sick" },
-  { value: "personal", label: "Personal" },
+  { value: "personal", label: "Leave" },
 ];
 
-export function leaveKindLabel(kind: string): string {
-  return LEAVE_KINDS.find((k) => k.value === kind)?.label ?? kind;
+/** 行上有后端给的 kind_label（读类别表）就用它，没有才用兜底名字。 */
+export function leaveKindLabel(
+  kind: string,
+  kindLabel?: string | null,
+): string {
+  return kindLabel || LEAVE_KINDS.find((k) => k.value === kind)?.label || kind;
 }
 
 /** 一条申请最多几天（后端同样挡）。 */
@@ -35,6 +44,8 @@ export interface LeaveRequest {
   date_from: string;
   date_to: string;
   kind: LeaveKind;
+  /** G382：类别显示名（后端读类别表）；旧后端没有。 */
+  kind_label?: string | null;
   note: string | null;
   status: LeaveStatus;
   /** 一共几天（含头尾）；没带前端自己算。 */
