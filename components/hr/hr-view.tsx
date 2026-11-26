@@ -41,7 +41,7 @@ import {
 } from "./fields";
 import { Payroll } from "./payroll";
 import { HRLog } from "./hr-log";
-import { ScheduleExample } from "./schedule-example";
+import { ScheduleOverview } from "./schedule-overview";
 import { ImportPanel } from "./import-panel";
 import {
   HR_BTN_CLASS,
@@ -58,6 +58,8 @@ import { WorkingRecord } from "./working-record";
 type ViewState =
   | { kind: "loading" }
   | { kind: "forbidden" }
+  /** G382 Q6 A：没有 settings.hr.view，但可能是能批假的人 ⇒ 只出 Schedule 页签（总览自己判 403）。 */
+  | { kind: "schedule_only" }
   | { kind: "error"; message: string }
   | { kind: "ready"; profiles: HRProfile[] };
 
@@ -113,7 +115,18 @@ export function HRView() {
   const [canEdit, setCanEdit] = useState(false);
   const [tab, setTabRaw] = useState<
     "people" | "schedule" | "record" | "payroll"
-  >("people");
+  >(() =>
+    // G382：请假通知给批复人的链接 /settings/hr?tab=schedule（后端 APPROVER_LINK）。
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("tab") === "schedule"
+      ? "schedule"
+      : "people",
+  );
+  /** 总览打开过就一直挂着（换页签不丢没存的改动）。 */
+  const [scheduleMounted, setScheduleMounted] = useState(false);
+  useEffect(() => {
+    if (tab === "schedule") setScheduleMounted(true);
+  }, [tab]);
   /** 138：Payroll 页签有没存的改动（换页签先问，同离开页面）。 */
   const payrollDirty = useRef(false);
   const setTab = (next: "people" | "schedule" | "record" | "payroll") => {
@@ -210,7 +223,9 @@ export function HRView() {
             superAdmin: !!me.is_superadmin,
           })
         ) {
-          setView({ kind: "forbidden" });
+          // G382 Q6 A：能批假的人（Manager / Team lead）没有这个勾也能打开 Schedule 总览；能不能看由 range 接口判。
+          setView({ kind: "schedule_only" });
+          setTabRaw("schedule");
           return;
         }
         setCanEdit(
@@ -608,7 +623,16 @@ export function HRView() {
         ) : null}
       </div>
 
-      {view.kind === "forbidden" ? (
+      {view.kind === "schedule_only" ? (
+        <>
+          <div role="tablist" className="mb-4 flex gap-2">
+            <button type="button" role="tab" aria-selected className={HR_BTN_PRIMARY_CLASS}>
+              Schedule
+            </button>
+          </div>
+          <ScheduleOverview />
+        </>
+      ) : view.kind === "forbidden" ? (
         <Panel>
           <p className="font-medium text-stone-800 night:text-white/90">
             No access
@@ -645,7 +669,7 @@ export function HRView() {
                 tab === "schedule" ? HR_BTN_PRIMARY_CLASS : HR_BTN_CLASS
               }
             >
-              Schedule example
+              Schedule
             </button>
             {showRecord ? (
               <button
@@ -682,7 +706,11 @@ export function HRView() {
               </button>
             ) : null}
           </div>
-          {tab === "schedule" ? <ScheduleExample /> : null}
+          {scheduleMounted || tab === "schedule" ? (
+            <div hidden={tab !== "schedule"}>
+              <ScheduleOverview />
+            </div>
+          ) : null}
           {tab === "payroll" && showPayroll ? (
             <Payroll
               onUnauthorized={redirectToLogin}
