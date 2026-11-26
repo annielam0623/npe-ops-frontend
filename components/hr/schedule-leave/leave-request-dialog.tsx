@@ -270,7 +270,7 @@ export function LeaveRequestDialog({
   );
   const approveText = daySlots.length ? "Move shifts and approve" : "Approve";
   const askedBits = [
-    `Asked ${leaveTimeLabel(req.created_at).replace(/ \d+:\d+ [AP]M$/, "")}`,
+    `Asked ${leaveTimeLabel(req.created_at).replace(/,? \d+:\d+ [AP]M$/, "")}`,
     req.route ? ROUTE_TEXT[req.route] : null,
     req.note ? `“${req.note}”` : null,
   ].filter(Boolean);
