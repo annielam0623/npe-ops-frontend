@@ -52,6 +52,9 @@ const typeLabel = (t) => (TYPES[t] ? TYPES[t].label : t);
 
 let state;
 let nextId;
+// 后端 86（11-26）：version = schedule_weeks.updated_at 的 ISO 文本（schedule.py:926 _version()）；还没建的周 null。
+let verN = 0;
+const bumpVer = () => new Date(Date.UTC(2026, 10, 26, 12, 0, ++verN)).toISOString().replace(".000Z", "+00:00");
 const log = [];
 const ctl = {};
 
@@ -104,10 +107,10 @@ function reset() {
   }
   state = {
     weeks: {
-      "2026-11-15": { status: "published", version: 7 },
-      "2026-11-22": { status: "published", version: 4 },
-      "2026-11-29": { status: "draft", version: 2 },
-      "2026-12-06": { status: "draft", version: 1 },
+      "2026-11-15": { status: "published", version: "2026-11-20T12:00:07+00:00" },
+      "2026-11-22": { status: "published", version: "2026-11-21T12:00:04+00:00" },
+      "2026-11-29": { status: "draft", version: "2026-11-22T12:00:02+00:00" },
+      "2026-12-06": { status: "draft", version: "2026-11-23T12:00:01+00:00" },
     },
     slots,
     time_off: [
@@ -304,11 +307,10 @@ function rangeBody(from, weeks) {
     weeks_info: wkList.map((w) => ({
       week_start: w,
       status: weekStatus(w),
-      version: state.weeks[w]?.version ?? 0,
+      version: state.weeks[w]?.version ?? null,
       published_with_gaps: false,
-      pending_changes: false,
     })),
-    employees: Object.values(EMP).map((id, i) => ({ id, name: NAMES[id], sort_order: i + 1, is_active: true })),
+    employees: Object.values(EMP).map((id, i) => ({ id, name: NAMES[id], is_active: true })),
     slots: state.slots.filter((s) => inRange(s.date)),
     time_off: state.time_off.filter((t) => inRange(t.date)).map(timeOffOut),
     gaps: gapsFor(state.slots, state.time_off, dates),
@@ -412,10 +414,19 @@ http
         }
       }
       // 版本 / 锁在「周对不对」之后查（后端：先整理 ops 分到各周，apply_week_changes 里才查 stale）。
+      // 后端 86（11-26）：只有带「班的 op」的周才查锁和版本；base_version 要非空字符串（服务层 schedule.py:1553，否则 400，原话未核）。
+      const slotWeeks = new Set();
+      for (const op of ops) {
+        if (op.op === "time_off_set" || op.op === "time_off_delete") continue;
+        if (op.op === "create") slotWeeks.add(weekOf(op.date));
+        else { const s0 = state.slots.find((x) => x.id === op.slot); if (s0) slotWeeks.add(weekOf(s0.date)); }
+      }
       for (const w of weeks) {
+        if (!slotWeeks.has(w.week_start)) continue;
+        if (typeof w.base_version !== "string" || !w.base_version) return send(res, 400, { detail: "base_version must be a non-empty string." });
         const cur = state.weeks[w.week_start];
-        if (cur && w.base_version != null && w.base_version !== cur.version)
-          return conflict(res, "Someone else changed this week. Reload to see the latest.", "stale", { week_start: w.week_start });
+        if (cur && w.base_version !== cur.version)
+          return conflict(res, "Someone else changed this week. Reload to see the latest.", "stale", { week_start: w.week_start, version: cur.version });
       }
       const idx = ops.map((op, i) => [i, op]);
       const ordered = [
@@ -486,10 +497,10 @@ http
       // weeks 只有这次有班的 op 的周；整周 Save 的回包同 sch-mock：{week, created, applied, notified, lock_token}。
       const weeksOut = {};
       for (const w of Object.keys(appliedByWeek).sort()) {
-        if (state.weeks[w]) state.weeks[w].version += 1;
+        if (state.weeks[w]) state.weeks[w].version = bumpVer();
         const lock = weeks.find((x) => x.week_start === w)?.lock_token ?? null;
         weeksOut[w] = {
-          week: { week_start: w, status: weekStatus(w), version: state.weeks[w]?.version ?? 0, slots: state.slots.filter((s) => weekOf(s.date) === w) },
+          week: { week_start: w, status: weekStatus(w), version: state.weeks[w]?.version ?? null, slots: state.slots.filter((s) => weekOf(s.date) === w) },
           created: createdByWeek[w] || {},
           applied: appliedByWeek[w],
           notified: [],
@@ -640,9 +651,9 @@ http
       const gaps = gapsFor(state.slots, state.time_off, rangeDates(w, 1));
       if (gaps.length && !(body && body.allow_gaps === true)) return send(res, 400, { detail: { detail: "Can't publish — there's a gap in coverage.", gaps } });
       const republished = weekStatus(w) === "published";
-      state.weeks[w] = { ...(state.weeks[w] || { version: 1 }), status: "published" };
+      state.weeks[w] = { ...(state.weeks[w] || { version: null }), status: "published" };
       delete ctl.weekStatus[w];
-      state.weeks[w].version += 1;
+      state.weeks[w].version = bumpVer();
       return send(res, 200, { week: { week_start: w, status: "published", version: state.weeks[w].version }, republished, notified: [], not_notified: [] });
     }
     const sm = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/employees\/(\d+)\/send-changes$/.exec(p);
