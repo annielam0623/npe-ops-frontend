@@ -134,7 +134,7 @@ table.sum th{font-size:12.5px;color:var(--muted);font-weight:600}
 <tr><td>Bus 列（换车下拉）</td><td>一个团分了 A / B 车时屏幕上才有，打印、Excel 都没有。是 staff 换车用的，不在这次的清单里。</td><td class="src">前端 manifest-view.tsx:2295、:2818-2826；后端 version_columns() 不含 Bus</td></tr>
 <tr><td>各版式的列</td><td>General / Marcello：Order Number、Pick-up Time、Pick-up Location、Last Name、First Name、Customer Phone、#、Quantities、(Lunch)、Special Requirements、(ASSIST)、✓<br>Lankun：Order #、Time、Hotel、Phone、Ticket、Pax、Last Name、First Name、(Lunch)、Special Requirements、(ASSIST)，✓ 只在屏幕<br>West Rim：Order #、Time、Hotel、Phone、Last Name、First Name、Pax、Quantities、(Lunch)、Special Requirements、(ASSIST)，没有 ✓</td><td class="src">后端 tour_manifest.py:1731-1771；前端 manifest-view.tsx:191-249</td></tr>
 <tr><td>打印 / Excel 怎么拿列</td><td>都调 <code>version_columns(版式, lunch_column, assist_column)</code>，现在只认 Lunch 的隐藏。</td><td class="src">打印 routers/tour_manifest.py:248；Excel services/tour_manifest.py:3272</td></tr>
-<tr><td class="unk">未核</td><td colspan="2">司机 / 导游手机页的列是不是也读这份设置（推断不读，它们有自己的版式）。</td></tr>
+<tr><td>司机 / 导游手机页</td><td>现在不读这份设置（只有 Bus manifest 屏幕、打印、Excel 读）。团车是客人卡片，relay 接人是另一块。Annie 11-26 定团车要跟着藏，见下面「司机 / 导游的手机链接」。</td><td class="src">后端 field/driver_home.html、field/guide_home.html、routers/field.py:136、:863</td></tr>
 </table>
 </div>
 
@@ -211,6 +211,47 @@ table.sum th{font-size:12.5px;color:var(--muted);font-weight:600}
 </div>
 </div>
 
+<h3>司机 / 导游的手机链接（第 3 版加）</h3>
+<div class="card">
+<div class="lbl">Annie 11-26 原话</div>
+<p style="margin-top:0">「这份打印件就是给司机的Hard copy，对应的司机和导游的链接也应该是看不到的。但是有个边界你要非常清楚就是：这个只是for bus tour的bus，不是relay的pick up，那个还是要全部显示的」</p>
+<div class="lbl">边界（查过代码）</div>
+<ul>
+<li><b>跟着藏</b>：团车（bus tour）的客人卡片。司机页 <span class="src">field/driver_home.html:256-345</span>（m.blocks，Boarded / No show 存 boarding）；导游页 <span class="src">field/guide_home.html:138-195</span>（m.blocks）。司机兼导游（Driver&amp;Guide）看的也是这一块。</li>
+<li><b>不藏，照旧全部显示</b>：relay 接人。司机页 relay 那一块 <span class="src">driver_home.html:352-430</span>（seg.relay_blocks，Picked up / No show 存 relay_status，接口 /driver/api/relay-status）；Relay list、relay 打印都不动。导游页上「✓ On board / ✗ No show（relay 司机标的）」那个小标是 relay 的结果，也不藏。</li>
+<li>藏哪几列跟着同一个团的设置（同一份 bus_manifest_hidden_columns），staff 不用另设。</li>
+</ul>
+<div class="lbl">手机卡片上现在有什么、各对哪一列</div>
+<div class="scroll">
+<table class="facts">
+<tr><th>列</th><th>团车卡片上现在显示的</th><th>藏了以后</th></tr>
+<tr><td>Order Number</td><td>名字下面灰字单号（司机页 :290、导游页 :174）</td><td>不出单号</td></tr>
+<tr><td>First Name</td><td>卡片上是全名一行（g.name / g.guide_name）</td><td>见 H9</td></tr>
+<tr><td>Customer Phone</td><td>不显示号码，只有 Call / WhatsApp / Text 键（司机页 :318-334、导游页 :179）</td><td>见 H6</td></tr>
+<tr><td>Quantities</td><td>司机页单号旁的票型（:291），导游页没有</td><td>不出</td></tr>
+<tr><td>Lunch</td><td>每人一个餐的小标 + ✎ Change（司机页 :293-302、导游页 :163-171）；卡片顶上还有午餐合计条和餐厅（打电话 / Send message）</td><td>见 H8</td></tr>
+<tr><td>Special Requirements</td><td>手机卡片上现在没有</td><td>不用改</td></tr>
+<tr><td>ASSIST</td><td>手机上没有</td><td>不用改</td></tr>
+<tr><td>✓</td><td>Boarded / No show 两个键，司机 / 导游自己点（司机页 :336-337、导游页 :184-185）；点的结果就是 Bus manifest ✓ 列和 Morning Tracking 的 Bus 列的来源</td><td>见 H7</td></tr>
+<tr><td>锁住的 4 列</td><td>时间、酒店在站点抬头，姓在全名里，人数「N pax」</td><td>照出</td></tr>
+</table>
+</div>
+<div class="two" style="margin-top:10px">
+<div><div class="lbl">现在（司机页团车卡片，模拟）</div>
+<div class="phone" style="border-width:6px"><div style="background:#0f1b2b;color:#e2e8f0;padding:10px;font-family:Arial,Helvetica,sans-serif;font-size:13px">
+<div style="display:flex;justify-content:space-between"><b style="color:#fff">Zz Mary Testnguyen</b><span>2 pax</span></div>
+<div style="color:#94a3b8;font-size:12px;display:flex;gap:8px;flex-wrap:wrap"><span>ZZT1001</span><span>2 Adult</span><span style="background:#334155;border-radius:9px;padding:0 6px;color:#fff">1 T 1 V</span></div>
+<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><span class="wbtn" style="display:inline-flex;align-items:center;height:26px;background:#fff;color:#0f172a;border-radius:7px;padding:0 8px;font-weight:700;font-size:11.5px">Call</span><span style="display:inline-flex;align-items:center;height:26px;background:#25d366;color:#fff;border-radius:7px;padding:0 8px;font-weight:700;font-size:11.5px">WhatsApp</span><span style="display:inline-flex;align-items:center;height:26px;background:#fff;color:#0f172a;border-radius:7px;padding:0 8px;font-weight:700;font-size:11.5px">Text</span><span style="display:inline-flex;align-items:center;height:26px;background:#1e6b43;color:#fff;border-radius:7px;padding:0 8px;font-weight:700;font-size:11.5px">Boarded</span><span style="display:inline-flex;align-items:center;height:26px;background:#fff;color:#b3261e;border-radius:7px;padding:0 8px;font-weight:700;font-size:11.5px">No show</span></div>
+</div></div></div>
+<div><div class="lbl">藏了 Order Number、Quantities、Lunch（按 H6–H9 推荐）</div>
+<div class="phone" style="border-width:6px"><div style="background:#0f1b2b;color:#e2e8f0;padding:10px;font-family:Arial,Helvetica,sans-serif;font-size:13px">
+<div style="display:flex;justify-content:space-between"><b style="color:#fff">Zz Mary Testnguyen</b><span>2 pax</span></div>
+<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><span style="display:inline-flex;align-items:center;height:26px;background:#fff;color:#0f172a;border-radius:7px;padding:0 8px;font-weight:700;font-size:11.5px">Call</span><span style="display:inline-flex;align-items:center;height:26px;background:#25d366;color:#fff;border-radius:7px;padding:0 8px;font-weight:700;font-size:11.5px">WhatsApp</span><span style="display:inline-flex;align-items:center;height:26px;background:#fff;color:#0f172a;border-radius:7px;padding:0 8px;font-weight:700;font-size:11.5px">Text</span><span style="display:inline-flex;align-items:center;height:26px;background:#1e6b43;color:#fff;border-radius:7px;padding:0 8px;font-weight:700;font-size:11.5px">Boarded</span><span style="display:inline-flex;align-items:center;height:26px;background:#fff;color:#b3261e;border-radius:7px;padding:0 8px;font-weight:700;font-size:11.5px">No show</span></div>
+</div></div>
+<p class="note">relay 那一块的卡片（Picked up / No show）不管这个团藏了什么，都照现在全部显示。</p></div>
+</div>
+</div>
+
 <h3>数据从哪来、到哪去</h3>
 <div class="card">
 <ul>
@@ -218,7 +259,8 @@ table.sum th{font-size:12.5px;color:var(--muted);font-weight:600}
 <li><b>藏哪几列</b>：staff 在 Bus manifest 页头「Hide columns ▾」勾 → 先放在页面上 → 按 Save → PUT <code>/api/dispatch/manifest/hidden-columns</code> <code>{tour, hidden_columns}</code>（现有接口）→ settings <code>bus_manifest_hidden_columns</code>（现有键，同一个团一份）。</li>
 <li><b>能勾哪些</b>：后端 <code>BUS_HIDEABLE_COLUMNS</code> → GET 的 <code>tour.bus_column_options</code> → 下拉的清单。staff 不填任何别的东西。</li>
 <li><b>到哪去</b>：① Dispatch › Bus manifest 屏幕（含 View only、Full screen、手机）；② 打印页（Print / Print all buses）；③ Excel（⬇ Excel）；④ Action log「Hidden columns: … → …」；⑤ 第二部分的自动适配：藏了列，表格变窄，字可以更大（算法读同一份隐藏列）。</li>
-<li><b>不去</b>：午餐单（NPE Lunch Box）、餐数、底部合计、司机 / 导游手机页（未核，推断不读）、Main manifest。</li>
+<li>⑥ 司机页、导游页的<b>团车</b>客人卡片（Annie 11-26 加；对法见 H6–H9）。</li>
+<li><b>不去</b>：relay 接人（司机页 relay 那一块、Relay list、relay 打印，照旧全部显示）、午餐单（NPE Lunch Box）、餐数、底部合计、Main manifest。</li>
 </ul>
 </div>
 
@@ -230,6 +272,7 @@ table.sum th{font-size:12.5px;color:var(--muted);font-weight:600}
 <li><code>bus_column_options</code> 按这个团的版式给：没 assist_column 的团不给 ASSIST；West Rim 不给 ✓；Lankun 的 ✓ 纸上本来就不印，也不给。列名照这个版式的写法（Order # / Order Number）。</li>
 <li>打印页分页脚本、底部合计不用改（colspan 已经按 columns 长度）；Excel 列宽照现在按内容算。</li>
 <li>Action log 的列名清单跟着 BUS_HIDEABLE_COLUMNS 自动有。</li>
+<li>（第 3 版加）司机页 / 导游页：routers/field.py 的 driver_home、guide_home 把这个团的隐藏列带给模板；driver_home.html 团车那一块（:256-345）和 guide_home.html（:138-195）按 H6–H9 不出对应的东西。<b>relay 那一块（driver_home.html:352 起、relay_pull）不改。</b>后端的 How to use（司机页 :545 起）要不要加一句，跟 H6–H9 一起定。</li>
 </ol>
 <p class="note" style="margin-bottom:0">前端跟着改：ColumnsPicker 改成下拉（H4）、屏幕上按隐藏列去掉列（✓ 按 H1）、How to use 换一句（H5）、mf 检查套加项。</p>
 </div>
@@ -287,6 +330,42 @@ table.sum th{font-size:12.5px;color:var(--muted);font-weight:600}
 <div class="opt">B. 要改（请写改法）。前面几题选的不是推荐时，这几句跟着改写，再给 Annie 看。</div>
 </div>
 
+<h3>司机 / 导游链接的 4 题（第 3 版加）</h3>
+<p class="note">Annie 已定：团车的司机 / 导游链接跟着藏，relay 接人照旧全显示。手机上不是表格，是一张张客人卡片，有几列在卡片上是「键」不是「字」，所以下面 4 题要定。</p>
+
+<div class="q"><h3>H6　藏了 Customer Phone，手机上的 Call / WhatsApp / Text 键还留不留</h3>
+<p><b>页面 / 功能</b>：司机页、导游页的团车客人卡片。<br>
+<b>现在</b>：手机卡片上不显示号码，只有 Call / WhatsApp / Text 三个键（driver_home.html:318-334，guide_home.html:179）。<br>
+<b>为什么问</b>：纸上不印电话，司机 / 导游拿纸也打不了；但手机上这几个键是客人没出现时联系他们用的，号码本身不露出来。</p>
+<div class="opt">A. 键照留（手机上本来就不显示号码，只是能点着打）。 <span class="rec">← 推荐</span>（找不到客人时还能联系）</div>
+<div class="opt">B. 键也不出，司机 / 导游要联系客人只能打给办公室。</div>
+</div>
+
+<div class="q"><h3>H7　藏了 ✓ 列，手机上的 Boarded / No show 键还留不留</h3>
+<p><b>页面 / 功能</b>：同上。<br>
+<b>现在</b>：司机 / 导游在卡片上点 Boarded / No show（driver_home.html:336-337，guide_home.html:184-185），存进 boarding；Bus manifest 的 ✓ 列、Morning Tracking 的 Bus 列、No show 记录都从这里来。<br>
+<b>为什么问</b>：纸上的 ✓ 只是空格子给人手写；手机上的这两个键是<b>系统里 No show 的来源</b>。键不出，这个团就没人标上车 / No show 了。</p>
+<div class="opt">A. 键照留，只有纸上和 Bus manifest 屏幕上不出 ✓。 <span class="rec">← 推荐</span>（不断 No show 的数据）</div>
+<div class="opt">B. 键也不出，这个团不再在手机上标上车。</div>
+</div>
+
+<div class="q"><h3>H8　藏了 Lunch，手机上的餐怎么办</h3>
+<p><b>页面 / 功能</b>：同上。<br>
+<b>现在</b>：每个客人一个餐的小标（例如「1 T 1 V」）+ ✎ Change（司机兼导游、导游能改餐）；卡片顶上有整车的午餐合计条和餐厅（打电话 / Send message 把餐数发给餐厅）（driver_home.html:211-213、:293-302；guide_home.html:85-113、:163-171）。<br>
+<b>为什么问</b>：纸上藏 Lunch 只是客人表不出那一列，午餐单、餐数照出。手机上每人的餐和整车的合计是分开的两样。</p>
+<div class="opt">A. 只藏每个客人的餐小标和 ✎ Change；整车合计条和餐厅照出（同纸上：午餐单照出）。 <span class="rec">← 推荐</span></div>
+<div class="opt">B. 连整车合计条、餐厅也不出。</div>
+<div class="opt">C. 手机上的餐都不藏（只管纸）。</div>
+</div>
+
+<div class="q"><h3>H9　藏了 First Name，手机上的名字怎么写</h3>
+<p><b>页面 / 功能</b>：同上。<br>
+<b>现在</b>：卡片上是一行全名（司机页 g.name、导游页 g.guide_name），不是分开的两格。<br>
+<b>为什么问</b>：纸上 First Name 是单独一列，藏了只剩姓。</p>
+<div class="opt">A. 手机上也只出姓（跟纸一样）。 <span class="rec">← 推荐</span>（跟纸上对得上）</div>
+<div class="opt">B. 手机上照出全名，First Name 只管纸和 Bus manifest 屏幕。</div>
+</div>
+
 <!-- ===================== 第二部分 ===================== -->
 <h2>第二部分：自动适配 F3「14 号」是最小还是固定（照 0129 打印件模拟）</h2>
 
@@ -328,6 +407,7 @@ table.sum th{font-size:12.5px;color:var(--muted);font-weight:600}
 <table class="sum" id="sumTable"><tr><th>车</th><th>0129 实际</th><th>A（14pt 起，最小 14pt）</th><th>B（固定 14pt）</th></tr></table>
 </div>
 
+<div class="card" style="border-color:var(--ok)"><b>Annie 11-26 已答（原话「14是最小字号」）</b>：F3 = A。人少的车放大撑满一页，人多的车压完留白 / 行距 / 纸边再缩字，最小 14pt，再不行分页（R3 不用另答）。还没写代码。</div>
 <div class="q"><h3>F3　R1 的「14 号」是最小字号，还是固定字号</h3>
 <p><b>页面 / 功能</b>：Dispatch › Bus manifest 的 Print 和 ⬇ Excel，客人信息格的字号（自动适配）。<br>
 <b>现在</b>：没有自动适配。打印起点 General 14px（约 10.5pt）、Marcello 18px，staff 手动加减，最大 36px（约 27pt）；放不下打印页把末尾的行挪到第 2 页（后端 tour_manifest_print.html:24-26、:50-55，print_layout.py:45）。Annie 已答 R1「起点直接用excel的14号」、R2「A」。<br>
