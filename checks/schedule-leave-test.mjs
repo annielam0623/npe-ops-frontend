@@ -118,6 +118,9 @@ check("coverCandidates: free first, busy / on leave greyed with reason, test + s
 check("cover shift type follows the leaver's shift (Q12 A) + note", () => {
   assert.equal(coverShiftType(A, D, "14:00", "16:00", slots, "x"), "mid");
   assert.equal(coverShiftType(N, D, "14:00", "16:00", slots, "x"), "x");
+  // 一天两个班：同后端，取最早开始的那一班（不是重叠最多的）
+  const two = [...slots, slot(A, "close", "17:00", "21:30")];
+  assert.equal(coverShiftType(A, D, "18:00", "20:00", two, "x"), "mid");
   assert.equal(coverNote("Anita"), "Cover for Anita");
 });
 

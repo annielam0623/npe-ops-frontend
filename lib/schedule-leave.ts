@@ -332,7 +332,7 @@ export function coverCandidates(
 }
 
 /**
- * 顶班用哪种班次（Q12 A）：请假那人当天和这段重叠最多的那一班的类型；他那天没班（mock / 数据不齐）就用 fallback。
+ * 顶班用哪种班次（Q12 A）：请假那人当天最早开始的那一班的类型；他那天没班（mock / 数据不齐）就用 fallback（后端用 mid）。
  */
 export function coverShiftType(
   employeeId: number,
@@ -342,18 +342,14 @@ export function coverShiftType(
   slots: LeaveSlot[],
   fallback: string,
 ): string {
-  const want = spanOf(start, end);
-  let best: { key: string; overlap: number } | null = null;
-  for (const s of slots) {
-    if (s.employee_id !== employeeId || s.date !== date) continue;
-    const sp = spanOf(s.start_time, s.end_time);
-    const ov =
-      sp && want
-        ? intersect([sp], [want]).reduce((n, x) => n + x.end - x.start, 0)
-        : 0;
-    if (!best || ov > best.overlap) best = { key: s.shift_type, overlap: ov };
-  }
-  return best?.key ?? fallback;
+  // 同后端 _add_cover（task/g382-hr-schedule d9a78076 services/leave_requests.py）：取那人当天最早开始的那一班，
+  // 页面上写的「Adds Close …」才跟后端真加的一样。start / end 留着给以后按时段挑。
+  void start;
+  void end;
+  const first = slots
+    .filter((s) => s.employee_id === employeeId && s.date === date)
+    .sort((a, b) => a.start_time.localeCompare(b.start_time))[0];
+  return first?.shift_type ?? fallback;
 }
 
 /** 顶班 / 填空档的备注（Q12 A）。后端限 120 字。 */
