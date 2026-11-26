@@ -195,7 +195,7 @@ table.sum th{font-size:12.5px;color:var(--muted);font-weight:600}
   <label class="lock"><input type="checkbox" disabled> Pick-up Time <span class="why">(always shown)</span></label>
   <label><input type="checkbox"> Phone</label>
   <label><input type="checkbox" checked> ASSIST</label>
-  <label><input type="checkbox" checked> ✓ <span class="why">(paper only)</span></label>
+  <label><input type="checkbox" checked> ✓</label>
   <div class="hd">…</div>
   <div class="ft"><button type="button" tabindex="-1">Done</button></div>
  </div>
@@ -235,6 +235,7 @@ table.sum th{font-size:12.5px;color:var(--muted);font-weight:600}
 </div>
 
 <h3>要 Annie 定的（5 题）</h3>
+<div class="card" style="border-color:var(--ok)"><b>Annie 11-26 已答（原话「CAAAA」）</b>：H1 C、H2 A、H3 A、H4 A、H5 A。✓ 列也跟别的列一样，屏幕、打印、Excel 一起藏。H5 的英文已经照 H1 C 改了，见下面 H5。还没开始写代码，等 Annie 说「动手」。上面那个可以点的模拟已改成 H1 C 的样子。</div>
 
 <div class="q"><h3>H1　藏掉的列：只管打印，还是屏幕 / 打印 / Excel 一起</h3>
 <p><b>页面 / 功能</b>：Dispatch › Bus manifest 页头新的「Hide columns ▾」。<br>
@@ -278,7 +279,8 @@ table.sum th{font-size:12.5px;color:var(--muted);font-weight:600}
 <b>现在</b>（manifest-view.tsx:3367）：</p>
 <div class="quote">Columns: untick a column next to Columns at the top to leave it off this tour's Bus Manifest, then press Save. It is the same for everyone and every day — on screen, when printed and in Excel. The lunch sheet and lunch counts do not change.</div>
 <p><b>为什么问</b>：改成下拉、勾 = 藏以后这句不对了。下面按 H1 A、H2 A、H3 A、H4 A 写的：</p>
-<div class="quote">Hide columns: open Hide columns at the top, tick each column you do not want, then press Save. Ticked columns are left off this tour's Bus Manifest for everyone and every day — on screen, when printed and in Excel. The ✓ column is only left off the paper and Excel; the screen still shows who boarded. Pick-up Time, Pick-up Location, Last Name and # are always shown. The lunch sheet and lunch counts do not change.</div>
+<div class="quote">Hide columns: open Hide columns at the top, tick each column you do not want, then press Save. Ticked columns are left off this tour's Bus Manifest for everyone and every day — on screen, when printed and in Excel. Pick-up Time, Pick-up Location, Last Name and # are always shown. The lunch sheet and lunch counts do not change.</div>
+<p class="note">（11-26 按 Annie 答的 H1 C 改过：去掉了「✓ 只在纸上藏」那句。）</p>
 <p>下拉顶上的一行小字：</p>
 <div class="quote">Tick a column to leave it off this tour's Bus Manifest.</div>
 <div class="opt">A. 照上面用。 <span class="rec">← 推荐</span></div>
@@ -343,7 +345,7 @@ table.sum th{font-size:12.5px;color:var(--muted);font-weight:600}
   var COLS=[
     {k:"order_number",l:"Order Number"},{k:"pickup_time",l:"Pick-up Time",lock:1},{k:"pickup_location",l:"Pick-up Location",lock:1},
     {k:"last_name",l:"Last Name",lock:1},{k:"first_name",l:"First Name"},{k:"phone",l:"Customer Phone"},{k:"pax",l:"#",lock:1},
-    {k:"ticket",l:"Quantities"},{k:"lunch",l:"Lunch"},{k:"notes",l:"Special Requirements"},{k:"assist",l:"ASSIST"},{k:"boarding",l:"✓",paper:1}
+    {k:"ticket",l:"Quantities"},{k:"lunch",l:"Lunch"},{k:"notes",l:"Special Requirements"},{k:"assist",l:"ASSIST"},{k:"boarding",l:"✓"}
   ];
   var ROWS=[
     ["ZZT1001","4:50","Bellagio","Testnguyen","Zz Mary","+1 (555) 010-0101","2","2 Adult","1T 1V","","","b"],
