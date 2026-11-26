@@ -17,6 +17,8 @@
 - 派工（Annie 开了 4 个窗口）：**e2** [e6fde9] G382 task/g382-fe 合 6e c01c928f + 61 4ed9005b + 最新 main、对后端 c336d008 合同、改旧 sch / leave headless；**ab** [92c9ed] G382 总览本体（等 Annie F1 点头才写，先读合同 / mock）；**09** [3b5d07] Tickets 跳过去红框消失（复现找根因，样子不变才修）；**f2** [048ee8] 打印隐藏列 preview + 照 0129_001.pdf 模拟 F3 A / B。都不自己合 main、不直接问 Annie。另有后端 86 [2a7c3f]。
 - ab 疑问 fe 定：总览全挂 Auto-fill / Rules / Employees / Settings / Share（行为照旧，有未存改动先 Save）；跨周拖照 preview；g382ov-* mock 归 ab；只能批假的人只出 Schedule 页签。合同 3 问（base_version 类型、lock_token、批假人放行）转后端。
 - 今天后端窗口（f1 告）：**86** [2a7c3f] G382（gap reason / weeks violations 305344de、PUT /time-off f8df1073 已写，差 CR-4、SA-6、重审，落 main 要 Annie 签 release.py）；48 G361 + G372；dd G381；75 G333 + G368；32 G374 ③ / G380-1 / G370 / G371（可能 Tour bus 默认 TI）。对合同直接找对应窗口，抄 f1。
+- 86 答 ab 契约：base_version 是字符串（= weeks_info[].version，updated_at ISO）；lock_token 同现有 weeks/{w}/edit-lock；只能批假的人 range 放行（can_edit=false）、批拒请假放行、批改班不放行。
+- Annie 定（f1 转）：这台公司电脑 ANNIELAM 11-26 至 11-29 带回家用，不走 14:30 交接，每晚 22:30 收工；合上电脑所有窗口会断 ⇒ 已通知 e2 / ab / 09 / f2 勤推 WIP，听到「马上推」立刻推。
 - 不用等答就能做的：Tickets 跳过去红框消失（当 bug 复现找根因）、Bus manifest 打印隐藏列 preview、G382 两个前端分支合最新 main + 改旧 sch / leave headless。
 - 更正 David H（第 16 项）：Annie（原话）「我说过David H的身份很复杂，他是老板，有时候又会帮忙做relay」⇒ 11-22 定的「另开 staff 账号只勾 Dispatch Read only」不够（PROGRESS 里没找到她之前这句的记录）。📌 已问她：他的 staff 账号要多大权限、司机账号是否保留做 relay。一人同时是 staff + 司机后端支不支持：未核。
 
