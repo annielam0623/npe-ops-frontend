@@ -116,7 +116,7 @@ http.createServer(async (req, res) => {
   if (p === "/__ctl") {
     const b = json();
     if (b.reset) { fresh(); log.length = 0; }
-    for (const k of ["upstream", "viewer", "notOnSchedule", "race", "failDecide", "failLead", "hrDuty"]) if (k in b) ctl[k] = b[k];
+    for (const k of ["upstream", "viewer", "notOnSchedule", "race", "failDecide", "failLead", "fail422", "hrDuty"]) if (k in b) ctl[k] = b[k];
     if (b.sch) await fetch(`http://127.0.0.1:${SCH_PORT}/__ctl`, { method: "POST", body: JSON.stringify(b.sch) });
     if (b.tp) await fetch(`http://127.0.0.1:${TP_PORT}/__control?${b.tp}`);
     return send(res, 200, { ok: true, ctl });
@@ -193,6 +193,8 @@ http.createServer(async (req, res) => {
     const team = routing.teams.find((t) => t.id === id);
     if (!team) return send(res, 404, { detail: "Team not found." });
     if (ctl.failLead) return send(res, 400, { detail: "Pick an active staff or admin account." });
+    // FastAPI 请求校验 422（detail 是数组）：Annie 2026-11-25 线上 Reporting lines Save 的样子。
+    if (ctl.fail422) return send(res, 422, { detail: [{ type: "missing", loc: ["path", "request_id"], msg: "Field required", input: null }] });
     team.lead_user_id = b.lead_user_id;
     return send(res, 200, { team_id: id, lead_user_id: b.lead_user_id });
   }

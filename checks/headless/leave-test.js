@@ -324,6 +324,12 @@ async function run() {
   await waitFor("(document.querySelector('[data-team-lead-msg]')?.textContent || '').includes('Pick an active')");
   check("存失败：红字后端原话", await evaluate("const m = document.querySelector('[data-team-lead-msg]'); return m.className.includes('#c0392b');"));
   await ctl({ failLead: false });
+  // 422 的数组 detail 也写成人话（Annie 2026-11-25：线上只看到「Request failed (422).」）
+  await ctl({ fail422: true });
+  await click("[data-team-lead-save]");
+  await waitFor("(document.querySelector('[data-team-lead-msg]')?.textContent || '').includes('422')");
+  check("存失败 422：红字写出哪一格（path request_id: Field required），不只是 Request failed (422).", (await evaluate("return document.querySelector('[data-team-lead-msg]').textContent;")) === "Request failed (422 Unprocessable Entity): path request_id: Field required." || (await evaluate("return document.querySelector('[data-team-lead-msg]').textContent;")) === "Request failed (422): path request_id: Field required.", await evaluate("return document.querySelector('[data-team-lead-msg]').textContent;"));
+  await ctl({ fail422: false });
 
   // 成员弹窗：Manager 下拉（Super Admin），跟弹窗同一个 Save，Manager 变了才单独 PUT
   const clickRowBtn = (label, scope) => evaluate(`const tr = [...document.querySelectorAll('tr')].find(t => t.innerText.includes(${JSON.stringify(scope)})); const b = tr && [...tr.querySelectorAll('button')].find(b => b.innerText.replace(/\\s+/g,' ').trim() === ${JSON.stringify(label)}); if (!b) return false; b.click(); return true;`);
