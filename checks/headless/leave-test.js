@@ -120,10 +120,45 @@ async function main() {
   }
   const failed = results.filter((r) => !r.ok);
   console.log(`\n${results.length - failed.length}/${results.length} passed`);
+  if (skipped.length) console.log(skipped.length + " old sections SKIP (leave approval moved to the overview, listed above with SKIP)");
   process.exit(failed.length ? 1 : 0);
 }
 
 
+
+// ── G382 搬家（设计第 3 节，6e schedule-view.tsx MANAGE_IN_OVERVIEW = true）：批假从 Staff Schedule › Leave 搬到
+// Settings › HR › Schedule 总览（LeaveRequestDialog，检查 = g382-leave-test.js + g382ov-test.js）。开关打开时批复人那段改查新行为，
+// 旧的批 / 拒 / 队列检查逐段 SKIP（不删，开关关回去还能跑）。员工的 My leave、Team 页照旧。（e2 2026-11-26）
+const READ_ONLY = /const MANAGE_IN_OVERVIEW = true;/.test(
+  require("fs").readFileSync(path.join(__dirname, "../../components/schedule/schedule-view.tsx"), "utf8"),
+);
+const skipped = [];
+function skip(name, why) {
+  skipped.push({ name, why });
+  console.log(`SKIP  ${name}  → ${why}`);
+}
+const MOVED = "leave approval moved to the overview (G382 §3); covered by g382-leave-test / g382ov-test";
+async function approverReadOnly() {
+  await ctl({ reset: true, viewer: "approver", sch: { role: "admin", meName: "Tessa" } });
+  await openSchedule();
+  await waitFor("document.querySelector('[data-manage-link]')", 20000);
+  const tabs = await evaluate("return $t('[role=tab]');");
+  check("G382 · 批复人：Staff Schedule 没有 Leave 标签（批假在总览）", !tabs.some((t) => t.startsWith("Leave")), JSON.stringify(tabs));
+  check("G382 · 批复人（没有 schedule.edit 也算）：页顶有「Manage the schedule in Settings › Human Resource › Schedule →」，链到 /settings/hr?tab=schedule",
+    await evaluate("const l = document.querySelector('[data-manage-link]'); return !!l && l.querySelector('a')?.getAttribute('href') === '/settings/hr?tab=schedule';"),
+    await evaluate("return document.querySelector('[data-manage-link]')?.outerHTML ?? 'none';"));
+  check("G382 · 批复人：Staff Schedule 上没有待批队列 / Approve / Reject", await evaluate("return !document.querySelector('[data-leave-view]') && !document.querySelector('[data-leave-queue]') && !document.querySelector('[data-leave-approve]');"));
+  await goto(`${APP}/schedule?tab=leave`);
+  check("G382 · 批复人点旧的休假通知 /schedule?tab=leave ⇒ 跳总览 /settings/hr?tab=schedule",
+    await waitFor("location.pathname === '/settings/hr' && location.search === '?tab=schedule'", 20000), await evaluate("return location.href;").catch(() => ""));
+  for (const s of [
+    "批复人 Leave · N waiting 标签",
+    "待批三条、You are their manager、Handled 列表、自己的请假链 My schedule",
+    "那天有班红框 + Approve 灰（Q7 B）、How to use 红框那句",
+    "Approve / Reject（理由框、带 note）、批后进 Handled、绿字 emailed",
+    "别人先批了 409 原话、后端 400 原话留在那一行",
+  ]) skip(s, MOVED);
+}
 
 // ───────────── G282 Leave（leave-mock.js）─────────────
 const text = () => evaluate("return document.body.innerText;");
@@ -237,6 +272,8 @@ async function run() {
   await ctl({ notOnSchedule: false });
 
   // ── 批复人 Tessa ──
+  if (READ_ONLY) await approverReadOnly();
+  else {
   await ctl({ reset: true, viewer: "approver", sch: { role: "admin", meName: "Tessa" } });
   await openSchedule();
   await waitFor("$t('[role=tab]').some(t => t.includes('waiting'))");
@@ -284,6 +321,7 @@ async function run() {
   await waitFor("document.querySelector(\"[data-leave-decide-error='12']\")");
   check("后端 400 原话红字留在那一行（页面打开后才排的班）", (await evaluate("const e = document.querySelector(\"[data-leave-decide-error='12']\"); return e.className.includes('red') ? e.textContent : '';")).includes("before approving") && !(await evaluate("return !!document.querySelector(\"[data-leave-done='12']\");")));
   await ctl({ failDecide: "" });
+  }
 
   // ── 手机 ──
   await ctl({ reset: true, viewer: "staff", sch: { role: "staff", meName: "Nadia" } });
@@ -296,10 +334,13 @@ async function run() {
   check("手机：说明收进 i", await evaluate("return !!document.querySelector('[data-leave-section=my-leave] [data-phone-info]');"));
   check("手机：My leave requests 是卡片，不是表格", (await evaluate(`return ${visible("[data-leave-mine-card]")};`)) && !(await evaluate(`return ${visible("[data-leave-mine]")};`)));
   check("手机：整页不左右晃", await evaluate("return document.documentElement.scrollWidth <= window.innerWidth + 1;"));
+  if (READ_ONLY) skip("手机（批复人）：待批卡片 + 红框、整页不晃", MOVED);
+  else {
   await ctl({ viewer: "approver", sch: { role: "admin", meName: "Tessa" } });
   await openLeave();
   check("手机：待批也是卡片，红框照出", (await evaluate(`return ${visible("[data-leave-queue-card]")};`)) && (await evaluate("return !!document.querySelector(\"[data-leave-queue-card='11'] [data-leave-shift-warn=block]\");")));
   check("手机（批复人）：整页不左右晃", await evaluate("return document.documentElement.scrollWidth <= window.innerWidth + 1;"));
+  }
   await cdp("Emulation.clearDeviceMetricsOverride");
 
   // ── Team 页：Manager + Reporting lines ──

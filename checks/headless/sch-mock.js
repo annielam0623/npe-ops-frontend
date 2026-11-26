@@ -449,6 +449,12 @@ http
         weeks.get(fw).copied_from = addDays(fw, -7);
         delete ctl.futurePublished;
       }
+      // G382 搬家后 Staff Schedule 只读、草稿周看不到（e2 2026-11-26）：ctl.publishAs = "YYYY-MM-DD" ⇒ 那周原样改成已发布（不查空档），给只读检查用。
+      if (ctl.publishAs) {
+        const w = weeks.get(ctl.publishAs);
+        if (w) Object.assign(w, { status: "published", published_at: "2026-10-03T22:00:00+00:00", published_by: 1 });
+        delete ctl.publishAs;
+      }
       // ctl.resetShiftTypes：班次类型回到种子的 Open / Mid / Close（置顶 85 的用例加过、改过之后）。
       if (ctl.resetShiftTypes) {
         settings.shift_types = JSON.parse(INITIAL_SHIFT_TYPES);
