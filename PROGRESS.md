@@ -38,6 +38,9 @@
 - Annie 在 f2（原话）「这样吧，我们以后把打印的显示和司机导游链接的手机显示都分开吧，你在content studio把司机和Diver的单独拿出来，因为他们的内容太多了」⇒ 隐藏列只管 Bus manifest 屏幕（H1 C）+ 打印 + Excel，司机 / 导游链接不跟；H8、H9 作废（H6、H7 也不再需要）。新：Content Studio 里司机和导游单独出来（现在 Team Messages 有「Driver & Guide SMS」「Driver Quick Replies」两标签，team-messages.tsx:26）；f2 在问她 3 题怎么拆，答后更新 preview。非动手。
 - 92 修 Cfm 旧标记（task/manifest-cfm-flag-refresh 0a72ec11）：存好后台重读 /api/manifests 只换这一行 cfm_short / cfm_mismatch，读不到保留旧的；man 636/636（+5，改回旧代码 3 项 FAIL）、mf 381、sds 8/8。✅ **上 main 4d77e45e**，📌 Annie 线上验（改 Cfm # 不刷新红框跟着变）。
 - Annie 问（原话）「没有发送的新单如果在DashBoard里显示，点击的got it它就不显示了对么」⇒ 查 notice-block.tsx:136-174、notice-panel.tsx:486-504 答：对，Got it = 本人标已读、从面板拿掉，Check history 里还在（绿点）；面板只放今天来的没读的，过了当天没点也只在历史里；不影响 Main manifest 红框 / NEW（那看发没发）。
+- ✅ **G382 F1 动手**：Annie 在 ab 窗口（原话）「preview v3 我同意了，动手」（11-26 11:19–12:33 之间；ab 当时发 fe 没送到——fe 窗口改了名）。F2 Leave 标签没答（6e / e2 按推荐 A 做）。
+  - ab **task/g382-ov-ab @ a94f171b**（合 e2 g382-fe 3b7d885a + 检查 5ece472a）：总览页本体；tsc 0、eslint 0、build；g382ov 10/10（连 3 次）、合同 37/37、hr 138/138（hr 检查改：Schedule example 页签换总览、无 settings.hr.view 只出 Schedule 页签）；临时交互 23 项过。改共用 permission-gate.tsx（/settings/hr 交页面判）。⚠️ g382-staff / g382-leave 两套在 run-all 起不来（NO OUTPUT，要 6e 未提交的临时页），e2 单跑过 64/64 ⇒ 合 main 前要能在 run-all 跑。
+  - e2：改班栏手机叠字修 3b7d885a；「+1」展开键手机被截点不到在修；核对包（↔ 86 77404fa0）在做。下一步：核对包 → 86 PASS → Annie 签后端 release.py → 前后端一起上。
 - 不用等答就能做的：Tickets 跳过去红框消失（当 bug 复现找根因）、Bus manifest 打印隐藏列 preview、G382 两个前端分支合最新 main + 改旧 sch / leave headless。
 - 更正 David H（第 16 项）：Annie（原话）「我说过David H的身份很复杂，他是老板，有时候又会帮忙做relay」⇒ 11-22 定的「另开 staff 账号只勾 Dispatch Read only」不够（PROGRESS 里没找到她之前这句的记录）。📌 已问她：他的 staff 账号要多大权限、司机账号是否保留做 relay。一人同时是 staff + 司机后端支不支持：未核。
 
