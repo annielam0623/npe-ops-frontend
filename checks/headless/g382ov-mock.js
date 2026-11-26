@@ -1,5 +1,8 @@
 // 模拟后端：G382 HR 排班总览（Settings › HR › Schedule）。照后端契约
-// npe-confirmation-service origin/task/g382-hr-schedule @ f77fbb57 的 docs/g382-hr-schedule/interface.md（2026-11-25，7d）。
+// npe-confirmation-service origin/task/g382-hr-schedule 的 docs/g382-hr-schedule/interface.md 和后端代码 @ d9a78076（2026-11-25，7d）。
+// ⚠️ 后端 d9a78076 还没做（mock 先照契约做着，等后端有了再对）：gap 的 reason、GET weeks/{w} 的 violations、PUT /api/schedule/time-off/{id}。
+// 违规行照后端 schedule_rule_check._v 多 rule_id / blocking；只有 blocking 的「新」违规让 range/changes 回 409 rule_violation。
+//   后端 _v 没有 employee_name（契约有）——mock 照契约留着，页面别依赖它，用 employee_id 对 employees。
 // 控制：POST /__ctl {reset, viewer: "editor"|"approver"|"hrview"|"none", canPublish, canManageLeaveTypes,
 //        weekStatus: {"YYYY-MM-DD": "published"|"draft"}, fail: {"<METHOD> <path 正则>": status}, today}
 //       GET /__log（只记写请求：{op, method, path, body}）。
@@ -119,22 +122,41 @@ function reset() {
       leaveReq(71, EMP.N, "2026-11-27", "2026-11-27", "personal", "15:00", "17:00", "Doctor appointment"),
       leaveReq(72, EMP.J, "2026-11-26", "2026-11-27", "sick", null, null, "Flu"),
     ],
+    // 改班 / 换班请求（平铺存，GET range 时按周包成 confirmations 的形状，见 changeRequestsOut）。
+    // 行的形状照 sch-mock 的 GET weeks/{w}/confirmations requests[]（G138）。
     change_requests: [
       {
+        week_start: "2026-11-29",
         id: 81,
-        at: "2026-11-24T18:00:00+00:00",
-        kind: "swap_agreed",
-        by: NAMES[EMP.A],
-        by_kind: "employee",
-        lines: [],
-        channels: [],
-        request_kind: "swap",
-        from_slot: { date: "2026-12-04", shift_type: "close" },
-        request: { date: "2026-12-04", shift_type: "close" },
-        peer: NAMES[EMP.J],
+        kind: "swap",
+        status: "pending",
+        from: { employee_id: EMP.J, name: NAMES[EMP.J] },
+        my_slot: { date: "2026-12-04", shift_type: "close" },
+        their_slot: null,
+        peer: { employee_id: EMP.A, name: NAMES[EMP.A] },
+        date: "2026-12-04",
+        shift_type: "close",
+        peer_timed_out: false,
+        created_at: "2026-11-24T18:00:00+00:00",
+        decided_at: null,
       },
     ],
   };
+}
+
+// 契约 d9a78076：change_requests = 每周一项 {week_start, …同 GET /api/schedule/weeks/{w}/confirmations}；还没建的周不出。
+function changeRequestsOut(wkList) {
+  return wkList
+    .filter((w) => state.weeks[w])
+    .map((w) => ({
+      week_start: w,
+      sent_at: weekStatus(w) === "published" ? "2026-11-20T16:00:00+00:00" : null,
+      deadline: null,
+      past_deadline: false,
+      empty_draft: false,
+      people: [],
+      requests: state.change_requests.filter((r) => r.week_start === w).map(({ week_start, ...r }) => r),
+    }));
 }
 
 function leaveReq(id, emp, from, to, kind, start, end, note) {
@@ -222,6 +244,8 @@ function violationsFor(slots, timeOff) {
       if (rest < MIN_REST_H)
         out.push({
           rule: "min_rest",
+          rule_id: 1,
+          blocking: true,
           employee_id: emp,
           employee_name: NAMES[emp],
           dates: [p.date, n.date],
@@ -243,6 +267,8 @@ function violationsFor(slots, timeOff) {
       if (v.m / 60 > WEEKLY_ALERT_H)
         out.push({
           rule: "weekly_hours_alert",
+          rule_id: 2,
+          blocking: false,
           employee_id: emp,
           employee_name: NAMES[emp],
           dates: [...new Set(v.dates)],
@@ -292,7 +318,7 @@ function rangeBody(from, weeks) {
       // 只能批假的人（approver）：只回自己能批的那条（Nadia 的）。can_decide 给页面判断按钮。
       .filter((r) => ctl.viewer !== "approver" || r.employee_id === EMP.N)
       .map((r) => ({ ...r, kind_label: catLabel(r.kind), can_decide: ctl.viewer !== "hrview", shifts: shiftsOf(r) })),
-    change_requests: canEdit() ? state.change_requests : [],
+    change_requests: canEdit() ? changeRequestsOut(wkList) : [],
   };
 }
 
@@ -360,41 +386,75 @@ http
     // 2.2 跨周一次保存
     if (p === "/api/schedule/range/changes" && method === "POST") {
       if (!canEdit()) return send(res, 403, { detail: "You don't have permission to edit the schedule." });
-      const weeks = (body && body.weeks) || [];
+      if (!body || typeof body !== "object" || Array.isArray(body)) return send(res, 400, { detail: "The body must be a JSON object." });
+      const weeks = body.weeks;
+      const ops = body.ops;
+      if (!Array.isArray(weeks) || !weeks.length || weeks.length > 8) return send(res, 400, { detail: "weeks must list 1 to 8 weeks." });
+      if (!Array.isArray(ops) || !ops.length) return send(res, 400, { detail: "ops must be a non-empty list." });
       const wkSet = new Set(weeks.map((w) => w.week_start));
+      const work = state.slots.map((s) => ({ ...s }));
+      const off = state.time_off.map((t) => ({ ...t }));
+      const refs = {};
+      const createdByWeek = {};
+      const appliedByWeek = {};
+      const offRows = [];
+      const find = (ref) => work.find((s) => s.id === (typeof ref === "string" ? refs[ref] : ref));
+      // 后端 d9a78076 的顺序（apply_range_changes）：先所有 time_off_delete，再班的 op（按周、周内照原顺序），最后所有 time_off_set；
+      // 全部做完再整体查一次空档和规则。「Change i」的 i 是原来 ops 里的位置。
+      for (let i = 0; i < ops.length; i++) {
+        const op = ops[i];
+        if (op.op === "time_off_delete") continue;
+        if (op.op === "time_off_set" || op.op === "create") {
+          if (op.date && !wkSet.has(weekOf(op.date))) return send(res, 400, { detail: `Change ${i} is on a week that isn't in this save.` });
+        } else if (typeof op.slot === "number") {
+          const s0 = state.slots.find((s) => s.id === op.slot);
+          if (s0 && !wkSet.has(weekOf(s0.date))) return send(res, 400, { detail: `Change ${i} is on a week that isn't in this save.` });
+        }
+      }
+      // 版本 / 锁在「周对不对」之后查（后端：先整理 ops 分到各周，apply_week_changes 里才查 stale）。
       for (const w of weeks) {
         const cur = state.weeks[w.week_start];
         if (cur && w.base_version != null && w.base_version !== cur.version)
           return conflict(res, "Someone else changed this week. Reload to see the latest.", "stale", { week_start: w.week_start });
       }
-      const work = state.slots.map((s) => ({ ...s }));
-      const off = state.time_off.map((t) => ({ ...t }));
-      const refs = {};
-      const created = {};
-      const ops = (body && body.ops) || [];
-      const find = (ref) => work.find((s) => s.id === (typeof ref === "string" ? refs[ref] : ref));
-      for (let i = 0; i < ops.length; i++) {
-        const op = ops[i];
-        const date = op.date || (op.slot != null && find(op.slot)?.date) || (op.op === "time_off_delete" && off.find((t) => t.id === op.id)?.date);
-        if (date && !wkSet.has(weekOf(date))) return send(res, 400, { detail: `Change ${i} is on a week that isn't in this save.` });
-        if (op.op === "create") {
-          if (!TYPES[op.shift_type]) return send(res, 400, { detail: "Unknown shift type." });
-          const s = { id: nextId++, date: op.date, shift_type: op.shift_type, start_time: op.start_time, end_time: op.end_time, employee_id: op.employee_id ?? null, note: op.note ?? null, updated_by: 1, updated_at: new Date().toISOString() };
-          work.push(s);
-          if (op.ref) refs[op.ref] = created[op.ref] = s.id;
-        } else if (op.op === "time_off_set") {
-          if (!state.categories.some((c) => c.key === op.kind && c.is_active)) return send(res, 400, { detail: "Pick a leave type." });
-          if ((op.start_time == null) !== (op.end_time == null)) return send(res, 400, { detail: "Give both a start and an end time, or neither for the whole day." });
-          if (op.start_time != null && (!isHalfHour(op.start_time) || !isHalfHour(op.end_time))) return send(res, 400, { detail: 'Times must be on the half hour ("HH:MM").' });
-          if (op.start_time != null && op.end_time <= op.start_time) return send(res, 400, { detail: "The end time must be after the start time." });
+      const idx = ops.map((op, i) => [i, op]);
+      const ordered = [
+        ...idx.filter(([, op]) => op.op === "time_off_delete"),
+        ...idx
+          .filter(([, op]) => op.op !== "time_off_delete" && op.op !== "time_off_set")
+          .map(([i, op]) => [i, op, weekOf(op.date || state.slots.find((s) => s.id === op.slot)?.date || find(op.slot)?.date || "")])
+          .sort((a, b) => a[2].localeCompare(b[2]) || a[0] - b[0])
+          .map(([i, op]) => [i, op]),
+        ...idx.filter(([, op]) => op.op === "time_off_set"),
+      ];
+      for (const [i, op] of ordered) {
+        if (op.op === "time_off_delete") {
+          if (typeof op.id !== "number") return send(res, 400, { detail: `Change ${i}: id must be a number.` });
+          const k = off.findIndex((t) => t.id === op.id);
+          if (k < 0) return send(res, 404, { detail: "Time off not found." });
+          off.splice(k, 1);
+          continue;
+        }
+        if (op.op === "time_off_set") {
+          const bad = (m) => send(res, 400, { detail: `Change ${i}: ${m}` });
+          if (!state.categories.some((c) => c.key === op.kind && c.is_active)) return bad("Pick a leave type.");
+          if ((op.start_time == null) !== (op.end_time == null)) return bad("Give both a start and an end time, or neither for the whole day.");
+          if (op.start_time != null && (!isHalfHour(op.start_time) || !isHalfHour(op.end_time))) return bad('Times must be on the half hour ("HH:MM").');
+          if (op.start_time != null && op.end_time <= op.start_time) return bad("The end time must be after the start time.");
           const ex = off.find((t) => t.employee_id === op.employee_id && t.date === op.date);
           const row = { employee_id: op.employee_id, date: op.date, kind: op.kind, start_time: op.start_time ?? null, end_time: op.end_time ?? null, note: op.note ?? null };
           if (ex) Object.assign(ex, row);
           else off.push({ id: nextId++, ...row });
-        } else if (op.op === "time_off_delete") {
-          const k = off.findIndex((t) => t.id === op.id);
-          if (k < 0) return send(res, 404, { detail: "Time off not found." });
-          off.splice(k, 1);
+          offRows.push(ex || off[off.length - 1]);
+          continue;
+        }
+        const wk = weekOf(op.date || find(op.slot)?.date || "");
+        appliedByWeek[wk] = (appliedByWeek[wk] || 0) + 1;
+        if (op.op === "create") {
+          if (!TYPES[op.shift_type]) return send(res, 400, { detail: "Unknown shift type." });
+          const s = { id: nextId++, date: op.date, shift_type: op.shift_type, start_time: op.start_time, end_time: op.end_time, employee_id: op.employee_id ?? null, note: op.note ?? null, updated_by: 1, updated_at: new Date().toISOString() };
+          work.push(s);
+          if (op.ref) refs[op.ref] = (createdByWeek[wk] = createdByWeek[wk] || {})[op.ref] = s.id;
         } else {
           const s = find(op.slot);
           if (!s) return send(res, 400, { detail: `Change ${i}: that shift no longer exists.` });
@@ -415,21 +475,28 @@ http
       const afterGaps = gapsFor(work, off, dates);
       const freshGaps = afterGaps.filter((g) => weekStatus(weekOf(g.date)) === "published" && !beforeGaps.some((b) => b.date === g.date && b.start_time <= g.start_time && g.end_time <= b.end_time));
       if (freshGaps.length) return conflict(res, "This change would leave a gap in coverage, so it wasn't saved.", "coverage_gap", { gaps: freshGaps });
+      // 只拦「这次新造成的、blocking 的」（后端 schedule_rule_check.new_blocking）；weekly_hours_alert 等只列不拦。
       const beforeV = new Set(violationsFor(state.slots, state.time_off).map(vKey));
       const afterV = violationsFor(work, off);
-      const freshV = afterV.filter((v) => !beforeV.has(vKey(v)));
+      const freshV = afterV.filter((v) => v.blocking && !beforeV.has(vKey(v)));
       if (freshV.length) return conflict(res, "This change breaks a schedule rule, so it wasn't saved.", "rule_violation", { violations: freshV });
       state.slots = work;
       state.time_off = off;
-      for (const w of wkSet) if (state.weeks[w]) state.weeks[w].version += 1;
-      const wkList = [...wkSet].sort();
-      return send(res, 200, {
-        weeks_info: wkList.map((w) => ({ week_start: w, status: weekStatus(w), version: state.weeks[w]?.version ?? 0, published_with_gaps: false, pending_changes: weekStatus(w) === "published" })),
-        created,
-        applied: ops.length,
-        gaps: afterGaps,
-        violations: afterV,
-      });
+      // 回包（后端 d9a78076）：{weeks: {week_start: 同整周 Save 的回包}, time_off: [这次 set 的假], violations}。
+      // weeks 只有这次有班的 op 的周；整周 Save 的回包同 sch-mock：{week, created, applied, notified, lock_token}。
+      const weeksOut = {};
+      for (const w of Object.keys(appliedByWeek).sort()) {
+        if (state.weeks[w]) state.weeks[w].version += 1;
+        const lock = weeks.find((x) => x.week_start === w)?.lock_token ?? null;
+        weeksOut[w] = {
+          week: { week_start: w, status: weekStatus(w), version: state.weeks[w]?.version ?? 0, slots: state.slots.filter((s) => weekOf(s.date) === w) },
+          created: createdByWeek[w] || {},
+          applied: appliedByWeek[w],
+          notified: [],
+          lock_token: lock,
+        };
+      }
+      return send(res, 200, { weeks: weeksOut, time_off: offRows.map(timeOffOut), violations: afterV });
     }
 
     // 2.3 请假类别
@@ -518,9 +585,9 @@ http
       const k = state.change_requests.findIndex((x) => x.id === Number(am[1]));
       if (k < 0) return send(res, 404, { detail: "That request is no longer waiting." });
       const [r] = state.change_requests.splice(k, 1);
-      if (am[2] === "approve" && r.request_kind === "swap") {
-        const s = state.slots.find((x) => x.date === r.from_slot.date && x.shift_type === r.from_slot.shift_type && x.employee_id === EMP.J);
-        if (s) s.employee_id = EMP.A;
+      if (am[2] === "approve" && r.kind === "swap") {
+        const s = state.slots.find((x) => x.date === r.my_slot.date && x.shift_type === r.my_slot.shift_type && x.employee_id === r.from.employee_id);
+        if (s) s.employee_id = r.peer.employee_id;
       }
       return send(res, 200, { ok: true, id: r.id, decision: am[2] });
     }
