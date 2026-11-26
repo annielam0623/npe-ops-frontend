@@ -1,0 +1,86 @@
+// 对着 interface.md 核 g382ov-mock 的回包字段（不是 -test，run-all 不跑）。用法：先 MOCK_PORT=8862 node g382ov-mock.js，再 MOCK_PORT=8862 node g382ov-contract-check.js
+const M = `http://localhost:${process.env.MOCK_PORT || 8862}`;
+const res = [];
+const ok = (n, c, d = "") => { res.push(c); console.log(`${c ? "PASS" : "FAIL"}  ${n}${c ? "" : "  → " + d}`); };
+const j = async (path, opt = {}) => { const r = await fetch(M + path, { ...opt, body: opt.body ? JSON.stringify(opt.body) : undefined }); return { s: r.status, b: await r.json() }; };
+const keys = (o, ks) => ks.every((k) => k in o);
+(async () => {
+  await j("/__ctl", { method: "POST", body: { reset: true } });
+  let r = await j("/api/schedule/range?from=2026-11-15&weeks=4");
+  const b = r.b;
+  ok("range 200 + 顶层字段", r.s === 200 && keys(b, ["from", "weeks", "can_edit", "can_publish", "can_manage_leave_types", "weeks_info", "employees", "slots", "time_off", "gaps", "violations", "leave_requests", "change_requests"]), JSON.stringify(Object.keys(b)));
+  ok("weeks_info 4 周，前两周 published 后两周 draft，字段齐", b.weeks_info.length === 4 && b.weeks_info.map((w) => w.status).join() === "published,published,draft,draft" && keys(b.weeks_info[0], ["week_start", "status", "version", "published_with_gaps", "pending_changes"]), JSON.stringify(b.weeks_info));
+  ok("employees 五人 ZZ Test", b.employees.length === 5 && b.employees.every((e) => e.name.startsWith("ZZ Test") && keys(e, ["id", "name", "sort_order", "is_active"])));
+  ok("slot 行字段", b.slots.length > 70 && keys(b.slots[0], ["id", "date", "shift_type", "start_time", "end_time", "employee_id", "note"]));
+  ok("time_off 行：kind_label / start_time / end_time", b.time_off.length === 1 && keys(b.time_off[0], ["id", "employee_id", "date", "kind", "kind_label", "start_time", "end_time", "note"]) && b.time_off[0].kind_label === "PTO", JSON.stringify(b.time_off));
+  ok("gaps 正好两条：12/2 14–16 leave(Anita PTO)、12/12 02:00–11:30 nobody", JSON.stringify(b.gaps.map((g) => [g.date, g.start_time, g.end_time, g.reason.kind, g.reason.leave_kind_label])) === JSON.stringify([["2026-12-02", "14:00", "16:00", "leave", "PTO"], ["2026-12-12", "02:00", "11:30", "nobody", null]]) && keys(b.gaps[1].reason, ["kind", "employee_id", "employee_name", "leave_kind_label"]), JSON.stringify(b.gaps));
+  ok("violations 正好两条：Lizzie min_rest 10.5 h、Nadia weekly 51 h", JSON.stringify(b.violations.map((v) => [v.rule, v.employee_name])) === JSON.stringify([["min_rest", "ZZ Test Lizzie"], ["weekly_hours_alert", "ZZ Test Nadia"]]) && b.violations[0].message.includes("10.5 h") && b.violations[1].message.includes("51 h") && keys(b.violations[0], ["rule", "employee_id", "employee_name", "dates", "slot_ids", "message"]), JSON.stringify(b.violations));
+  ok("leave_requests 两条待批，字段多 kind_label / start_time / end_time / shifts[].slot_id", b.leave_requests.length === 2 && keys(b.leave_requests[0], ["kind_label", "start_time", "end_time"]) && b.leave_requests[1].shifts.length === 2 && "slot_id" in b.leave_requests[1].shifts[0], JSON.stringify(b.leave_requests.map((x) => [x.employee_name, x.kind_label, x.start_time, x.shifts.length])));
+  ok("change_requests 一条（Jing Fri 12/4 Close 换给 Anita）", b.change_requests.length === 1 && b.change_requests[0].request.date === "2026-12-04");
+  r = await j("/api/schedule/range?from=2026-11-16&weeks=4");
+  ok("from 不是周日 ⇒ 400 原话", r.s === 400 && r.b.detail === 'from must be a Sunday ("YYYY-MM-DD").', JSON.stringify(r));
+  r = await j("/api/schedule/range?from=2026-11-15&weeks=9");
+  ok("weeks 9 ⇒ 400 原话", r.s === 400 && r.b.detail === "weeks must be a number from 1 to 8.");
+  // 2.2
+  const W = b.weeks_info.map((w) => ({ week_start: w.week_start, lock_token: "zz", base_version: w.version }));
+  const lizSun = b.slots.find((s) => s.date === "2026-11-29" && s.shift_type === "mid");
+  r = await j("/api/schedule/range/changes", { method: "POST", body: { weeks: W, ops: [{ op: "assign", slot: lizSun.id, employee_id: 5 }] } });
+  ok("range/changes：把 Lizzie 的 Sun Mid 给 Anita ⇒ 200，旧违规少一条，字段齐", r.s === 200 && keys(r.b, ["weeks_info", "created", "applied", "gaps", "violations"]) && r.b.violations.length === 1, JSON.stringify(r).slice(0, 300));
+  const cur = (await j("/api/schedule/range?from=2026-11-15&weeks=4")).b;
+  const W2 = cur.weeks_info.map((w) => ({ week_start: w.week_start, lock_token: "zz", base_version: w.version }));
+  const thuClose = cur.slots.find((s) => s.date === "2026-12-10" && s.shift_type === "close");
+  const friMid = cur.slots.find((s) => s.date === "2026-12-11" && s.shift_type === "mid");
+  r = await j("/api/schedule/range/changes", { method: "POST", body: { weeks: W2, ops: [{ op: "assign", slot: friMid.id, employee_id: thuClose.employee_id }] } });
+  ok("新违规（Thu Close → Fri Mid 10.5 h）⇒ 409 rule_violation，只列新的", r.s === 409 && r.b.detail.code === "rule_violation" && r.b.detail.detail === "This change breaks a schedule rule, so it wasn't saved." && r.b.detail.violations.length >= 1, JSON.stringify(r).slice(0, 300));
+  r = await j("/api/schedule/range/changes", { method: "POST", body: { weeks: [W2[2]], ops: [{ op: "assign", slot: friMid.id, employee_id: 1 }] } });
+  ok("op 的周不在 weeks 里 ⇒ 400 原话", r.s === 400 && r.b.detail === "Change 0 is on a week that isn't in this save.", JSON.stringify(r));
+  const pubMid = cur.slots.find((s) => s.date === "2026-11-26" && s.shift_type === "mid");
+  r = await j("/api/schedule/range/changes", { method: "POST", body: { weeks: W2, ops: [{ op: "delete", slot: pubMid.id }] } });
+  ok("已发布周删班留新空档 ⇒ 409 coverage_gap", r.s === 409 && r.b.detail.code === "coverage_gap" && r.b.detail.gaps.length > 0, JSON.stringify(r).slice(0, 200));
+  r = await j("/api/schedule/range/changes", { method: "POST", body: { weeks: W2, ops: [{ op: "time_off_set", employee_id: 2, date: "2026-12-07", kind: "sick", start_time: "15:00", end_time: "16:00", note: null }] } });
+  ok("time_off_set 按小时（草稿周）⇒ 200", r.s === 200, JSON.stringify(r).slice(0, 200));
+  // 2.3
+  r = await j("/api/schedule/leave-categories");
+  ok("leave-categories：PTO / Sick / Leave", r.s === 200 && r.b.categories.map((c) => c.label).join() === "PTO,Sick,Leave" && keys(r.b.categories[0], ["key", "label", "sort_order", "is_active"]));
+  r = await j("/api/schedule/leave-categories", { method: "POST", body: { label: "ZZ Test Jury" } });
+  ok("POST 类别 ⇒ 201 {category}", r.s === 201 && r.b.category.label === "ZZ Test Jury");
+  r = await j("/api/schedule/leave-categories", { method: "POST", body: { label: "pto" } });
+  ok("重名 ⇒ 400 原话", r.s === 400 && r.b.detail === 'There is already a leave type called "pto".');
+  r = await j("/api/schedule/leave-categories/zz_test_jury", { method: "PUT", body: { is_active: false } });
+  ok("PUT 停用 ⇒ {category}；?active=1 不回", r.s === 200 && r.b.category.is_active === false && !(await j("/api/schedule/leave-categories?active=1")).b.categories.some((c) => c.key === "zz_test_jury"));
+  r = await j("/api/schedule/leave-categories/nope", { method: "PUT", body: { label: "x" } });
+  ok("PUT 不存在 ⇒ 404 原话", r.s === 404 && r.b.detail === "Leave type not found.");
+  // 2.4
+  r = await j("/api/schedule/time-off/31", { method: "PUT", body: { start_time: "14:30", end_time: "16:00" } });
+  ok("PUT time-off/31 ⇒ {time_off}", r.s === 200 && r.b.time_off.start_time === "14:30" && r.b.time_off.kind_label === "PTO");
+  r = await j("/api/schedule/time-off/31", { method: "PUT", body: { start_time: null, end_time: null } });
+  ok("改成整天但那天有班 ⇒ 400", r.s === 400, JSON.stringify(r));
+  r = await j("/api/schedule/time-off/999", { method: "PUT", body: { note: "x" } });
+  ok("time-off 不存在 ⇒ 404 原话", r.s === 404 && r.b.detail === "Time off not found.");
+  // 请假 / 改班请求
+  r = await j("/api/schedule/leave-requests/71/approve", { method: "POST", body: { note: "Feel better soon" } });
+  ok("批 Nadia 的假 ⇒ 200，生成按小时的 time_off", r.s === 200 && r.b.request.status === "approved" && (await j("/api/schedule/range?from=2026-11-15&weeks=4")).b.time_off.some((t) => t.employee_id === 3 && t.date === "2026-11-27" && t.start_time === "15:00"));
+  r = await j("/api/schedule/leave-requests/71/reject", { method: "POST", body: {} });
+  ok("再批一次 ⇒ 409 already_decided", r.s === 409 && r.b.detail.code === "already_decided");
+  r = await j("/api/schedule/confirmation-requests/81/approve", { method: "POST", body: {} });
+  ok("批换班 ⇒ 200，change_requests 变空", r.s === 200 && (await j("/api/schedule/range?from=2026-11-15&weeks=4")).b.change_requests.length === 0);
+  // 只能批假的人
+  await j("/__ctl", { method: "POST", body: { reset: true, viewer: "approver" } });
+  r = await j("/api/schedule/range?from=2026-11-15&weeks=4");
+  ok("approver：can_edit false、change_requests []、只回自己能批的一条且 can_decide", r.b.can_edit === false && r.b.change_requests.length === 0 && r.b.leave_requests.length === 1 && r.b.leave_requests[0].can_decide === true);
+  r = await j("/api/schedule/range/changes", { method: "POST", body: { weeks: [], ops: [] } });
+  ok("approver 存班 ⇒ 403", r.s === 403);
+  await j("/__ctl", { method: "POST", body: { viewer: "none" } });
+  r = await j("/api/schedule/range?from=2026-11-15&weeks=4");
+  ok("没权限 ⇒ 403 原话", r.s === 403 && r.b.detail === "You don't have access to the schedule overview.");
+  await j("/__ctl", { method: "POST", body: { reset: true, fail: { "GET ^/api/schedule/range$": 500 } } });
+  r = await j("/api/schedule/range?from=2026-11-15&weeks=4");
+  ok("ctl.fail 让接口报错", r.s === 500);
+  await j("/__ctl", { method: "POST", body: { reset: true, weekStatus: { "2026-11-29": "published" } } });
+  r = await j("/api/schedule/range?from=2026-11-15&weeks=4");
+  ok("ctl.weekStatus 切某周 published", r.b.weeks_info[2].status === "published");
+  const log = (await j("/__log")).b;
+  ok("__log 记写请求", log.length > 5 && keys(log[0], ["op", "method", "path", "body"]));
+  console.log(`${res.filter(Boolean).length}/${res.length} PASS`);
+  process.exit(res.every(Boolean) ? 0 : 1);
+})();
