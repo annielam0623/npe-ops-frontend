@@ -10,6 +10,11 @@
 - 开工：origin/main 3cd6f390（主目录 detached 干净；main 在 ops-74 worktree）。资源：空闲内存 48.1 / 61.8 GB，node 0、chrome 0。前端工作窗口：无。后端在线：npe-confirmation-service-f1 [b5473f]。
 - ⚠️ G382 前端昨晚家里没有新提交（6e c01c928f、61 4ed9005b 仍未合，53 总览本体没写）；后端 7d task/g382-hr-schedule 到 c336d008（v185 Annie 已在生产执行）。
 - 7 天清单（11-19 至 11-25，Annie 提过的）已列给 Annie，等她选今天做哪几件。Annie（原话）「大部分我在后端都回答了」⇒ 已请后端 f1 转她今天的回答原文。
+- ✅ 今天做什么（Annie 在后端，原话，f1 转）：「除了在家里电脑才能做的，其他都今天做完。接下来这几天一直到周日，都是工作到10：30pm收工」⇒ 7 天清单除只能在家里做的（G383 Test send）全部今天做完；11-26 至 11-29 22:30 收工。答了题 ≠ 动手。
+- Bus manifest 合并表 Annie 已填：R1「起点直接用excel的14号」、R2「A」；R3–R7 空。
+- 分题（跟 f1 商定，避免重复问）：后端表 C:\Users\annzh\Downloads\Annie_待答题_2026-11-26_后端合并表.xlsx（G381-A / D1–D4、G333、G368 v2、G380-1 CHDDQS9GQ 口径、G380-3「Antelope 规则」、G370、G371）前端不问。
+- 📌 前端表 **C:\Users\annzh\Downloads\Annie_待答题_2026-11-26_前端合并表.xlsx**（13 题 + 2 行参考）：F1 G382 总览 v3（最急）、F2 Leave 标签、F3 R1「14号」= 最小（A，推荐，人少的车放大撑满一页、人多缩到 14pt 再分页，R3 并入）还是固定（B）、F4–F7 原 R4–R7、F8 第一轮三团 B 默认 TI / A' 不标、F9 TI 14 / 33、F10 已排好的车、F11 Notice 补发 a / b、F12 RULE-1 写不写、F13 David H；参考：排序（公司表 24 处）、导游页 D。146 后端方案 / G361 等后端出方案原文，不在表里。
+- 不用等答就能做的：Tickets 跳过去红框消失（当 bug 复现找根因）、Bus manifest 打印隐藏列 preview、G382 两个前端分支合最新 main + 改旧 sch / leave headless。
 - 更正 David H（第 16 项）：Annie（原话）「我说过David H的身份很复杂，他是老板，有时候又会帮忙做relay」⇒ 11-22 定的「另开 staff 账号只勾 Dispatch Read only」不够（PROGRESS 里没找到她之前这句的记录）。📌 已问她：他的 staff 账号要多大权限、司机账号是否保留做 relay。一人同时是 staff + 司机后端支不支持：未核。
 
 ## 2026-11-25 收工交接：前端主窗口 `前端主窗口-3d`[70a1a9]（公司电脑，今天 17:30 下班）
