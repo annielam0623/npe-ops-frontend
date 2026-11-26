@@ -1,0 +1,478 @@
+<title>Bus Manifest Hide Columns</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: 一列阅读稿。第一部分：隐藏列（改前 / 改后 / 可点的模拟 / 手机 / 数据流 / 后端 / 题目）；第二部分：F3 A / B 照 0129 模拟。 */
+:root{
+  --bg:#f2f4f6; --card:#ffffff; --fg:#18212b; --muted:#5a6672; --line:#d4dae0;
+  --accent:#2f5d8a; --ok:#1d7a3e; --bad:#c62828; --warnbg:#fff7d6;
+  --font:"Inter","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;
+  --mono:Consolas,"Courier New",monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1720; --card:#17222e; --fg:#e4e9ee; --muted:#9aa7b4; --line:#2c3a48;
+  --accent:#7fb0e0; --ok:#5fd08a; --bad:#ff7a7a; --warnbg:#3a3214; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1720; --card:#17222e; --fg:#e4e9ee; --muted:#9aa7b4; --line:#2c3a48;
+  --accent:#7fb0e0; --ok:#5fd08a; --bad:#ff7a7a; --warnbg:#3a3214; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:15px;line-height:1.6;margin:0}
+.wrap{max-width:1180px;margin:0 auto;padding-block:24px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-size:24px;margin:0 0 4px;text-wrap:balance}
+h2{font-size:20px;margin:40px 0 10px;text-wrap:balance;padding-top:10px;border-top:2px solid var(--line)}
+h3{font-size:16px;margin:20px 0 6px}
+.sub{color:var(--muted);margin:0 0 14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px 18px;min-width:0;margin:10px 0}
+.note{font-size:13.5px;color:var(--muted)}
+.src{color:var(--muted);font-size:12.5px;font-family:var(--mono)}
+code{font-family:var(--mono);font-size:13px}
+ul,ol{margin:6px 0;padding-left:22px} li{margin:3px 0}
+.scroll{overflow-x:auto}
+table.facts{border-collapse:collapse;width:100%;font-size:14px}
+table.facts th,table.facts td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}
+table.facts th{font-size:12.5px;color:var(--muted);font-weight:600}
+.unk{color:var(--bad);font-weight:600}
+.q{border-left:4px solid var(--accent);padding-left:14px;margin:24px 0}
+.q h3{margin-top:0}
+.opt{margin:4px 0}.rec{color:var(--ok);font-weight:700}
+.quote{background:var(--warnbg);border-radius:6px;padding:8px 12px;font-family:var(--mono);font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:820px){.two{grid-template-columns:1fr}}
+.lbl{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:6px}
+
+/* ---- 模拟 ops 页头（深色外框，照线上） ---- */
+.ops{background:#06101c;color:#e2e8f0;border-radius:10px;padding:12px 14px;font-family:Arial,Helvetica,sans-serif;min-width:0}
+.ops .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:11.5px}
+.ops .sel,.ops .chip{height:28px;display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:0 10px;color:#cbd5e1;background:transparent;font:inherit;font-size:11.5px}
+.ops .chip b{color:#fff}
+.ops .chip.unsaved{border-color:#f59e0b}
+.ops button.chip{cursor:pointer}
+.ops button.chip:focus-visible{outline:2px solid #60a5fa;outline-offset:2px}
+.ops .wbtn{height:28px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;color:#0f172a;font:inherit;font-size:11.5px;font-weight:700;padding:0 10px}
+.ops .bbtn{height:28px;border-radius:8px;border:0;background:#3b82f6;color:#fff;font:inherit;font-size:11.5px;font-weight:700;padding:0 12px;cursor:pointer}
+.ops .saved{color:#34d399;font-weight:700;font-size:11.5px}
+.ops .title{font-weight:800;font-size:14px;color:#fff;margin-right:6px}
+.ddwrap{position:relative;display:inline-block}
+.dd{position:absolute;z-index:5;top:32px;left:0;width:260px;background:#0f1b2b;border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:8px 10px;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+.dd .hd{font-size:11px;color:#94a3b8;margin-bottom:4px}
+.dd label{display:flex;align-items:center;gap:7px;font-size:12px;color:#fff;font-weight:600;padding:3px 0;cursor:pointer}
+.dd label.lock{color:#64748b;cursor:not-allowed;font-weight:400}
+.dd label .why{font-weight:400;color:#94a3b8;font-size:11px}
+.dd .ft{display:flex;justify-content:flex-end;margin-top:6px}
+.dd .ft button{height:24px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#0f172a;font-size:11px;font-weight:700;padding:0 10px;cursor:pointer}
+.paperwrap{background:#fff;color:#111;border-radius:8px;padding:8px 10px;margin-top:10px;overflow-x:auto}
+table.pm{border-collapse:collapse;width:100%;font-family:Arial,Helvetica,sans-serif;font-size:12px;min-width:560px}
+table.pm th{background:#d9d9d9;border:1px solid #9aa;padding:2px 4px;text-align:left;font-size:10.5px}
+table.pm td{border:1px solid #c8ced2;padding:2px 4px;font-weight:700;white-space:nowrap}
+table.pm tr.sec td{background:#e8f1e0;text-align:center;font-weight:800}
+table.pm .ck{color:#1e6b43}
+.viewtabs{display:flex;gap:6px;margin:10px 0 0;flex-wrap:wrap}
+.viewtabs button{font:inherit;font-size:13px;padding:3px 10px;border-radius:6px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+.viewtabs button[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);font-weight:700}
+.phone{width:340px;max-width:100%;border:8px solid #1f2937;border-radius:26px;overflow:hidden;background:#06101c;margin:0 auto}
+.phone .ops{border-radius:0;padding:10px}
+.phone .dd{position:static;width:auto;margin-top:6px}
+
+/* ---- 第二部分：纸 ---- */
+.buses{display:grid;gap:18px}
+.bus{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px 16px;min-width:0}
+.bus h3{margin:0 0 4px}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
+@media (max-width:760px){.cmp{grid-template-columns:1fr}}
+.side{min-width:0}
+.side .res{font-size:13.5px;margin:4px 0 6px}
+.ok{color:var(--ok);font-weight:700}.bad{color:var(--bad);font-weight:700}
+.pbox{position:relative;overflow:hidden;border-radius:3px;background:#e5e7eb}
+.paper{width:1123px;height:794px;background:#fff;color:#111;position:absolute;left:0;top:0;transform-origin:0 0;font-family:Arial,Helvetica,sans-serif;box-shadow:0 1px 6px rgba(0,0,0,.25)}
+.inner{position:absolute;overflow:hidden}
+.band{display:flex;align-items:flex-end;gap:24px;padding:5px 12px;background:#cfe3f5}
+.band .brand{font-size:24px;font-weight:800}
+.band .kv{display:flex;flex-direction:column}.band .k{font-size:10px;opacity:.75}.band .v{font-size:18px;font-weight:700;font-style:italic}
+.band .sp{flex:1}.band .date{font-size:16px;font-weight:700}.band .busno{font-size:14px;font-weight:800}
+table.m{border-collapse:collapse;width:100%;margin-top:5px}
+table.m th{font-size:9.5px;font-weight:700;text-align:left;padding:3px 5px;border:1px solid #9aa;background:#d9d9d9;vertical-align:bottom}
+table.m td{border:1px solid #c8ced2;vertical-align:top;overflow-wrap:break-word;font-weight:700}
+table.m td.nw{white-space:nowrap}
+table.m td.num{text-align:center;font-weight:800}
+table.m tr.sec td{text-align:center;font-weight:800;font-size:15px;padding:2px 5px}
+table.m tr.cut td{border-top:3px solid #d00000}
+.foot{display:flex;border:1px solid #9aa;margin-top:6px}
+.foot div{flex:1;border-right:1px solid #9aa;text-align:center}.foot div:last-child{border-right:0}
+.foot .fk{font-size:10.5px;font-weight:800;background:#e6eaee;padding:2px;text-transform:uppercase}
+.foot .fv{font-size:21px;font-weight:800}
+.cutlabel{position:absolute;right:6px;font-size:13px;font-weight:800;color:#d00000;background:#fff;padding:0 4px}
+table.sum{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+table.sum th,table.sum td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+table.sum th{font-size:12.5px;color:var(--muted);font-weight:600}
+</style>
+
+<div class="wrap">
+<h1>Dispatch › Bus manifest：打印隐藏列 + 字号 F3 对比（preview）</h1>
+<p class="sub">只是样稿，没改任何代码。所有客人都是模拟的（ZZ Test）。系统里的字用英文，说明用中文。前端工作窗口 f2，2026-11-26。</p>
+
+<div class="card">
+<div class="lbl">Annie 原话（11-25，按时间）</div>
+<ul>
+<li>「对了，你把bus manifest里的ASSIT 和打勾那一列拿掉吧」</li>
+<li>「加一个功能，在打印的时候可以隐藏一些colum，就在lunch那个选项旁边放，打勾了就可以不用打印那一列，可以逞drop down菜单」</li>
+<li>「都放到隐藏吧」（ASSIST 和打勾列不彻底拿掉，放进隐藏下拉，由 staff 自己勾）</li>
+</ul>
+</div>
+
+<!-- ===================== 第一部分 ===================== -->
+<h2>第一部分：打印隐藏列</h2>
+
+<h3>现在是什么样（都查过代码）</h3>
+<div class="card scroll">
+<table class="facts">
+<tr><th>项目</th><th>现在</th><th>在哪看的</th></tr>
+<tr><td>页头的隐藏列</td><td>只有一个「Columns: ☑ Lunch」，勾选框直接摊在页头（114 Annie「不要二级菜单，不要隐藏」后从下拉改成摊开）。<b>勾上 = 显示</b>，取消勾 = 不出。先放在页面上（框变橙），按页头 Save 才存。</td><td class="src">前端 components/dispatch-manifest/manifest-view.tsx:3500-3584（ColumnsPicker）、:1153-1164</td></tr>
+<tr><td>生效范围</td><td>按团存，谁打开都一样、每天都生效；屏幕、打印、Excel 一起不出。午餐单、餐数不变。</td><td class="src">How to use 原文 manifest-view.tsx:3367；后端 routers/tour_manifest.py:640-657</td></tr>
+<tr><td>能隐藏哪些列</td><td>后端清单只有 Lunch 一个。</td><td class="src">后端 services/manifest_setup.py:671 <code>BUS_HIDEABLE_COLUMNS = (("lunch","Lunch"),)</code></td></tr>
+<tr><td>存在哪</td><td>settings 键 <code>bus_manifest_hidden_columns</code>，<code>{manifest_id: [列键]}</code>；改了记 Action log「Hidden columns: … → …」。</td><td class="src">manifest_setup.py:661-720；manifest_action_log.py:42-72</td></tr>
+<tr><td>ASSIST 列</td><td>团设了 <code>manifests.assist_column</code> 才有（现在只有 Antelope）。在 Special Requirements 右边，空格子给人手写。屏幕、打印、Excel 都有；手机竖屏不出。</td><td class="src">后端 services/tour_manifest.py:1539、:1757-1771；前端 manifest-view.tsx:2192、:2289、:2813</td></tr>
+<tr><td>打勾列（✓）</td><td>客人行最右一列。<b>屏幕上</b>显示司机 / 导游标的「✓」或「No show」，staff 在 Morning Tracking 改过的加「Edited by …」。<b>打印和 Excel</b>：General / Marcello 印成空格子给导游手写；Lankun 只在屏幕上有、打印和 Excel 不出；West Rim 没有这一列。</td><td class="src">后端 tour_manifest.py:1733-1736（MANIFEST_COLUMNS 末尾 ("✓","boarding")）、:3531；打印模板 tour_manifest_print.html:189；前端 manifest-view.tsx:2186-2191、:2817-2848</td></tr>
+<tr><td>Bus 列（换车下拉）</td><td>一个团分了 A / B 车时屏幕上才有，打印、Excel 都没有。是 staff 换车用的，不在这次的清单里。</td><td class="src">前端 manifest-view.tsx:2295、:2818-2826；后端 version_columns() 不含 Bus</td></tr>
+<tr><td>各版式的列</td><td>General / Marcello：Order Number、Pick-up Time、Pick-up Location、Last Name、First Name、Customer Phone、#、Quantities、(Lunch)、Special Requirements、(ASSIST)、✓<br>Lankun：Order #、Time、Hotel、Phone、Ticket、Pax、Last Name、First Name、(Lunch)、Special Requirements、(ASSIST)，✓ 只在屏幕<br>West Rim：Order #、Time、Hotel、Phone、Last Name、First Name、Pax、Quantities、(Lunch)、Special Requirements、(ASSIST)，没有 ✓</td><td class="src">后端 tour_manifest.py:1731-1771；前端 manifest-view.tsx:191-249</td></tr>
+<tr><td>打印 / Excel 怎么拿列</td><td>都调 <code>version_columns(版式, lunch_column, assist_column)</code>，现在只认 Lunch 的隐藏。</td><td class="src">打印 routers/tour_manifest.py:248；Excel services/tour_manifest.py:3272</td></tr>
+<tr><td class="unk">未核</td><td colspan="2">司机 / 导游手机页的列是不是也读这份设置（推断不读，它们有自己的版式）。</td></tr>
+</table>
+</div>
+
+<h3>改前 / 改后（按推荐：H1 A、H4 A）</h3>
+<div class="two">
+<div>
+<div class="lbl">改前（现在线上）</div>
+<div class="ops"><div class="bar">
+<span class="title">Antelope Canyon</span>
+<span class="sel">Version: <b style="color:#fff">General</b> ▾</span>
+<span class="chip">Columns: <label style="display:inline-flex;gap:4px;align-items:center;color:#fff;font-weight:600"><input type="checkbox" checked disabled> Lunch</label></span>
+<span class="wbtn">View only</span><span class="wbtn">Print all buses</span><span class="wbtn">⬇ Excel</span><span class="bbtn" style="display:inline-flex;align-items:center">Save</span>
+</div></div>
+<p class="note">只能管 Lunch。勾上 = 显示。</p>
+</div>
+<div>
+<div class="lbl">改后（关着时）</div>
+<div class="ops"><div class="bar">
+<span class="title">Antelope Canyon</span>
+<span class="sel">Version: <b style="color:#fff">General</b> ▾</span>
+<span class="chip">Hide columns: <b>ASSIST, ✓</b> ▾</span>
+<span class="wbtn">View only</span><span class="wbtn">Print all buses</span><span class="wbtn">⬇ Excel</span><span class="bbtn" style="display:inline-flex;align-items:center">Save</span>
+</div></div>
+<p class="note">放在原来 Lunch 的位置。关着时直接写藏了哪几列，没藏写「None」。Lunch 并进这个下拉。</p>
+</div>
+</div>
+
+<h3>可以点的模拟（Antelope，General 版式，有午餐店、有 ASSIST）</h3>
+<div class="card">
+<p class="note" style="margin-top:0">点「Hide columns ▾」打开下拉，勾哪列藏哪列；框变橙 = 还没存，按蓝色 Save 才存（模拟，不连后端）。锁住的列灰色，按推荐 H3 A。下面切「On screen」/「Printed / Excel」看两边分别印成什么样（按推荐 H1 A：✓ 列只在纸上藏，屏幕照出司机的标记）。</p>
+<div class="ops">
+ <div class="bar">
+  <span class="title">Antelope Canyon</span>
+  <span class="sel">Version: <b style="color:#fff">General</b> ▾</span>
+  <span class="ddwrap">
+   <button type="button" class="chip" id="ddBtn" aria-expanded="false" aria-controls="dd">Hide columns: <b id="ddSum">None</b> ▾</button>
+   <div class="dd" id="dd" hidden>
+    <div class="hd">Tick a column to leave it off this tour's Bus Manifest.</div>
+    <div id="ddList"></div>
+    <div class="ft"><button type="button" id="ddDone">Done</button></div>
+   </div>
+  </span>
+  <span class="wbtn">View only</span><span class="wbtn">Print all buses</span><span class="wbtn">⬇ Excel</span>
+  <button type="button" class="bbtn" id="saveBtn">Save</button><span id="saveMsg" class="saved" hidden>Saved</span>
+ </div>
+ <div class="viewtabs" id="viewTabs"></div>
+ <div class="paperwrap"><table class="pm" id="pm"></table></div>
+</div>
+</div>
+
+<h3>手机（屏宽 &lt; 640px）</h3>
+<div class="two">
+<div class="phone"><div class="ops">
+ <div class="bar"><span class="title">Antelope Canyon</span><span class="sel">Version ▾</span></div>
+ <div class="bar" style="margin-top:6px"><span class="chip unsaved" style="width:100%">Hide columns: <b>ASSIST, ✓</b> ▾</span></div>
+ <div class="dd" style="display:block">
+  <div class="hd">Tick a column to leave it off this tour's Bus Manifest.</div>
+  <label class="lock"><input type="checkbox" disabled> Pick-up Time <span class="why">(always shown)</span></label>
+  <label><input type="checkbox"> Phone</label>
+  <label><input type="checkbox" checked> ASSIST</label>
+  <label><input type="checkbox" checked> ✓ <span class="why">(paper only)</span></label>
+  <div class="hd">…</div>
+  <div class="ft"><button type="button" tabindex="-1">Done</button></div>
+ </div>
+ <div class="bar" style="margin-top:8px"><span class="wbtn">Print all</span><span class="wbtn">⬇ Excel</span><span class="bbtn" style="display:inline-flex;align-items:center">Save</span></div>
+</div></div>
+<div class="note">
+<ul>
+<li>下拉在手机上不浮出来，打开后直接往下展开占整行（同手机版规则，不挡表格、不左右晃）。</li>
+<li>选项、锁住的列、先选后存、Save 都和电脑一样。</li>
+<li>手机竖屏本来只出 6 列（151 定的），藏掉的列在这 6 列里也不出；横屏照全部列减去藏的。</li>
+<li>键的大小照现在手机页头（28px），不收进 ⋯（114「不要隐藏」）。</li>
+</ul>
+</div>
+</div>
+
+<h3>数据从哪来、到哪去</h3>
+<div class="card">
+<ul>
+<li><b>名单</b>：Order List → Main manifest → Dispatch，这次不变。</li>
+<li><b>藏哪几列</b>：staff 在 Bus manifest 页头「Hide columns ▾」勾 → 先放在页面上 → 按 Save → PUT <code>/api/dispatch/manifest/hidden-columns</code> <code>{tour, hidden_columns}</code>（现有接口）→ settings <code>bus_manifest_hidden_columns</code>（现有键，同一个团一份）。</li>
+<li><b>能勾哪些</b>：后端 <code>BUS_HIDEABLE_COLUMNS</code> → GET 的 <code>tour.bus_column_options</code> → 下拉的清单。staff 不填任何别的东西。</li>
+<li><b>到哪去</b>：① Dispatch › Bus manifest 屏幕（含 View only、Full screen、手机）；② 打印页（Print / Print all buses）；③ Excel（⬇ Excel）；④ Action log「Hidden columns: … → …」；⑤ 第二部分的自动适配：藏了列，表格变窄，字可以更大（算法读同一份隐藏列）。</li>
+<li><b>不去</b>：午餐单（NPE Lunch Box）、餐数、底部合计、司机 / 导游手机页（未核，推断不读）、Main manifest。</li>
+</ul>
+</div>
+
+<h3>需要后端（前端不改后端仓库）</h3>
+<div class="card">
+<ol>
+<li><code>manifest_setup.BUS_HIDEABLE_COLUMNS</code> 加列：order_number、first_name、phone、ticket、notes、assist、boarding（已有 lunch）。锁住的列（H3）不放进去，后端 PUT 收到不认得的键照旧拒。</li>
+<li><code>version_columns()</code> 加一个参数收这个团的隐藏列，去掉这些列；打印页（routers/tour_manifest.py:248）和 Excel（services/tour_manifest.py:3272）都传进去。Lunch 照现在的 lunch_column 走。</li>
+<li><code>bus_column_options</code> 按这个团的版式给：没 assist_column 的团不给 ASSIST；West Rim 不给 ✓；Lankun 的 ✓ 纸上本来就不印，也不给。列名照这个版式的写法（Order # / Order Number）。</li>
+<li>打印页分页脚本、底部合计不用改（colspan 已经按 columns 长度）；Excel 列宽照现在按内容算。</li>
+<li>Action log 的列名清单跟着 BUS_HIDEABLE_COLUMNS 自动有。</li>
+</ol>
+<p class="note" style="margin-bottom:0">前端跟着改：ColumnsPicker 改成下拉（H4）、屏幕上按隐藏列去掉列（✓ 按 H1）、How to use 换一句（H5）、mf 检查套加项。</p>
+</div>
+
+<h3>要 Annie 定的（5 题）</h3>
+
+<div class="q"><h3>H1　藏掉的列：只管打印，还是屏幕 / 打印 / Excel 一起</h3>
+<p><b>页面 / 功能</b>：Dispatch › Bus manifest 页头新的「Hide columns ▾」。<br>
+<b>现在</b>：Lunch 勾掉以后屏幕、打印、Excel 一起不出（manifest-view.tsx:3367；Annie 11-09 原话「Neither preview nor print should show it」）。<br>
+<b>为什么问</b>：Annie 这次说的是「在打印的时候可以隐藏」。但 ✓ 列在屏幕上不是空格子，是司机 / 导游标的 Boarded / No show（还有 staff 改过的 Edited by）；如果屏幕也藏，staff 在这页就看不到谁没上车了。</p>
+<div class="opt">A. 屏幕、打印、Excel 一起藏（同 Lunch 现在）；<b>✓ 列例外</b>：只在打印和 Excel 不出，屏幕照出司机的标记，下拉里写「(paper only)」。 <span class="rec">← 推荐</span>（规矩跟已经验收的 Lunch 一样，屏幕看到什么就印什么；只有 ✓ 在屏幕上有用）</div>
+<div class="opt">B. 只管打印和 Excel：屏幕照全出，藏掉的列表头变灰、加小字「Not printed」。（Lunch 也改成这样，跟 11-09 那句不同）</div>
+<div class="opt">C. 一律屏幕、打印、Excel 一起藏，✓ 也不例外。</div>
+</div>
+
+<div class="q"><h3>H2　藏一次，管多久</h3>
+<p><b>页面 / 功能</b>：同上。<br>
+<b>现在</b>：Lunch 按团存，谁打开都一样，每天都生效（routers/tour_manifest.py:640-645）。<br>
+<b>为什么问</b>：ASSIST、✓ 这种是一个团一直不要的；也可能某天临时不想印电话。</p>
+<div class="opt">A. 按团一直生效，同 Lunch 现在（存一次，以后每天这个团都这样，要恢复再勾回来）。 <span class="rec">← 推荐</span>（不用新存法，staff 不用每天勾）</div>
+<div class="opt">B. 只管当天（每天重新勾；后端要按日期另存）。</div>
+<div class="opt">C. 按团一直生效 + 当天可以另外再改（两层，最灵活，也最难懂）。</div>
+</div>
+
+<div class="q"><h3>H3　哪些列不能藏</h3>
+<p><b>页面 / 功能</b>：「Hide columns ▾」下拉里的清单。<br>
+<b>现在</b>：只能藏 Lunch（manifest_setup.py:671）。<br>
+<b>为什么问</b>：全都能藏的话，可能有人把名字、人数也勾掉，司机 / 导游拿到的纸就没法点人。员工的打印件（0129）每页都留着单号、时间、酒店、姓、名、电话、人数、票型。</p>
+<div class="opt">A. 锁住 4 列：Pick-up Time、Pick-up Location、Last Name、#（Pax）。其余都能藏：Order Number、First Name、Customer Phone、Quantities、Lunch、Special Requirements、ASSIST、✓。锁住的在下拉里灰色、写「(always shown)」。 <span class="rec">← 推荐</span>（接人要的就是几点、哪家酒店、谁、几个人）</div>
+<div class="opt">B. 只锁 Last Name 和 #。</div>
+<div class="opt">C. 都能藏，只要求至少留一列。</div>
+</div>
+
+<div class="q"><h3>H4　下拉放哪、勾的意思</h3>
+<p><b>页面 / 功能</b>：Bus manifest 页头，原来「Columns: ☑ Lunch」的位置。<br>
+<b>现在</b>：Lunch 勾选框摊在页头，<b>勾上 = 显示</b>（manifest-view.tsx:3543-3570）。11-11 的 114 Annie 说过「不要二级菜单，不要隐藏」，所以当时把下拉拆成摊开的勾选框。<br>
+<b>为什么问</b>：这次 Annie 说「可以逞drop down菜单」「打勾了就可以不用打印那一列」——勾 = 藏，跟现在 Lunch 的勾 = 显示正好相反。两种放在一起 staff 会搞混。可勾的列有 8 个，全摊开页头会很长，所以这次照她的话用下拉。</p>
+<div class="opt">A. 一个下拉「Hide columns: … ▾」放在原 Lunch 的位置，Lunch 并进去；<b>勾 = 藏</b>。关着时写藏了哪几列（没藏写 None），改了没存框变橙，按页头 Save 存。 <span class="rec">← 推荐</span>（照她这次的原话，一个地方、一个意思）</div>
+<div class="opt">B. 保留「Columns: ☑ Lunch」（勾 = 显示），旁边加「Hide more ▾」（勾 = 藏）放其他列。</div>
+<div class="opt">C. 一个下拉，但勾 = 显示（同 Lunch 现在），默认全勾，取消勾的不出。</div>
+<p class="note">下拉里只列这个团的版式有的列（没 ASSIST 的团不出 ASSIST；West Rim 没有 ✓）。没排午餐店的团 Lunch 照现在灰色写「(no lunch vendor)」。</p>
+</div>
+
+<div class="q"><h3>H5　How to use 和鼠标提示的英文原文</h3>
+<p><b>页面 / 功能</b>：Bus manifest 页底 How to use 的 Columns 那条，和下拉的鼠标提示。<br>
+<b>现在</b>（manifest-view.tsx:3367）：</p>
+<div class="quote">Columns: untick a column next to Columns at the top to leave it off this tour's Bus Manifest, then press Save. It is the same for everyone and every day — on screen, when printed and in Excel. The lunch sheet and lunch counts do not change.</div>
+<p><b>为什么问</b>：改成下拉、勾 = 藏以后这句不对了。下面按 H1 A、H2 A、H3 A、H4 A 写的：</p>
+<div class="quote">Hide columns: open Hide columns at the top, tick each column you do not want, then press Save. Ticked columns are left off this tour's Bus Manifest for everyone and every day — on screen, when printed and in Excel. The ✓ column is only left off the paper and Excel; the screen still shows who boarded. Pick-up Time, Pick-up Location, Last Name and # are always shown. The lunch sheet and lunch counts do not change.</div>
+<p>下拉顶上的一行小字：</p>
+<div class="quote">Tick a column to leave it off this tour's Bus Manifest.</div>
+<div class="opt">A. 照上面用。 <span class="rec">← 推荐</span></div>
+<div class="opt">B. 要改（请写改法）。前面几题选的不是推荐时，这几句跟着改写，再给 Annie 看。</div>
+</div>
+
+<!-- ===================== 第二部分 ===================== -->
+<h2>第二部分：自动适配 F3「14 号」是最小还是固定（照 0129 打印件模拟）</h2>
+
+<div class="card">
+<div class="lbl">背景</div>
+<p style="margin-top:0">自动适配 preview 第 4 版（<a href="https://claude.ai/artifact/T7CHqsFu8ehaWHUS1bNjah" target="_blank" rel="noopener">链接</a>）Annie 已填：R1「起点直接用excel的14号」、R2「A」（上下留白最小 0、左右 1px、行距最小 1.05、纸边最小 5mm）。主窗口在表里问 F3：</p>
+<ul>
+<li><b>A</b>　14pt 是<b>最小</b>字号：人少的车把字放大撑满一页；人多的车按 R2 压留白 / 行距 / 纸边，压到底还放不下就缩字，最小到 14pt，再不行分第 2 页（R3 并进来）。</li>
+<li><b>B</b>　<b>固定</b> 14pt：每台车都是 14pt，人少的车下面留白；人多的按 R2 压，压到底还放不下就分页。</li>
+</ul>
+</div>
+
+<h3>0129 打印件里字有多大（量出来的）</h3>
+<div class="card scroll">
+<p class="note" style="margin-top:0">0129_001.pdf 是扫描件（7 页，Letter 纸，200dpi 读图）。量法：每行单号格里大写字母 + 数字的字高（cap height），Excel 默认字体 Calibri 的字高约是字号的 0.644 倍，换算成字号。行高 = 相邻两条横格线的距离。都是「约」，误差 ±1pt。</p>
+<table class="sum">
+<tr><th>第几页</th><th>车</th><th>单数 / 节</th><th>纸上客人字（约）</th><th>行高（约）</th><th>几页</th></tr>
+<tr><td>1</td><td>Relay splits（不是 Bus manifest）</td><td>约 55 行</td><td>约 10pt</td><td>约 12pt</td><td>1</td></tr>
+<tr><td>2</td><td>B+Z（Driver/Guide Paulie Jr）</td><td>9 单 / 1 节</td><td><b>约 22pt</b></td><td>约 26pt</td><td>1，表格占大半页</td></tr>
+<tr><td>3</td><td>West Bus B（Milton）</td><td>12 单 / 1 节</td><td><b>约 14pt</b></td><td>约 22pt</td><td>1，下面空一半</td></tr>
+<tr><td>4</td><td>West Bus A（Leo L / Brandon L）</td><td>17 单 + 接驳 2 行 + 培训 1 行 / 3 节</td><td><b>约 12pt</b></td><td>约 20pt</td><td>1，满页</td></tr>
+<tr><td>5</td><td>Antelope Bus A（Carlos / Lankun）</td><td>13 + 7 = 20 单 / 2 节，有 ASSIST 空列</td><td><b>约 14pt</b></td><td>约 22pt</td><td>1，满页</td></tr>
+<tr><td>6</td><td>Antelope Bus B（John / Kata）</td><td>16 + 1 = 17 单 / 2 节</td><td><b>约 14pt</b></td><td>约 22pt</td><td>1，满页</td></tr>
+<tr><td>7</td><td>Bee's 午餐单（竖版）</td><td>—</td><td>不在这次范围</td><td>—</td><td>1</td></tr>
+</table>
+<p class="note">看出来的：① 员工的 Bus manifest 大多印在 <b>14pt 左右</b>，Annie 说的「excel 的 14 号」对得上；② 人最少的 B+Z 放到约 22pt；③ 12 单的 West B 没放大，下面空了一半；④ 20 行的 West A 缩到约 12pt 才挤进一页（比 14 小）。staff 说的「40–45」多半是 Excel 里设的字号、打印时又被「缩成一页」缩小了（推断，未核）。<br>
+另：系统现在打印起点是 14<b>px</b>（约 10.5pt），比员工纸上的 14<b>pt</b>（约 18.7px）小。下面模拟都按 14pt = 18.7px。</p>
+</div>
+
+<h3>同样的车，A / B 各印成什么样</h3>
+<div class="card">
+<p class="note" style="margin-top:0">5 台车的单数、节数、版式、有没有 ASSIST 照 0129，客人全是假的（ZZ Test）。纸照系统现在的 A4 横向（员工那份是 Letter，比 A4 宽 1%、矮 7%，结果差不多）。页头、列名、节标题、底部合计不动，只动客人字和留白，同第 4 版。列照系统现在的（General 带 ✓，没藏列），另加一台「B+Z 藏掉 2 列」看第一部分藏列以后 A 能放多大。A 放大的上限：模拟里设 45pt（staff 说过常用 40–45），实际多半先被纸宽卡住（单号、时间、电话、人数这几列不换行）。<br>
+<b>红线 = 放不下、从这里挪到第 2 页。</b></p>
+</div>
+<div class="buses" id="buses"></div>
+
+<div class="card scroll">
+<div class="lbl">汇总（打开页面时浏览器现算的）</div>
+<table class="sum" id="sumTable"><tr><th>车</th><th>0129 实际</th><th>A（14pt 起，最小 14pt）</th><th>B（固定 14pt）</th></tr></table>
+</div>
+
+<div class="q"><h3>F3　R1 的「14 号」是最小字号，还是固定字号</h3>
+<p><b>页面 / 功能</b>：Dispatch › Bus manifest 的 Print 和 ⬇ Excel，客人信息格的字号（自动适配）。<br>
+<b>现在</b>：没有自动适配。打印起点 General 14px（约 10.5pt）、Marcello 18px，staff 手动加减，最大 36px（约 27pt）；放不下打印页把末尾的行挪到第 2 页（后端 tour_manifest_print.html:24-26、:50-55，print_layout.py:45）。Annie 已答 R1「起点直接用excel的14号」、R2「A」。<br>
+<b>为什么问</b>：「起点 14」有两种理解，人少的车结果差很多。上面 5 台车照 0129 模拟了：员工自己做的时候，人最少的 B+Z 放到约 22pt，其他都在 12–14pt。</p>
+<div class="opt">A. 14pt 是最小：人少的车自动放大撑满一页（模拟里 9 单的 B+Z 约 <span class="fA0">…</span>，像 0129 那样藏掉 Special Requirements 和 ✓ 能到约 <span class="fA2">…</span>；12 单的 West B 约 <span class="fA1">…</span>）；人多的车先压留白 / 行距 / 纸边（R2 A），还放不下才缩字，最小 14pt，再不行分页。R3 就不用另答了。 <span class="rec">← 推荐</span>（跟员工自己的做法一样：人少放大；人多的车跟 B 一样）</div>
+<div class="opt">B. 固定 14pt：每台车都 14pt，人少的车下面空着；人多的压留白 / 行距 / 纸边，还放不下就分页。</div>
+<p class="note">模拟结果：5 台车两种都是 1 页。A 下，连 20 行的 West A、Antelope A 压完留白也还能放大到 16pt 左右；B 都是 14pt，人少的车下面空着。0129 里 West A 员工缩到约 12pt 才挤进一页，系统在 A4、压完留白后 14pt 就放得下。<br>放大多半是被<b>纸宽</b>卡住（单号、时间、电话、人数不换行，列越多越窄）：B+Z 印全部 10 列只到约 <span class="fA0">…</span>，藏掉 2 列到约 <span class="fA2">…</span>。所以第一部分的隐藏列跟 A 是配套的。</p>
+</div>
+
+</div>
+
+<script>
+(function(){
+  /* ---------- 第一部分：可点的模拟 ---------- */
+  var COLS=[
+    {k:"order_number",l:"Order Number"},{k:"pickup_time",l:"Pick-up Time",lock:1},{k:"pickup_location",l:"Pick-up Location",lock:1},
+    {k:"last_name",l:"Last Name",lock:1},{k:"first_name",l:"First Name"},{k:"phone",l:"Customer Phone"},{k:"pax",l:"#",lock:1},
+    {k:"ticket",l:"Quantities"},{k:"lunch",l:"Lunch"},{k:"notes",l:"Special Requirements"},{k:"assist",l:"ASSIST"},{k:"boarding",l:"✓",paper:1}
+  ];
+  var ROWS=[
+    ["ZZT1001","4:50","Bellagio","Testnguyen","Zz Mary","+1 (555) 010-0101","2","2 Adult","1T 1V","","","b"],
+    ["ZZT1002","4:50","Bellagio","Testou","Zz Yue","+1 (555) 010-0102","2","2 Adult","2T","","","b"],
+    ["ZZT1003","4:59","Treasure","Testiyer","Zz Ran","+1 (555) 010-0103","1","1 Adult","1V","Vegetarian","","n"],
+    ["ZZT1004","4:59","Treasure","Testpatel","Zz Tej","+1 (555) 010-0104","2","2 Adult","2T","","",""]
+  ];
+  var saved=[], hidden=[], view="screen";
+  var dd=document.getElementById("dd"), btn=document.getElementById("ddBtn");
+  function sum(list){return list.length?COLS.filter(function(c){return list.indexOf(c.k)>=0;}).map(function(c){return c.l;}).join(", "):"None";}
+  function same(){return JSON.stringify(hidden.slice().sort())===JSON.stringify(saved.slice().sort());}
+  function renderList(){
+    var h="";
+    COLS.forEach(function(c){
+      if(c.lock)h+='<label class="lock"><input type="checkbox" disabled> '+c.l+' <span class="why">(always shown)</span></label>';
+      else h+='<label><input type="checkbox" id="hc-'+c.k+'" data-k="'+c.k+'"'+(hidden.indexOf(c.k)>=0?" checked":"")+'> '+c.l+(c.paper?' <span class="why">(paper only)</span>':'')+'</label>';
+    });
+    document.getElementById("ddList").innerHTML=h;
+    Array.prototype.forEach.call(document.querySelectorAll("#ddList input[data-k]"),function(i){
+      i.addEventListener("change",function(){var k=i.dataset.k;hidden=i.checked?hidden.concat([k]):hidden.filter(function(x){return x!==k;});document.getElementById("saveMsg").hidden=true;render();});
+    });
+  }
+  function render(){
+    document.getElementById("ddSum").textContent=sum(hidden);
+    btn.classList.toggle("unsaved",!same());
+    var cols=COLS.filter(function(c){
+      if(hidden.indexOf(c.k)<0)return true;
+      return c.paper&&view==="screen";
+    });
+    var h="<thead><tr>"+cols.map(function(c){return "<th>"+c.l+"</th>";}).join("")+"</tr></thead><tbody>";
+    h+='<tr class="sec"><td colspan="'+cols.length+'">UPPER ANTELOPE 12:40PM · 7 PAX</td></tr>';
+    ROWS.forEach(function(r){
+      h+="<tr>"+cols.map(function(c){var v=r[COLS.indexOf(c)];
+        if(c.k==="boarding")v=view==="screen"?(v==="b"?'<span class="ck">✓</span>':v==="n"?'<span style="color:#b3261e">No show</span>':""):"";
+        return "<td>"+v+"</td>";}).join("")+"</tr>";
+    });
+    document.getElementById("pm").innerHTML=h+"</tbody>";
+    Array.prototype.forEach.call(document.getElementById("viewTabs").children,function(b){b.setAttribute("aria-pressed",String(b.dataset.v===view));});
+  }
+  btn.addEventListener("click",function(){var open=dd.hidden;dd.hidden=!open;btn.setAttribute("aria-expanded",String(open));if(open)renderList();});
+  document.getElementById("ddDone").addEventListener("click",function(){dd.hidden=true;btn.setAttribute("aria-expanded","false");});
+  document.getElementById("saveBtn").addEventListener("click",function(){saved=hidden.slice();document.getElementById("saveMsg").hidden=false;render();});
+  [["screen","On screen"],["paper","Printed / Excel"]].forEach(function(o){var b=document.createElement("button");b.type="button";b.dataset.v=o[0];b.textContent=o[1];b.addEventListener("click",function(){view=o[0];render();});document.getElementById("viewTabs").appendChild(b);});
+  hidden=["assist","boarding"];render();
+
+  /* ---------- 第二部分：A / B 模拟 ---------- */
+  var MM=96/25.4, PT=4/3, MIN={pv:0,ph:1,lh:1.05,mg:5}, DEF={pv:2,ph:1,lh:1.3,mg:10};
+  var F14=Math.round(14*PT*10)/10, CAP=45*PT;
+  var GEN=[["Order Number","o","nw"],["Pick-up Time","t","nw"],["Pick-up Location","h"],["Last Name","l"],["First Name","f"],["Customer Phone","p","nw"],["#","x","num"],["Quantities","q"],["Special Requirements","s"]];
+  var WEST=[["Order #","o","nw"],["Time","t","nw"],["Hotel","h"],["Phone","p","nw"],["Last Name","l"],["First Name","f"],["Pax","x","num"],["Quantities","q"],["Special Requirements","s"]];
+  var LAST=["Testkallem","Testsampat","Testlalwani","Testchokshi","Testjain","Testmirchandani","Testtai","Testwang","Testbhattarai","Testagarwal","Testsomashekar","Testkannan","Testchen","Testvenigalla","Testnull","Testchou","Testnguyen","Testbarrett","Testpham","Testlanzilotti","Testzhang","Testgreer"];
+  var FIRST=["Zz Ash","Zz Dhri","Zz Dhwani","Zz Inaya","Zz Komal","Zz Leah","Zz Yin","Zz Jenny","Zz Nisha","Zz Akshat","Zz Athira","Zz Balaji","Zz Pei Lin","Zz Rak","Zz Steven","Zz Yi Hwa","Zz Mary","Zz David","Zz Loan","Zz Marilu","Zz Qi","Zz Tony"];
+  var HOT=["Aria","Aria","Mandalay","Sahara","Westgate","Bellagio","Bellagio","Treasure","Excalibur","Horseshoe","MGM Grand","Plaza"];
+  function g(i,west){var pax=1+(i*5)%4;return {o:"ZZT"+(2001+i),t:["4:35","4:40","4:50","4:59","5:40","5:45"][Math.floor(i/4)%6],h:HOT[i%12],l:LAST[i%22],f:FIRST[i%22],p:"+1 (555) 01"+(10+i)+"-"+(4400+i*7),x:pax,q:west?pax+(i%3?" Adult Premium":" Adult - No Lunch"):pax+" Adult",s:(i%7===3?"Wheelchair":i%9===5?"12yrs&17yrs":"")};}
+  var BUSES=[
+    {name:"B+Z（0129 第 2 页）",brand:"B+Z",cols:GEN,assist:false,tick:true,secs:[["CANYON TOUR",9]],real:"约 22pt，1 页",color:"#f5c0cb"},
+    {name:"B+Z 藏掉 Special Requirements 和 ✓（同 0129 那张的列）",brand:"B+Z",cols:GEN,assist:false,tick:true,hide:["s","k"],secs:[["CANYON TOUR",9]],real:"约 22pt，1 页",color:"#f5c0cb"},
+    {name:"West Bus B（0129 第 3 页）",brand:"WEST",cols:WEST,assist:false,tick:false,secs:[["GRAND CANYON WEST",12]],real:"约 14pt，1 页（下面空一半）",color:"#f7f3c2"},
+    {name:"West Bus A（0129 第 4 页）",brand:"WEST",cols:WEST,assist:false,tick:false,secs:[["GRAND CANYON WEST",17],["ROUND TRIP SHUTTLE",2],["TOUR GUIDE IN TRAINING",1]],real:"约 12pt，1 页（满）",color:"#f7f3c2"},
+    {name:"Antelope Bus A（0129 第 5 页）",brand:"ANTELOPE",cols:GEN,assist:true,tick:true,secs:[["UPPER ANTELOPE 12:40PM",13],["CANYON X 1:00PM",7]],real:"约 14pt，1 页（满）",color:"#f3d7c6"},
+    {name:"Antelope Bus B（0129 第 6 页）",brand:"ANTELOPE",cols:GEN,assist:true,tick:true,secs:[["LOWER KEN'S TOUR 1:00PM",16],["INBOUND SHUTTLE",1]],real:"约 14pt，1 页（满）",color:"#d9ecd0"}
+  ];
+  function colsOf(b){var c=b.cols.filter(function(x){return !(b.hide&&b.hide.indexOf(x[1])>=0);});if(b.assist)c.push(["ASSIST","a"]);if(b.tick&&!(b.hide&&b.hide.indexOf("k")>=0))c.push(["✓","k"]);return c;}
+  function sheet(b,P){
+    var st='padding:'+P.pv+'px '+P.ph+'px;line-height:'+P.lh+';font-size:'+P.fs+'px';
+    var cols=colsOf(b), n=cols.length, west=b.cols===WEST, idx=0, tot=0;
+    var h='<div class="band" style="background:'+b.color+'"><span class="brand">'+b.brand+'</span><span class="kv"><span class="k">Driver</span><span class="v">ZZ Test</span></span><span class="kv"><span class="k">Guide</span><span class="v">ZZ Test</span></span><span class="sp"></span><span class="date">Wed, Nov 25, 2026</span><span class="busno">BUS #: ZZ</span></div>';
+    h+='<table class="m"><thead><tr>'+cols.map(function(c){return '<th>'+c[0]+'</th>';}).join("")+'</tr></thead><tbody>';
+    b.secs.forEach(function(s){
+      h+='<tr class="sec"><td colspan="'+n+'" style="background:'+b.color+'">'+s[0]+'</td></tr>';
+      for(var j=0;j<s[1];j++){var G=g(idx++,west);tot+=G.x;
+        h+='<tr class="g">'+cols.map(function(c){var v=c[1]==="a"||c[1]==="k"?"":G[c[1]];return '<td class="'+(c[2]||"")+'" style="'+st+'">'+v+'</td>';}).join("")+'</tr>';}
+    });
+    h+='</tbody></table><div class="bottom"><div class="foot"><div><div class="fk">Total pax</div><div class="fv">'+tot+'</div></div><div><div class="fk">Seats used</div><div class="fv">'+tot+'</div></div><div><div class="fk">Available</div><div class="fv">'+(55-tot)+'</div></div><div><div class="fk">Inbound</div><div class="fv">0</div></div><div><div class="fk">Outbound</div><div class="fv">0</div></div><div><div class="fk">Lunch</div><div class="fv">'+tot+'</div></div></div></div>';
+    return h;
+  }
+  function place(paper,b,P){
+    var m=P.mg*MM, W=1123-2*m, H=794-2*m;
+    paper.innerHTML='<div class="inner" style="left:'+m+'px;top:'+m+'px;width:'+W+'px;height:'+H+'px"><div class="content">'+sheet(b,P)+'</div></div>';
+    var c=paper.querySelector(".content"), t=c.querySelector("table.m");
+    return {fitsH:c.offsetHeight<=H+0.5, fitsW:t.scrollWidth<=W+0.5, H:H};
+  }
+  function fits(paper,b,P){var r=place(paper,b,P);return r.fitsH&&r.fitsW;}
+  // 压的顺序同第 4 版 R2：上下留白 → 行距 → 纸边，每步只压到刚好放得下。
+  function squeeze(paper,b,fs){
+    var P={fs:fs,pv:DEF.pv,ph:MIN.ph,lh:DEF.lh,mg:DEF.mg};
+    if(fits(paper,b,P))return P;
+    for(var pv=1.5;pv>=MIN.pv;pv-=0.5){P.pv=pv;if(fits(paper,b,P))return P;}
+    for(var lh=1.25;lh>=MIN.lh-0.001;lh-=0.05){P.lh=Math.round(lh*100)/100;if(fits(paper,b,P))return P;}
+    P.lh=MIN.lh;
+    for(var mg=9;mg>=MIN.mg;mg--){P.mg=mg;if(fits(paper,b,P))return P;}
+    return null;
+  }
+  function runB(paper,b){var P=squeeze(paper,b,F14);return P?{P:P,pages:1}:{P:{fs:F14,pv:MIN.pv,ph:MIN.ph,lh:MIN.lh,mg:MIN.mg},pages:2};}
+  function runA(paper,b){
+    var base=squeeze(paper,b,F14);
+    if(!base)return {P:{fs:F14,pv:MIN.pv,ph:MIN.ph,lh:MIN.lh,mg:MIN.mg},pages:2};
+    // 放大：找 14pt..45pt 之间最大、压完还放得下一页的字号（按 0.5pt 找）。
+    var lo=14, hi=45, best=base;
+    while(hi-lo>0.5){var mid=Math.round((lo+hi)/2*2)/2;var P=squeeze(paper,b,mid*PT);if(P){lo=mid;best=P;}else hi=mid;}
+    return {P:best,pages:1};
+  }
+  function pt(px){return Math.round(px/PT*2)/2;}
+  function drawCut(paper,b,P){
+    var r=place(paper,b,P);if(r.fitsH)return;
+    var inner=paper.querySelector(".inner"), rows=Array.prototype.slice.call(inner.querySelectorAll("tbody tr")), bot=inner.querySelector(".bottom"), cut=-1;
+    var top=0;for(var k=0;k<rows.length;k++){if(rows[k].offsetTop+rows[k].offsetHeight+inner.querySelector("table.m").offsetTop+bot.offsetHeight>r.H){cut=k;break;}}
+    if(cut>0){if(rows[cut-1].classList.contains("sec"))cut--;rows[cut].classList.add("cut");bot.style.visibility="hidden";
+      var lab=document.createElement("div");lab.className="cutlabel";lab.style.top=(rows[cut].offsetTop+inner.querySelector("table.m").offsetTop-18)+"px";lab.textContent="↓ moves to page 2";inner.appendChild(lab);}
+  }
+  var host=document.getElementById("buses"), sumT=document.getElementById("sumTable"), boxes=[];
+  BUSES.forEach(function(b,bi){
+    var el=document.createElement("div");el.className="bus";
+    var n=b.secs.reduce(function(a,s){return a+s[1];},0);
+    el.innerHTML='<h3>'+b.name+'</h3><div class="note">'+n+' 单 / '+b.secs.length+' 节 · '+(b.cols===WEST?"West Rim 版式":"General 版式")+(b.assist?" · 有 ASSIST":"")+' · 0129 实际：'+b.real+'</div><div class="cmp"><div class="side"><div class="lbl">A：14pt 是最小（人少放大）</div><div class="res"></div><div class="pbox"><div class="paper"></div></div></div><div class="side"><div class="lbl">B：固定 14pt</div><div class="res"></div><div class="pbox"><div class="paper"></div></div></div></div>';
+    host.appendChild(el);
+    var sides=el.querySelectorAll(".side");
+    [runA,runB].forEach(function(fn,si){
+      var paper=sides[si].querySelector(".paper"), R=fn(paper,b);
+      if(R.pages===2)drawCut(paper,b,R.P);else place(paper,b,R.P);
+      sides[si].querySelector(".res").innerHTML='客人字 <b>'+pt(R.P.fs)+'pt</b> · '+(R.pages===1?'<span class="ok">1 page</span>':'<span class="bad">2 pages</span>')+' · 上下 '+R.P.pv+'px · 行距 '+R.P.lh+' · 纸边 '+R.P.mg+'mm';
+      b["r"+si]=R;boxes.push(sides[si].querySelector(".pbox"));
+    });
+    var tr=document.createElement("tr");
+    tr.innerHTML='<td>'+b.name.replace(/（.*/,"")+'</td><td>'+b.real+'</td><td>'+pt(b.r0.P.fs)+'pt · '+b.r0.pages+' page'+(b.r0.pages>1?'s':'')+'</td><td>'+pt(b.r1.P.fs)+'pt · '+b.r1.pages+' page'+(b.r1.pages>1?'s':'')+'</td>';
+    sumT.appendChild(tr);
+    var fi=bi===0?0:bi===2?1:bi===1?2:-1;if(fi>=0)Array.prototype.forEach.call(document.querySelectorAll(".fA"+fi),function(s){s.textContent=pt(b.r0.P.fs)+"pt";});
+  });
+  function fit(){boxes.forEach(function(bx){var p=bx.querySelector(".paper"),s=Math.min(1,bx.clientWidth/1123);p.style.transform="scale("+s+")";bx.style.height=(794*s)+"px";});}
+  window.addEventListener("resize",fit);fit();
+})();
+</script>
