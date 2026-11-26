@@ -43,7 +43,8 @@ export function ShiftChangeRequestsBar({
       <span
         className={cn(
           "flex min-w-0 flex-1 flex-wrap gap-x-3.5 gap-y-1",
-          !expanded && "max-sm:block max-sm:truncate",
+          // 手机收起时一行：第一条自己截断，「+N」不缩、永远看得见点得到（fe 2026-11-26：原来整行截断把 +N 截掉了）。
+          !expanded && "max-sm:flex-nowrap max-sm:gap-x-1.5",
         )}
       >
         {open.map((r, i) => (
@@ -55,6 +56,9 @@ export function ShiftChangeRequestsBar({
             className={cn(
               "cursor-pointer text-left underline underline-offset-2",
               i > 0 && !expanded && "max-sm:hidden",
+              i === 0 &&
+                !expanded &&
+                "max-sm:min-w-0 max-sm:truncate max-sm:whitespace-nowrap",
             )}
           >
             {requestLine(r, label)}
@@ -67,7 +71,8 @@ export function ShiftChangeRequestsBar({
           <button
             type="button"
             onClick={() => setExpanded(true)}
-            className="ml-1.5 hidden cursor-pointer font-bold max-sm:inline"
+            data-change-requests-more
+            className="hidden shrink-0 cursor-pointer font-bold max-sm:inline"
           >
             +{open.length - 1}
           </button>
