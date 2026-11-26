@@ -123,28 +123,31 @@ async function main() {
   process.exit(failed.length ? 1 : 0);
 }
 
-// ── G382 总览（Settings › HR › Schedule）检查骨架。页面在 53 的分支上（components/hr/schedule-overview/*），
-//    选择器先写成 SEL 里的占位，53 给了真的再换。页面还没好时整套报 SKIP，退出码 1（不算 clean）。
-//    依据：preview v2 https://claude.ai/artifact/B2WxdSVvzdQATs53tkzp7B；契约 interface.md（后端 task/g382-hr-schedule @ f77fbb57）。
+// ── G382 总览（Settings › HR › Schedule）。页面 = ab 的 components/hr/schedule-overview/*（task/g382-ov-ab），
+//    依据 preview v3 https://claude.ai/artifact/B2WxdSVvzdQATs53tkzp7B、后端契约 interface.md @ 77404fa0。
+//    骨架（61）的 10 项 SKIP 换成真操作（e2 2026-11-26）。页面打不开时整套照旧报 SKIP（不算通过，退出码 1）。
+//    mock 的种子是 2026-11-15 起 4 周、today = 11-25 ⇒ 浏览器里的「现在」固定成 2026-11-25（偏移 Date，时间照走）。
 const PAGE = `${APP}/settings/hr?tab=schedule`;
 const SEL = {
   root: "[data-schedule-overview]", // 整个总览
   week: "[data-ov-week]", // 一周一块（data-ov-week="2026-11-15"）
   dayCol: "[data-ov-day]", // 每块里的一天一列
   time: "[data-ov-time]", // 班上的时间字
-  alerts: "[data-ov-alert]", // 页顶提醒栏（4 条）
+  alerts: "[data-ov-alert]", // 页顶提醒栏
   save: "[data-ov-save]", // 蓝色 Save
-  unsaved: "[data-ov-unsaved]", // 红字 Not saved yet
-  ruleBox: "[data-ov-rule-problems]", // 「Can’t save: rule problems」框
-  editKey: "[data-ov-edit]", // 任何编辑键（拖、Fill、Add leave 等都挂这个）
-  fill: "[data-ov-fill]",
-  addLeave: "[data-ov-add-leave]",
-  shift: "[data-ov-shift]", // 一个班（data-ov-shift=<slot id>）
+  unsaved: "[data-ov-unsaved]", // 红字 Not saved yet · N changes
+  saved: "[data-ov-saved]", // 绿字 Saved
+  ruleBox: "[data-ov-rule-problems]", // 「Can’t save: rule problems」框（内容；键在框的底栏）
+  editKey: "[data-ov-edit]", // 任何编辑键
+  shift: "[data-ov-shift]", // 一个班（data-ov-shift=<slot key>）
+  cell: "[data-ov-cell]", // 一格（data-ov-cell="<emp>|<date>"，emp 空 = Unassigned 那行 "null|…"）
+  pending: "[data-ov-pending]", // 格子里待批的请假
   leaveReqs: "[data-ov-leave-requests]", // Leave requests 栏
   changeReqs: "[data-ov-change-requests]", // Shift change requests 栏
-  askSave: "[data-ov-ask-save]", // 有没存的改动时点请假：先问要不要存
+  askSave: "[data-ov-ask-save]", // 「Save your changes first?」框
   howTo: "[data-how-to-use]",
 };
+const FAKE_NOW = Date.UTC(2026, 10, 25, 19, 0, 0); // LA 2026-11-25 11:00
 let skipAll = false;
 function todo(name) {
   results.push({ name, ok: false, detail: "SKIP: page not built yet" });
@@ -158,72 +161,201 @@ async function maybe(name, fn) {
     check(name, false, String(e && e.message ? e.message : e));
   }
 }
+/** 只算写请求里跟编辑锁无关的（占锁 / 心跳 / 放锁不算「存」）。 */
+const writes = async (from = 0) =>
+  (await mockLog()).slice(from).filter((l) => !/\/edit-lock/.test(l.path));
+async function openOverview() {
+  await goto(PAGE);
+  const ok = await waitFor(`document.querySelector('${SEL.root}') && document.querySelectorAll('${SEL.week}').length > 0`, 30000);
+  if (ok) await helpers();
+  return ok;
+}
+/** 页面里的拖放：在 from 上 dragstart（班卡自己 setData），把同一个 DataTransfer 拿去 target 上 dragover + drop。 */
+async function drag(fromSel, toSel) {
+  return evaluate(`
+    const a = document.querySelector(${JSON.stringify(fromSel)}), b = document.querySelector(${JSON.stringify(toSel)});
+    if (!a || !b) return 'missing ' + (!a ? ${JSON.stringify(fromSel)} : ${JSON.stringify(toSel)});
+    const dt = new DataTransfer();
+    a.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }));
+    b.dispatchEvent(new DragEvent('dragenter', { bubbles: true, cancelable: true, dataTransfer: dt }));
+    b.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt }));
+    b.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }));
+    a.dispatchEvent(new DragEvent('dragend', { bubbles: true, cancelable: true, dataTransfer: dt }));
+    return 'ok';`);
+}
+/**
+ * 草稿周里挑一个有人的班，拖到同一天 Unassigned 那一格：只少一个人、不会造出新违规（草稿周的空档也不拦存）。
+ * 返回 {key, emp, date}。
+ */
+async function pickDraftMove() {
+  return evaluate(`
+    // 周块页头：「Week of …」后面跟 Published / Draft · not published。
+    const draftWeeks = [...document.querySelectorAll('${SEL.week}')].filter((w) => !/Published/.test(w.querySelector('b')?.parentElement?.textContent || ''));
+    for (const w of draftWeeks) {
+      for (const s of w.querySelectorAll('${SEL.shift}')) {
+        const c = s.closest('${SEL.cell}');
+        if (!c) continue;
+        const [emp, date] = c.dataset.ovCell.split('|');
+        if (emp === 'null') continue;
+        if (!w.querySelector('[data-ov-cell="null|' + date + '"]')) continue;
+        return { key: s.dataset.ovShift, emp, date };
+      }
+    }
+    return null;`);
+}
+/**
+ * 造一个新的 min_rest（要拦的）：草稿周里 P 某天上 Close（9:30 PM 下班），把第二天别人的一个 Open / Mid 拖给 P。
+ * 休息 = 2.5 h + 第二天开始时间 < 12 h。返回 {key, to}。
+ */
+async function pickRestBreak() {
+  return evaluate(`
+    const add = (ymd, n) => { const d = new Date(ymd + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+    const cells = [...document.querySelectorAll('${SEL.cell}')];
+    const weekOfCell = (c) => c.closest('${SEL.week}');
+    const isDraft = (w) => !/Published/.test(w.querySelector('b')?.parentElement?.textContent || '');
+    for (const c of cells) {
+      const [emp, date] = c.dataset.ovCell.split('|');
+      if (emp === 'null' || !isDraft(weekOfCell(c))) continue;
+      const close = [...c.querySelectorAll('${SEL.shift}')].find((s) => /^Close/.test(s.textContent.trim()));
+      if (!close) continue;
+      const next = add(date, 1);
+      const target = document.querySelector('[data-ov-cell="' + emp + '|' + next + '"]');
+      if (!target || !isDraft(weekOfCell(target)) || target.querySelector('${SEL.shift}')) continue;
+      const donor = cells.find((d) => d.dataset.ovCell.endsWith('|' + next) && !d.dataset.ovCell.startsWith(emp + '|') &&
+        [...d.querySelectorAll('${SEL.shift}')].some((s) => /^(Open|Mid)/.test(s.textContent.trim())));
+      if (!donor) continue;
+      const s = [...donor.querySelectorAll('${SEL.shift}')].find((x) => /^(Open|Mid)/.test(x.textContent.trim()));
+      return { key: s.dataset.ovShift, to: emp + '|' + next, from: donor.dataset.ovCell };
+    }
+    return null;`);
+}
 
 async function run() {
-  await ctl({ reset: true });
-  await goto(PAGE);
-  if (!(await waitFor(`document.querySelector('${SEL.root}')`, 20000))) skipAll = true;
-  if (!skipAll) await helpers();
+  // 「现在」固定成 2026-11-25（mock 的 today），偏移着走，计时器照常。
+  await cdp("Page.addScriptToEvaluateOnNewDocument", {
+    source: `(() => { const R = Date; const delta = ${FAKE_NOW} - R.now();
+      class D extends R { constructor(...a) { if (a.length) super(...a); else super(R.now() + delta); } static now() { return R.now() + delta; } }
+      globalThis.Date = D; })();`,
+  });
+  await ctl({ reset: true, viewer: "editor", canPublish: true });
+  if (!(await openOverview())) skipAll = true;
 
   // ── 版面 ──
-  await maybe("4 周 = 4 块往下排，每块 7 列", async () => {
-    check("4 周 = 4 块往下排，每块 7 列", await evaluate(`const w = [...document.querySelectorAll('${SEL.week}')]; return w.length === 4 && w.every(x => x.querySelectorAll('${SEL.dayCol}').length === 7) && w.every((x, i) => i === 0 || x.getBoundingClientRect().top > w[i - 1].getBoundingClientRect().top);`));
+  await maybe("4 周 = 4 块往下排，每块 7 列（Nov 15 – Dec 12）", async () => {
+    const m = await evaluate(`const w = [...document.querySelectorAll('${SEL.week}')]; return { n: w.length, cols: w.map((x) => x.querySelectorAll('${SEL.dayCol}').length), down: w.every((x, i) => i === 0 || x.getBoundingClientRect().top > w[i - 1].getBoundingClientRect().top), weeks: w.map((x) => x.dataset.ovWeek) };`);
+    check("4 周 = 4 块往下排，每块 7 列（Nov 15 – Dec 12）", m.n === 4 && m.cols.every((c) => c === 7) && m.down && m.weeks.join(",") === "2026-11-15,2026-11-22,2026-11-29,2026-12-06", JSON.stringify(m));
   });
   await maybe("页顶 4 条提醒栏", async () => {
-    check("页顶 4 条提醒栏", await evaluate(`return document.querySelectorAll('${SEL.alerts}').length === 4;`));
+    const n = await evaluate(`return document.querySelectorAll('${SEL.alerts}').length;`);
+    check("页顶 4 条提醒栏", n === 4, `n=${n}`);
   });
   await maybe("半屏 950：时间字 ≥ 6px、不折行", async () => {
     await cdp("Emulation.setDeviceMetricsOverride", { width: 950, height: 1000, deviceScaleFactor: 1, mobile: false });
-    await sleep(400);
-    check("半屏 950：时间字 ≥ 6px、不折行", await evaluate(`const t = [...document.querySelectorAll('${SEL.time}')]; return t.length > 0 && t.every(e => parseFloat(getComputedStyle(e).fontSize) >= 6 && e.getClientRects().length === 1);`));
+    await sleep(500);
+    const m = await evaluate(`const t = [...document.querySelectorAll('${SEL.time}')]; const fs = t.map((e) => parseFloat(getComputedStyle(e).fontSize)); return { n: t.length, min: Math.min(...fs), multi: t.filter((e) => e.getClientRects().length !== 1 || e.scrollHeight > e.clientHeight + 1).length };`);
+    check("半屏 950：时间字 ≥ 6px、不折行", m.n > 0 && m.min >= 6 && m.multi === 0, JSON.stringify(m));
     await cdp("Emulation.clearDeviceMetricsOverride");
     await sleep(300);
   });
 
   // ── 先选后存 ──
-  await maybe("拖班 / Fill / Add leave 只改草稿，没调接口；红字 Not saved yet", async () => {
-    // TODO(53 给选择器后)：拖一个班到另一天、点 Fill 选人、Add leave 填一条
+  let moved = null;
+  await maybe("拖班只改草稿，没调接口；红字 Not saved yet · 1 change", async () => {
+    moved = await pickDraftMove();
+    if (!moved) throw new Error("no draft-week shift to move");
     const before = (await mockLog()).length;
-    check("拖班 / Fill / Add leave 只改草稿，没调接口；红字 Not saved yet", !!(await evaluate(`return !!document.querySelector('${SEL.unsaved}');`)) && (await mockLog()).length === before);
+    const r = await drag(`[data-ov-shift="${moved.key}"]`, `[data-ov-cell="null|${moved.date}"]`);
+    const shown = await waitFor(`document.querySelector('${SEL.unsaved}')`, 8000);
+    const text = await evaluate(`return document.querySelector('${SEL.unsaved}')?.textContent ?? '';`);
+    const where = await evaluate(`return document.querySelector('[data-ov-shift="${moved.key}"]')?.closest('${SEL.cell}')?.dataset.ovCell ?? '';`);
+    const w = await writes(before);
+    check("拖班只改草稿，没调接口；红字 Not saved yet · 1 change", r === "ok" && shown && text === "Not saved yet · 1 change" && where === `null|${moved.date}` && w.length === 0, JSON.stringify({ r, text, where, writes: w.map((x) => x.method + " " + x.path), moved }));
   });
-  await maybe("按 Save 才发一次 range/changes（含跨周的 weeks 和 ops）", async () => {
+  await maybe("按 Save 才发一次 range/changes（weeks + ops，assign 给 Unassigned，base_version 字符串），绿字 Saved", async () => {
+    const before = (await mockLog()).length;
     await evaluate(`document.querySelector('${SEL.save}').click(); return 1;`);
-    await sleep(800);
-    const posts = (await mockLog()).filter((l) => l.path === "/api/schedule/range/changes");
-    check("按 Save 才发一次 range/changes（含跨周的 weeks 和 ops）", posts.length === 1 && Array.isArray(posts[0].body.weeks) && Array.isArray(posts[0].body.ops), JSON.stringify(posts).slice(0, 300));
+    await waitFor(`document.querySelector('${SEL.saved}') || document.querySelector('[data-ov-save-error]')`, 10000);
+    const posts = (await writes(before)).filter((l) => l.path === "/api/schedule/range/changes");
+    const b = posts[0]?.body;
+    const ok =
+      posts.length === 1 &&
+      Array.isArray(b?.weeks) && Array.isArray(b?.ops) &&
+      b.ops.length === 1 && b.ops[0].op === "assign" && b.ops[0].employee_id == null && String(b.ops[0].slot) === String(moved?.key) &&
+      b.weeks.some((w) => typeof w.base_version === "string" && typeof w.lock_token === "string") &&
+      (await evaluate(`const s = document.querySelector('${SEL.saved}'); return !!s && s.textContent.trim() === 'Saved' && getComputedStyle(s).color === 'rgb(21, 128, 61)' && !document.querySelector('${SEL.unsaved}');`));
+    check("按 Save 才发一次 range/changes（weeks + ops，assign 给 Unassigned，base_version 字符串），绿字 Saved", ok, JSON.stringify(posts).slice(0, 400));
   });
-  await maybe("409 rule_violation：出「Can’t save: rule problems」框，只有 Back to edit", async () => {
-    // TODO：造一个新违规（Thu 12/10 Close 的人放到 Fri 12/11 Mid），Save
-    check("409 rule_violation：出「Can’t save: rule problems」框，只有 Back to edit", await evaluate(`const b = document.querySelector('${SEL.ruleBox}'); if (!b) return false; const btns = [...b.querySelectorAll('button')].map(x => x.textContent.trim()); return b.textContent.includes('Can’t save: rule problems') && btns.length === 1 && btns[0] === 'Back to edit';`));
+  await maybe("409 rule_violation：出「Can’t save: rule problems」框，列后端原话，只有 Back to edit；没存", async () => {
+    const pick = await pickRestBreak();
+    if (!pick) throw new Error("no Close → next-day Open/Mid pair in the draft weeks");
+    await drag(`[data-ov-shift="${pick.key}"]`, `[data-ov-cell="${pick.to}"]`);
+    await waitFor(`document.querySelector('${SEL.unsaved}')`, 8000);
+    const before = (await mockLog()).length;
+    await evaluate(`document.querySelector('${SEL.save}').click(); return 1;`);
+    await waitFor(`document.querySelector('${SEL.ruleBox}')`, 10000);
+    const m = await evaluate(`
+      const b = document.querySelector('${SEL.ruleBox}'); if (!b) return null;
+      const h = document.getElementById('ov-rule-box');
+      let panel = h; while (panel && !panel.contains(b)) panel = panel.parentElement;
+      const btns = [...panel.querySelectorAll('button')].filter((x) => x.getAttribute('aria-label') !== 'Close').map((x) => x.textContent.trim());
+      return { title: h?.textContent, btns, items: [...b.querySelectorAll('li')].map((li) => li.textContent), unsaved: !!document.querySelector('${SEL.unsaved}') };`);
+    const post = (await writes(before)).filter((l) => l.path === "/api/schedule/range/changes");
+    check("409 rule_violation：出「Can’t save: rule problems」框，列后端原话，只有 Back to edit；没存",
+      !!m && m.title === "Can’t save: rule problems" && m.btns.length === 1 && m.btns[0] === "Back to edit" && m.items.some((t) => /rest between/.test(t)) && m.unsaved && post.length === 1,
+      JSON.stringify({ m, pick }));
+    await evaluate("[...document.querySelectorAll('button')].find((x) => x.textContent.trim() === 'Back to edit')?.click(); return 1;");
+    await waitFor(`!document.querySelector('${SEL.ruleBox}')`, 5000);
   });
-  await maybe("有没存的改动时点请假：先问要不要存", async () => {
-    check("有没存的改动时点请假：先问要不要存", await evaluate(`return !!document.querySelector('${SEL.askSave}');`));
+  await maybe("有没存的改动时点请假：先问要不要存；Don't save 以后打开批假框、改动丢掉", async () => {
+    if (!(await evaluate(`return !!document.querySelector('${SEL.unsaved}');`))) {
+      const mv = await pickDraftMove();
+      await drag(`[data-ov-shift="${mv.key}"]`, `[data-ov-cell="null|${mv.date}"]`);
+      await waitFor(`document.querySelector('${SEL.unsaved}')`, 8000);
+    }
+    const pend = await evaluate(`return document.querySelector('${SEL.pending}')?.dataset.ovPending ?? null;`);
+    if (!pend) throw new Error("no pending leave in the grid");
+    await evaluate(`document.querySelector('[data-ov-pending="${pend}"]').click(); return 1;`);
+    const asked = await waitFor(`document.querySelector('${SEL.askSave}')`, 5000);
+    const askText = await evaluate(`return document.querySelector('${SEL.askSave}')?.textContent ?? '';`);
+    await evaluate("document.querySelector('[data-ov-ask-discard]').click(); return 1;");
+    const opened = await waitFor("[...document.querySelectorAll('h2')].some((h) => h.textContent.startsWith('Leave request'))", 8000);
+    const clean = await waitFor(`!document.querySelector('${SEL.unsaved}')`, 8000);
+    check("有没存的改动时点请假：先问要不要存；Don't save 以后打开批假框、改动丢掉", asked && /unsaved change/.test(askText) && opened && clean, JSON.stringify({ asked, askText, opened, clean }));
+    await evaluate("[...document.querySelectorAll('button[aria-label=Close]')].forEach((b) => b.click()); return 1;");
+    await sleep(300);
   });
-  await maybe("有没存的改动时离开页面：拦下来问", async () => {
-    check("有没存的改动时离开页面：拦下来问", await evaluate(`return !!document.querySelector('[data-leave-guard], [role=dialog]');`));
+  await maybe("有没存的改动时离开页面（点侧栏链接）：拦下来问，网址不变；Cancel 以后改动还在", async () => {
+    const mv = await pickDraftMove();
+    await drag(`[data-ov-shift="${mv.key}"]`, `[data-ov-cell="null|${mv.date}"]`);
+    await waitFor(`document.querySelector('${SEL.unsaved}')`, 8000);
+    const href = await evaluate(`const a = [...document.querySelectorAll('a[href]')].find((x) => { const h = x.getAttribute('href'); return h && h.startsWith('/') && !h.startsWith('/settings/hr') && x.offsetParent; }); if (!a) return null; a.click(); return a.getAttribute('href');`);
+    const asked = await waitFor(`document.querySelector('${SEL.askSave}')`, 5000);
+    const stay = await evaluate("return location.pathname + location.search;");
+    await evaluate("[...document.querySelectorAll('button')].find((x) => x.textContent.trim() === 'Cancel')?.click(); return 1;");
+    await sleep(300);
+    const kept = await evaluate(`return !!document.querySelector('${SEL.unsaved}');`);
+    check("有没存的改动时离开页面（点侧栏链接）：拦下来问，网址不变；Cancel 以后改动还在", !!href && asked && stay === "/settings/hr?tab=schedule" && kept, JSON.stringify({ href, asked, stay, kept }));
+    await evaluate("document.querySelector('[data-ov-discard]')?.click(); return 1;");
+    await waitFor(`!document.querySelector('${SEL.unsaved}')`, 8000);
   });
 
   // ── 只能批假的人 ──
   await ctl({ reset: true, viewer: "approver" });
-  await goto(PAGE);
-  if (!skipAll) {
-    await waitFor(`document.querySelector('${SEL.root}')`, 20000);
-    await helpers();
-  }
-  await maybe("can_edit=false：没有任何编辑键、只有 Leave requests 能点、没有 Shift change requests 栏", async () => {
-    check("can_edit=false：没有任何编辑键、只有 Leave requests 能点、没有 Shift change requests 栏", await evaluate(`return !document.querySelector('${SEL.editKey}') && !document.querySelector('${SEL.save}') && !!document.querySelector('${SEL.leaveReqs}') && !document.querySelector('${SEL.changeReqs}');`));
+  if (!skipAll && !(await openOverview())) skipAll = true;
+  await maybe("can_edit=false：没有任何编辑键、没有 Save、只有 Leave requests 能点、没有 Shift change requests 栏", async () => {
+    const m = await evaluate(`return { edit: document.querySelectorAll('${SEL.editKey}').length, save: !!document.querySelector('${SEL.save}'), leave: !!document.querySelector('${SEL.leaveReqs}'), change: !!document.querySelector('${SEL.changeReqs}'), cells: document.querySelectorAll('${SEL.cell}').length, viewOnly: document.querySelector('[data-ov-view-only]')?.textContent ?? '' };`);
+    check("can_edit=false：没有任何编辑键、没有 Save、只有 Leave requests 能点、没有 Shift change requests 栏", m.edit === 0 && !m.save && m.leave && !m.change && m.cells === 0 && /View only/.test(m.viewOnly), JSON.stringify(m));
   });
 
   // ── 手机 390 ──
-  await ctl({ reset: true });
+  await ctl({ reset: true, viewer: "editor", canPublish: true });
   await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
-  await goto(PAGE);
-  if (!skipAll) {
-    await waitFor(`document.querySelector('${SEL.root}')`, 20000);
-    await helpers();
-  }
+  if (!skipAll && !(await openOverview())) skipAll = true;
   await maybe("手机 390：没有横向滚动条、How to use 在最底", async () => {
-    check("手机 390：没有横向滚动条、How to use 在最底", await evaluate(`const h = document.querySelector('${SEL.howTo}'); const d = document.documentElement; return d.scrollWidth <= d.clientWidth && !!h && h.getBoundingClientRect().bottom >= Math.max(...[...document.querySelectorAll('${SEL.root} *')].map(e => e.getBoundingClientRect().bottom)) - 1;`));
+    await sleep(500);
+    const m = await evaluate(`const h = document.querySelector('${SEL.howTo}'); const d = document.documentElement; // 收起的 <details> 里的列表项在新版 Chrome 里照样有尺寸（content-visibility 藏着）⇒ How to use 自己的子孙不算。
+    const bottom = Math.max(...[...document.querySelectorAll('${SEL.root} *')].filter((e) => !h || !h.contains(e)).map((e) => e.getBoundingClientRect().bottom)); return { sw: d.scrollWidth, cw: d.clientWidth, how: !!h, howBottom: h ? Math.round(h.getBoundingClientRect().bottom) : null, maxBottom: Math.round(bottom) };`);
+    check("手机 390：没有横向滚动条、How to use 在最底", m.sw <= m.cw && m.how && m.howBottom >= m.maxBottom - 1, JSON.stringify(m));
   });
   await cdp("Emulation.clearDeviceMetricsOverride");
 }
