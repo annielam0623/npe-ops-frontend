@@ -1868,7 +1868,11 @@ async function run() {
   await waitFor("document.querySelector('[data-hidden-section]')");
   await evaluate(`${hidToggle}.click();`);
   await waitFor("!document.querySelector('[data-hidden-pill]') && !document.querySelector('[data-hidden-section]')");
-  hreq = await since(hbefore, (e) => e.path === "/api/manifests");
+  // 灰色胶囊一取消勾选就拿掉（不等新数据），请求这时可能还在去 mock 的路上：等它到了再看（最多 5 秒），不然偶发 → []。
+  for (let end = Date.now() + 5000; ; await sleep(100)) {
+    hreq = await since(hbefore, (e) => e.path === "/api/manifests");
+    if (hreq.length || Date.now() > end) break;
+  }
   check("取消勾选：灰色胶囊和隐藏表都没了，回到正常表，请求不再带 include_hidden", !!(await evaluate("return !!document.querySelector('tr[data-row]');")) && hreq.length >= 1 && hreq.every((e) => !e.query.includes("include_hidden")), JSON.stringify(hreq.map((e) => e.query)));
   // 以后的样子：Fees 和边界行
   await ctl({ hiddenMode: "future" });
