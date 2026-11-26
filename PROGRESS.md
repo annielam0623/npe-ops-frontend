@@ -34,6 +34,7 @@
 - 86：G382 interface.md 已跟代码对齐 **77404fa0**（§2.2 {weeks, time_off, violations}、version 字符串、§2.1 批假人权限）；只剩 CR-6 would_gap 可能动契约。已转 e2 / ab。
 - 🐞 Annie 截图「查一下」（经 f1，后端 32 只读查）：Tickets › AACT 今天红框「CHDL19M5H / CHDE5CPNW — Cfm # is too short」，Cfm # 已清空、Rezdy 有 9 位。原因：Cfm # 保存后 onCfmSaved（manifests-view.tsx:646-658）没更新 row.cfm_short / cfm_mismatch，cfmProblem()（config.ts:361-366）读旧标记，刷新才对。后端不改。派 92 task/manifest-cfm-flag-refresh：保存后重拉行 / 页用后端值。
 - Annie（原话）「你把my schedule点击后进入的页面给我preview一下」⇒ 派 e2 出 preview：现在线上 My schedule（电脑 + 手机）+ G382 上线后会不会变，数据来源，只看不提改法。
+  - 📌 e2 交 **https://claude.ai/artifact/CHyLgqs1zqvETUjXMsmmMm**（源 task/my-schedule-preview e53f6d9c，真代码 + mock 截图，电脑 / 手机）。My schedule 前端文件 main 和 g382-fe 一样。G382 后三处不同：① 按小时假那格多一条虚线 Leave 小框，不写几点（这页接口不给时间），员工在这页仍只能整天请；② 请假类别下拉写死 PTO / Sick / Personal，跟 Q8「Personal算Leave」不符 ⇒ 属 G382 已定范围，派 e2 在 g382-fe 改读类别表；③ 本人是批复人 / Super Admin 时点自己请假结果通知跳总览。① ③ 等 Annie 看后再说。
 - 不用等答就能做的：Tickets 跳过去红框消失（当 bug 复现找根因）、Bus manifest 打印隐藏列 preview、G382 两个前端分支合最新 main + 改旧 sch / leave headless。
 - 更正 David H（第 16 项）：Annie（原话）「我说过David H的身份很复杂，他是老板，有时候又会帮忙做relay」⇒ 11-22 定的「另开 staff 账号只勾 Dispatch Read only」不够（PROGRESS 里没找到她之前这句的记录）。📌 已问她：他的 staff 账号要多大权限、司机账号是否保留做 relay。一人同时是 staff + 司机后端支不支持：未核。
 
