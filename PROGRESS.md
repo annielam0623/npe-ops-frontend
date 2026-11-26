@@ -10,7 +10,7 @@
 **今天上 main（都等 Annie 线上验）**
 - 整团午餐单（G385）：前端 2807c609（61，be PASS）+ 后端 3fbd215c。明天没排车的团 Dispatch › Bus manifest「Not on a bus yet」下整张午餐单 + 餐厅电话 + Counted at；打印页 / Excel 也有。
 - Team leads / Manager 存不进 422：后端 ee177467（G386，be）；前端 344b4df9（422 显示哪一格）。Annie 再按一次 Save。
-- 未发新单 Notice：开关已开、Send to team = Operations；已自动发 24 条（18 张单，只到 Lizzie / Nadia）。📌 补发给 Operations 其他人：a6 给 Annie 看 SQL，她本人执行。
+- 未发新单 Notice：开关已开、Send to team = Operations；已自动发 24 条（18 张单，只到 Lizzie / Nadia）。📌 Annie「就当作是现在开始，发明后大后天的就号了」两种读法，a6 在问她：a 现状已够、不补（a6 推荐）/ b 给 Operations 其他人补一份（SQL 回家写、她看后执行）。
 
 **🔴 今天必做没做完：G382 Staff Schedule（Annie「staff schedule今天一定要做完」）——家里接着做**
 - 前端分支（都没合 main，要一起上）：6e task/g382-leave-dialogs **c01c928f**（四个请假框 + 改班栏 + Staff Schedule 搬家，worktree C:\Code\npe-ops-g382-leave）；61 task/g382-ov-checks **4ed9005b**（总览 mock + headless + 合同核对）；53 总览本体**还没写**。
