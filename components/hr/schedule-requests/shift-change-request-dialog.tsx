@@ -9,7 +9,7 @@ import {
   type RequestSlot,
 } from "@/lib/schedule-confirm-api";
 import { clock, dayLabel } from "@/lib/schedule-leave";
-import { leaveErrorOf } from "@/lib/schedule-leave-api";
+import { leaveErrorText } from "@/lib/schedule-leave-api";
 import { swapRestProblem } from "@/lib/schedule-swap-rest";
 
 import {
@@ -104,7 +104,7 @@ export function ShiftChangeRequestDialog({
       onDone(what === "approve" ? "approved" : "declined");
     } catch (e) {
       setError(
-        leaveErrorOf(e, `Couldn't ${what} the request. Try again.`).detail,
+        leaveErrorText(e, `Couldn't ${what} the request. Try again.`),
       );
     } finally {
       setBusy(null);

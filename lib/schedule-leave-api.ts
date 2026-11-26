@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api-client";
 import type { LeaveQueueItem } from "@/lib/leave-api";
+import { clockRange, dayLabel } from "@/lib/schedule-leave";
 import { ApiError } from "@/types";
 import type {
   ScheduleGap,
@@ -192,4 +193,22 @@ export function leaveErrorOf(error: unknown, fallback: string): LeaveSaveError {
     // error.message 是中文的「API 请求失败」，不给 staff 看。
   }
   return { detail: fallback };
+}
+
+/**
+ * 红框里显示的文字：后端原话；409 rule_violation / coverage_gap 时下面逐行列出后端给的违规原句 / 空档
+ * （e2 对后端 c336d008：detail 只有一句「This change breaks a schedule rule…」，看不出是谁、哪条）。
+ */
+export function leaveErrorText(error: unknown, fallback: string): string {
+  const e = leaveErrorOf(error, fallback);
+  const lines = [e.detail];
+  if (e.code === "rule_violation" && Array.isArray(e.violations))
+    for (const v of e.violations) if (v?.message) lines.push(`• ${v.message}`);
+  if (e.code === "coverage_gap" && Array.isArray(e.gaps))
+    for (const g of e.gaps)
+      if (g?.date && g.start_time && g.end_time)
+        lines.push(
+          `• ${dayLabel(g.date)} ${clockRange(g.start_time, g.end_time)}`,
+        );
+  return lines.join("\n");
 }

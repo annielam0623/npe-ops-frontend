@@ -198,6 +198,12 @@ export interface ScheduleViolation {
   dates: string[];
   slot_ids: number[];
   message: string;
+  /** 后端 schedule_rule_check._v（c336d008）：规则文档里那条的 id。 */
+  rule_id?: number | null;
+  /** 只有 blocking 的「新」违规会让保存 409 rule_violation；其余只列在 Rule problems。 */
+  blocking?: boolean;
+  /** 按周算的规则（days_per_week 等、weekly_hours_alert）：那一周的周日（CR-5，同一人同一周算一条）。 */
+  week?: string;
 }
 
 export type ScheduleWeekStatus = "draft" | "published";

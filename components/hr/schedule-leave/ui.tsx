@@ -149,7 +149,11 @@ export function HalfHourSelect({
 export function ErrorBox({ text }: { text: string | null }) {
   if (!text) return null;
   return (
-    <div role="alert" data-dialog-error className={RED}>
+    <div
+      role="alert"
+      data-dialog-error
+      className={`${RED} whitespace-pre-line`}
+    >
       {text}
     </div>
   );

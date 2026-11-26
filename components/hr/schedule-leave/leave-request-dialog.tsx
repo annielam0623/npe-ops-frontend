@@ -23,7 +23,7 @@ import {
 import {
   approveLeaveWithChanges,
   leaveCategoryLabel,
-  leaveErrorOf,
+  leaveErrorText,
   type ApproveBody,
   type OverviewLeaveRequest,
 } from "@/lib/schedule-leave-api";
@@ -244,7 +244,7 @@ export function LeaveRequestDialog({
       onDone("approved");
     } catch (e) {
       setError(
-        leaveErrorOf(e, "Couldn't approve. Nothing was changed.").detail,
+        leaveErrorText(e, "Couldn't approve. Nothing was changed."),
       );
     } finally {
       setBusy(null);
@@ -259,7 +259,7 @@ export function LeaveRequestDialog({
       await rejectLeaveRequest(req.id, note.trim() || null);
       onDone("rejected");
     } catch (e) {
-      setError(leaveErrorOf(e, "Couldn't reject. Try again.").detail);
+      setError(leaveErrorText(e, "Couldn't reject. Try again."));
     } finally {
       setBusy(null);
     }

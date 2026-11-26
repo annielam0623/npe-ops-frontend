@@ -4,7 +4,7 @@ import { useId, useState } from "react";
 
 import { cleanNote } from "@/components/schedule/add-shift-dialog";
 import { dayLabel, hourlyError, isHourly } from "@/lib/schedule-leave";
-import { leaveErrorOf, type LeaveCategory } from "@/lib/schedule-leave-api";
+import { leaveErrorText, type LeaveCategory } from "@/lib/schedule-leave-api";
 import type { ScheduleTimeOff } from "@/types";
 
 import {
@@ -107,7 +107,7 @@ export function AddLeaveDialog({
       });
       if (msg) setError(msg);
     } catch (e) {
-      setError(leaveErrorOf(e, "Couldn't save the leave. Try again.").detail);
+      setError(leaveErrorText(e, "Couldn't save the leave. Try again."));
     } finally {
       setBusy(false);
     }
@@ -121,7 +121,7 @@ export function AddLeaveDialog({
       const msg = await onDelete(existing);
       if (msg) setError(msg);
     } catch (e) {
-      setError(leaveErrorOf(e, "Couldn't delete the leave.").detail);
+      setError(leaveErrorText(e, "Couldn't delete the leave."));
     } finally {
       setBusy(false);
     }
