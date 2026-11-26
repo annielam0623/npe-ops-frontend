@@ -33,6 +33,7 @@
 - ✅ 92 修好发送弹窗不能滚（task/manifest-send-dialog-scroll 修复 68216d58 / 35a0d3e6）：send-dialogs.tsx DialogFrame 中间块子元素能缩，结果卡（legacy-ui.tsx:143 overflow-hidden）被压扁裁掉（1280×600 时 123/488px），没有滚动条；只有 Tour confirmation（含 Last Minute）发完那屏中招，ReminderDialog 同框一并修。修：中间块 min-h-0 + [&>*]:shrink-0，头尾 shrink-0；样子不变。broadcast-dialog / import-dialog 查过不受影响。tsc 0、eslint 0 错、build；新套 sds 8/8（修前发送后 2 项 FAIL）、man 631/631、mf 381/381。✅ **上 main 3e3b232d**，📌 Annie / staff 线上验（Tour confirmation 多勾几单发完能滚到最后）。92 查 man「71 拖表头」偶发失败 ⇒ 检查竞态（dragHead 只等 200ms 就读日志，man-test.js:218），改 prefPuts 等 PUT 到（最多 5 秒），只改检查，task/man-colpref-check-race f8eb542e，man 两遍 631/631，fe 同意合 main。
 - 86：G382 interface.md 已跟代码对齐 **77404fa0**（§2.2 {weeks, time_off, violations}、version 字符串、§2.1 批假人权限）；只剩 CR-6 would_gap 可能动契约。已转 e2 / ab。
 - 🐞 Annie 截图「查一下」（经 f1，后端 32 只读查）：Tickets › AACT 今天红框「CHDL19M5H / CHDE5CPNW — Cfm # is too short」，Cfm # 已清空、Rezdy 有 9 位。原因：Cfm # 保存后 onCfmSaved（manifests-view.tsx:646-658）没更新 row.cfm_short / cfm_mismatch，cfmProblem()（config.ts:361-366）读旧标记，刷新才对。后端不改。派 92 task/manifest-cfm-flag-refresh：保存后重拉行 / 页用后端值。
+- Annie（原话）「你把my schedule点击后进入的页面给我preview一下」⇒ 派 e2 出 preview：现在线上 My schedule（电脑 + 手机）+ G382 上线后会不会变，数据来源，只看不提改法。
 - 不用等答就能做的：Tickets 跳过去红框消失（当 bug 复现找根因）、Bus manifest 打印隐藏列 preview、G382 两个前端分支合最新 main + 改旧 sch / leave headless。
 - 更正 David H（第 16 项）：Annie（原话）「我说过David H的身份很复杂，他是老板，有时候又会帮忙做relay」⇒ 11-22 定的「另开 staff 账号只勾 Dispatch Read only」不够（PROGRESS 里没找到她之前这句的记录）。📌 已问她：他的 staff 账号要多大权限、司机账号是否保留做 relay。一人同时是 staff + 司机后端支不支持：未核。
 
