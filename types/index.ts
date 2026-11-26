@@ -420,6 +420,8 @@ export type {
   ScheduleEmployeesResponse,
   ScheduleOk,
   ScheduleGap,
+  ScheduleGapReason,
+  ScheduleViolation,
   ScheduleNotified,
   SchedulePublishBlockedError,
   SchedulePublishResult,

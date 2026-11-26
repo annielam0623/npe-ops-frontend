@@ -169,6 +169,16 @@ function weekRangeLabel(weekStart: string): string {
   return `${fmt(start)} – ${fmt(end)}, ${year}`;
 }
 
+/**
+ * G382 搬家（设计第 3 节，Annie 2026-11-25 答 Q1–Q12 / N1–N3；3d 派 6e）：排班 / 批假 / 规则 / 设置全部搬到
+ * Settings › Human Resource › Schedule 总览（53 做）。这页只剩所有人只读看已发布的周 + 页顶一行链接。
+ * true 时：编辑、发布、设置、Add employee 的权限在这页一律当没有；只有 Schedule 一个标签；草稿周对谁都显示「not published」。
+ * 必须跟总览同一次上线（中间不能两边都没有管理键）。
+ */
+const MANAGE_IN_OVERVIEW = true;
+/** 总览页（请假通知给批复人的链接也指向这里，后端 interface.md 第 3 节）。 */
+const OVERVIEW_HREF = "/settings/hr?tab=schedule";
+
 export function ScheduleView() {
   // 只看勾（Annie 2026-11-01「动手」）：除 Super Admin 外只照 /api/me/permissions；Publish anyway 后端仍按角色（admin / SA）。
   const tickPerms = usePermissions();
@@ -384,6 +394,14 @@ export function ScheduleView() {
   useEffect(() => {
     if (tab === "leave" && leaveApprover === false && me && !me.is_superadmin)
       window.location.replace("/my-schedule");
+    // G382：批假搬到总览；旧的休假通知链接（/schedule?tab=leave）给批复人跳总览。
+    else if (
+      MANAGE_IN_OVERVIEW &&
+      tab === "leave" &&
+      me &&
+      (me.is_superadmin || leaveApprover === true)
+    )
+      window.location.replace(OVERVIEW_HREF);
   }, [tab, leaveApprover, me]);
 
   // 身份 + 设置 + 名单：和具体哪一周无关，只在打开页面 / 手动重试时加载一次。
@@ -437,7 +455,11 @@ export function ScheduleView() {
       if (!quiet) setWeek({ kind: "loading" });
       try {
         const data = await fetchScheduleWeek(weekStart, signal);
-        if (!signal?.aborted) setWeek({ kind: "ready", week: data });
+        if (signal?.aborted) return;
+        // G382：管理搬到总览后，这页对谁都只看已发布的周（同 staff 现在的样子）。
+        if (MANAGE_IN_OVERVIEW && data.status !== "published")
+          setWeek({ kind: "not_published" });
+        else setWeek({ kind: "ready", week: data });
       } catch (error) {
         if (signal?.aborted) return;
         if (isStatus(error, 401)) redirectToLogin();
@@ -476,22 +498,32 @@ export function ScheduleView() {
 
   const superAdmin = !!me.is_superadmin;
   // 改班、休假、编辑锁：schedule.edit（后端 schedule.py 的 _edit）。
-  const canEdit = byTick(tickPerms, "schedule.edit", {
+  const hasEditTick = byTick(tickPerms, "schedule.edit", {
     superAdmin,
   });
+  // G382：搬到总览后这页不改（MANAGE_IN_OVERVIEW）；有勾的人页顶看到链接。
+  const canEdit = !MANAGE_IN_OVERVIEW && hasEditTick;
   // Add employee：后端要 team.staff_add 和 schedule.edit 两个都有（schedule.py:122）。
   const canAddEmployee =
-    superAdmin ||
-    (tickPerms.can("team.staff_add") && tickPerms.can("schedule.edit"));
+    !MANAGE_IN_OVERVIEW &&
+    (superAdmin ||
+      (tickPerms.can("team.staff_add") && tickPerms.can("schedule.edit")));
   // 排班设置（Working hours、Default shift times）：Team 页的勾 settings.schedule（Annie 2026-11-02「需要加一个可以edit的权限让我来Admin里勾选」；
   // 后端 PUT work-window / shift-types 本来就按这一项查）。有 schedule.edit 没这个勾的排班人能打开、只读；只能看的员工没有这个键。
-  const canChangeSettings = byTick(tickPerms, "settings.schedule", {
-    superAdmin,
-  });
+  const canChangeSettings =
+    !MANAGE_IN_OVERVIEW &&
+    byTick(tickPerms, "settings.schedule", {
+      superAdmin,
+    });
   // Publish / Publish again：schedule.publish（schedule.py:331）。
-  const canPublishTick = byTick(tickPerms, "schedule.publish", {
-    superAdmin,
-  });
+  const canPublishTick =
+    !MANAGE_IN_OVERVIEW &&
+    byTick(tickPerms, "schedule.publish", {
+      superAdmin,
+    });
+  // 页顶「Manage the schedule in …」那一行给能在总览上做事的人（Q6 A：schedule.edit、批假的人、Super Admin）。
+  const showManageLink =
+    MANAGE_IN_OVERVIEW && (hasEditTick || superAdmin || leaveApprover === true);
   const activeEmployees = employees.filter((e) => e.is_active);
   // 当前登录的人在名单里对应谁：按名字对（后端 /api/me 没有邮箱），对上的那一行固定在最上面。
   const meName = me.display_name?.trim().toLowerCase();
@@ -1027,15 +1059,18 @@ export function ScheduleView() {
   }
   // Period 标签：开关 schedule_period（默认只 Super Admin）。
   const periodVisible = pageVisibility.visible("schedule_period");
-  const tabs = [
-    "schedule" as const,
-    // 置顶 119（Annie「3个问题都同意A，动手」）：Overview 只看和分析，排在 Schedule 和 Rules 之间。
-    "overview" as const,
-    ...(periodVisible ? (["period"] as const) : []),
-    ...(rules !== null ? (["rules"] as const) : []),
-    // G282 Leave 标签；My schedule 2A（Annie 2026-11-19）起只给批假的人，员工的请假在 My schedule。
-    ...(superAdmin || leaveApprover ? (["leave"] as const) : []),
-  ];
+  const tabs = MANAGE_IN_OVERVIEW
+    ? // G382：Overview 合进总览、Period（Share with staff）/ Rules / 批假都搬过去，这页只剩 Schedule。
+      (["schedule"] as const)
+    : [
+        "schedule" as const,
+        // 置顶 119（Annie「3个问题都同意A，动手」）：Overview 只看和分析，排在 Schedule 和 Rules 之间。
+        "overview" as const,
+        ...(periodVisible ? (["period"] as const) : []),
+        ...(rules !== null ? (["rules"] as const) : []),
+        // G282 Leave 标签；My schedule 2A（Annie 2026-11-19）起只给批假的人，员工的请假在 My schedule。
+        ...(superAdmin || leaveApprover ? (["leave"] as const) : []),
+      ];
 
   // 页签（127，Annie 2026-11-12）：选中的不用蓝底（蓝色只给提交键），白框 + 浅底 + 粗字；键 28px 跟 Relay list 页头一样。
   const tabBar =
@@ -1076,6 +1111,18 @@ export function ScheduleView() {
     <main data-phone-compact className="text-white/90">
       <CenteredPage className="flex flex-col gap-5 max-sm:gap-3">
         <h1 className="sr-only">Staff Schedule</h1>
+        {showManageLink ? (
+          // G382 设计第 3 节 / preview v2 第 3 节：主管打开这页也只是浏览，管理在总览。
+          <div
+            data-manage-link
+            className="rounded-[8px] border border-sky-400/35 bg-sky-400/[.08] px-2.5 py-[7px] text-[12.5px] text-sky-200"
+          >
+            Manage the schedule in{" "}
+            <PageLink href={OVERVIEW_HREF} className="font-bold text-white">
+              Settings › Human Resource › Schedule →
+            </PageLink>
+          </div>
+        ) : null}
 
         {/* Schedule 页签：页签放进 WeekNav 第二行；其他页签：页签一行，Visible to 在右边。 */}
         {!onScheduleTab && (tabBar || visControl) ? (
