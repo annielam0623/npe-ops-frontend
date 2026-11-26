@@ -592,6 +592,65 @@ http
       return send(res, 200, { ok: true, id: r.id, decision: am[2] });
     }
 
+    // ── 页面外壳和总览挂的老功能（ab 11-26 补）：me / 勾、HR 名单、设置、编辑占用、Publish、Send to confirm、Rules ──
+    // viewer：editor = supervisor（schedule.edit / publish、settings.hr.view、settings.schedule 照 ctl）；
+    //         approver = Team lead（只有 schedule.view，没有 settings.hr.view）；hrview = 只有 settings.hr.view；none = 都没有。
+    if (p === "/api/me" && method === "GET") {
+      const ed = ctl.viewer === "editor";
+      return send(res, 200, { id: 1, username: "zztest", display_name: ctl.viewer === "approver" ? "ZZ Test Mia" : "ZZ Test", initials: "ZT", role: ed ? "supervisor" : "staff", is_admin: false, is_superadmin: false, is_supervisor: ed });
+    }
+    if (p === "/api/me/permissions" && method === "GET") {
+      const codes = {
+        editor: ["schedule.view", "schedule.edit", ...(ctl.canPublish ? ["schedule.publish"] : []), "settings.hr.view", ...(ctl.canManageLeaveTypes ? ["settings.schedule"] : [])],
+        approver: ["schedule.view"],
+        hrview: ["schedule.view", "settings.hr.view"],
+        none: [],
+      }[ctl.viewer] || [];
+      return send(res, 200, { is_superadmin: false, permissions: codes.map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/dashboard" });
+    }
+    if (p === "/api/hr/profiles" && method === "GET") {
+      if (!(ctl.viewer === "editor" || ctl.viewer === "hrview")) return send(res, 403, { detail: "You don't have permission: Settings: View HR profiles." });
+      return send(res, 200, { profiles: [] });
+    }
+    if (p === "/api/settings/schedule" && method === "GET") {
+      return send(res, 200, {
+        work_window: { start_time: WINDOW.start, end_time: WINDOW.end },
+        shift_types: Object.entries(TYPES).map(([key, t], i) => ({ key, label: t.label, sort_order: i + 1, is_active: true, default_start_time: t.start, default_end_time: t.end, color: key })),
+      });
+    }
+    if (p === "/api/schedule/employees" && method === "GET") {
+      return send(res, 200, { employees: Object.values(EMP).map((id, i) => ({ id, name: NAMES[id], email: `zztest${id}@example.com`, is_active: true, sort_order: i + 1 })) });
+    }
+    if (p === "/api/schedule/rules" && method === "GET") return send(res, 200, { version: 1, rules: [] });
+    // 编辑占用（同 sch-mock 形状）：ctl.lockMode ""/"ok" = 占得到（token 按周），"busy" = 别人在改，"missing" = 接口没上线(404)。
+    const lockM = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/edit-lock(\/heartbeat|\/release)?$/.exec(p);
+    if (lockM && method === "POST") {
+      if (ctl.lockMode === "missing") return send(res, 404, { detail: "Not Found" });
+      if (!lockM[2]) {
+        if (ctl.lockMode === "busy") return send(res, 409, { detail: "ZZ Test Sam is editing this schedule (since 3:05 PM). Please try again later." });
+        return send(res, 200, { token: `lock-${lockM[1]}`, heartbeat_every_s: 60 });
+      }
+      if (lockM[2] === "/heartbeat") return send(res, 200, { ok: true });
+      return send(res, 200, { released: true });
+    }
+    const pm = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/publish$/.exec(p);
+    if (pm && method === "POST") {
+      if (!(canEdit() && ctl.canPublish)) return send(res, 403, { detail: "You don't have permission to publish the schedule." });
+      const w = pm[1];
+      const gaps = gapsFor(state.slots, state.time_off, rangeDates(w, 1));
+      if (gaps.length && !(body && body.allow_gaps === true)) return send(res, 400, { detail: { detail: "Can't publish — there's a gap in coverage.", gaps } });
+      const republished = weekStatus(w) === "published";
+      state.weeks[w] = { ...(state.weeks[w] || { version: 1 }), status: "published" };
+      delete ctl.weekStatus[w];
+      state.weeks[w].version += 1;
+      return send(res, 200, { week: { week_start: w, status: "published", version: state.weeks[w].version }, republished, notified: [], not_notified: [] });
+    }
+    const sm = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/employees\/(\d+)\/send-changes$/.exec(p);
+    if (sm && method === "POST") {
+      if (!canEdit()) return send(res, 403, { detail: "Only a supervisor or above can send schedule changes." });
+      return send(res, 200, { sent_at: new Date().toISOString(), sent_by: "ZZ Test", channels: ["email", "in_app"] });
+    }
+
     return send(res, 404, { detail: `ZZ Test mock: no route for ${method} ${p}` });
   })
   .listen(PORT, () => console.log("g382ov mock up"));
