@@ -883,7 +883,10 @@ export function ScheduleOverview() {
               if (ok) {
                 close();
                 then();
-              } else close();
+                return;
+              }
+              // doSave 已经开了 RuleBox（409 rule_violation）就留着，只关还是 ask-save 的框。
+              setDialog((d) => (d?.kind === "ask-save" ? null : d));
             }}
           />
         );

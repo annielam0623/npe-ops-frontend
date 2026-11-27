@@ -306,6 +306,25 @@ async function run() {
     await evaluate("[...document.querySelectorAll('button')].find((x) => x.textContent.trim() === 'Back to edit')?.click(); return 1;");
     await waitFor(`!document.querySelector('${SEL.ruleBox}')`, 5000);
   });
+  await maybe("先问要不要存 → Save → 409 rule_violation：问存框关掉，「Can’t save: rule problems」框留着、列后端原话", async () => {
+    // 上一条 Back to edit 以后，违规的改动还在草稿里。
+    if (!(await evaluate(`return !!document.querySelector('${SEL.unsaved}');`))) throw new Error("rule-breaking change not in the draft");
+    const pend = await evaluate(`return document.querySelector('${SEL.pending}')?.dataset.ovPending ?? null;`);
+    if (!pend) throw new Error("no pending leave in the grid");
+    const before = (await mockLog()).length;
+    await evaluate(`document.querySelector('[data-ov-pending="${pend}"]').click(); return 1;`);
+    const asked = await waitFor(`document.querySelector('${SEL.askSave}')`, 5000);
+    await evaluate("document.querySelector('[data-ov-ask-save-btn]').click(); return 1;");
+    const boxed = await waitFor(`document.querySelector('${SEL.ruleBox}')`, 10000);
+    await sleep(400); // 关框的 setState 要是有，也已经跑完
+    const m = await evaluate(`return { box: !!document.querySelector('${SEL.ruleBox}'), ask: !!document.querySelector('${SEL.askSave}'), items: [...(document.querySelector('${SEL.ruleBox}')?.querySelectorAll('li') ?? [])].map((li) => li.textContent), leave: [...document.querySelectorAll('h2')].some((h) => h.textContent.startsWith('Leave request')), unsaved: !!document.querySelector('${SEL.unsaved}') };`);
+    const post = (await writes(before)).filter((l) => l.path === "/api/schedule/range/changes");
+    check("先问要不要存 → Save → 409 rule_violation：问存框关掉，「Can’t save: rule problems」框留着、列后端原话",
+      asked && boxed && m.box && !m.ask && !m.leave && m.items.some((t) => /rest between/.test(t)) && m.unsaved && post.length === 1,
+      JSON.stringify({ asked, boxed, m, posts: post.length }));
+    await evaluate("[...document.querySelectorAll('button')].find((x) => x.textContent.trim() === 'Back to edit')?.click(); return 1;");
+    await waitFor(`!document.querySelector('${SEL.ruleBox}')`, 5000);
+  });
   await maybe("有没存的改动时点请假：先问要不要存；Don't save 以后打开批假框、改动丢掉", async () => {
     if (!(await evaluate(`return !!document.querySelector('${SEL.unsaved}');`))) {
       const mv = await pickDraftMove();
