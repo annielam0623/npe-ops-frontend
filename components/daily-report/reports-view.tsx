@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CenteredPage } from "@/components/ui/centered-page";
 import { plex } from "@/components/ui/plex-font";
 import { ErrorBanner } from "@/components/ui/panel";
+import { HowToUse } from "@/components/ui/how-to-use";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import {
@@ -153,7 +154,64 @@ function Gate({
   if (visibility === "hidden") {
     return <Notice>This section is not available yet.</Notice>;
   }
-  return <Reports me={me} onUnauthorized={onUnauthorized} />;
+  return (
+    <>
+      <Reports me={me} onUnauthorized={onUnauthorized} />
+      <DorHowToUse />
+    </>
+  );
+}
+
+/**
+ * G361 Q6 A：/daily-report 页最底的 How to use（默认折叠；No show 那几句是 preview UAhRhQfyGQYt2D8hWjHqZz ⑧ 的原文）。
+ */
+function DorHowToUse() {
+  return (
+    <div className="mt-2">
+      <HowToUse
+        dark
+        title="How to use — Daily Operation Report"
+        items={[
+          <>
+            Click <b>+ Log an incident</b> to record a complaint, an accident,
+            an emergency or a no show.
+          </>,
+          <>
+            For a <b>No show</b>, type the order # and pick the tour date. The
+            product, pickup, driver, guide and vehicle fill in from Main
+            manifest and Dispatch; you can change them.
+          </>,
+          <>
+            Once you type an order #, <b>Earlier records</b> lists this
+            order&rsquo;s past reports, ★ Notes and No show marks. Click one to
+            see it.
+          </>,
+          <>
+            Add every call, text, WhatsApp or email to the guest in the{" "}
+            <b>Contact log</b>. Contacts can&rsquo;t be edited or deleted.
+          </>,
+          <>
+            Choose the <b>Guest decision</b> and click Save. Declined or No
+            reply needs a follow-up person and a date: that person gets a task
+            in My tasks on that day. Accepted reschedule needs the new order #.
+          </>,
+          <>
+            When the guest boards the rescheduled tour, the report shows{" "}
+            <b>ready to close</b>. It never closes by itself: set Status to
+            Resolved.
+          </>,
+          <>
+            <b>Farm out</b> orders follow the same steps.
+          </>,
+          <>Marking No show in Morning Tracking logs a No show report for you.</>,
+          <>
+            Use <b>Updates</b> for anything else you do. Updates cannot be
+            edited or deleted.
+          </>,
+        ]}
+      />
+    </div>
+  );
 }
 
 type ListState =
@@ -279,7 +337,7 @@ function Reports({
           <span className="flex flex-wrap gap-x-3 text-[12px] font-bold">
             {REPORT_TYPES.map((t) => (
               <span key={t} className={TYPE_TEXT_CLASS[t]}>
-                {TYPE_LABEL[t]} {data.counts[t]}
+                {TYPE_LABEL[t]} {data.counts[t] ?? 0}
               </span>
             ))}
           </span>
@@ -392,6 +450,8 @@ function Reports({
             assignees={assignees}
             defaultExpanded
             onPatch={handlePatch}
+            isSuperAdmin={!!me.is_superadmin}
+            onUnauthorized={onUnauthorized}
           />
         </ul>
       ) : null}
@@ -421,6 +481,8 @@ function Reports({
                   canAddUpdate={!editor.partner}
                   assignees={assignees}
                   onPatch={handlePatch}
+                  isSuperAdmin={!!me.is_superadmin}
+                  onUnauthorized={onUnauthorized}
                 />
               ))}
           </ul>

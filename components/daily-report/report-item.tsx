@@ -6,6 +6,8 @@ import { describeError } from "@/lib/api-errors";
 import { addReportUpdate, fetchOperationReport } from "@/lib/daily-report-api";
 import { cn } from "@/lib/utils";
 import type {
+  NoShowContact,
+  NoShowRescheduled,
   OperationReport,
   OperationReportHistoryEntry,
   OperationReportPatch,
@@ -17,14 +19,22 @@ import type {
 import {
   ABOUT_LABEL,
   POLICE_LABEL,
-  STATUSES,
+  REASON_LABEL,
+  REPORTED_BY_LABEL,
   STATUS_COLOR_CLASS,
   STATUS_LABEL,
   TYPE_COLOR_CLASS,
   TYPE_LABEL,
   formatWhen,
+  formatYmd,
+  statusOptions,
 } from "./config";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { EarlierRecords } from "./earlier-records";
+import { FARM_OUT_TAG_CLASS } from "./log-incident-dialog";
+import { NoShowPanel, followUpDueText } from "./no-show-panel";
+
+const noop = () => undefined;
 
 const SELECT_CLASS =
   "rounded-md border border-white/25 bg-[#0f2238] px-1.5 py-0.5 text-xs text-[#f8fafc] [color-scheme:dark] disabled:opacity-60";
@@ -32,6 +42,21 @@ const SELECT_CLASS =
 function detailRows(report: OperationReport): [string, string][] {
   const d = report.details;
   const rows: [string, string][] = [];
+  if (report.report_type === "no_show") {
+    if (d.tour_date)
+      rows.push([
+        "Tour date",
+        `${formatYmd(d.tour_date)}${d.product_name ? ` · ${d.product_name}` : ""}`,
+      ]);
+    if (d.pickup_location) rows.push(["Pickup", d.pickup_location]);
+    const crew = [d.driver_name, d.guide_name, d.vehicle].filter(Boolean);
+    if (crew.length) rows.push(["Driver / Guide", crew.join(" · ")]);
+    if (d.reported_by)
+      rows.push(["Reported by", REPORTED_BY_LABEL[d.reported_by]]);
+    if (d.reason) rows.push(["Reason", REASON_LABEL[d.reason]]);
+    if (d.source === "tracking") rows.push(["Logged from", "Morning Tracking"]);
+    return rows;
+  }
   if (d.occurred_at) rows.push(["Time", formatWhen(d.occurred_at)]);
   if (d.location) rows.push(["Location", d.location]);
   if (d.vehicle_no) rows.push(["Vehicle #", d.vehicle_no]);
@@ -78,16 +103,27 @@ export function ReportItem({
   assignees,
   defaultExpanded = false,
   onPatch,
+  isSuperAdmin = false,
+  onUnauthorized = noop,
 }: {
   report: OperationReport;
   canEdit: boolean;
-  /** 能不能加 Updates：能看就能加，partner 不能（G224）。 */
+  /** 能不能加 Updates：能看就能加，partner 不能（G224）。No show 的联系记录同一个口径。 */
   canAddUpdate: boolean;
   assignees: ReportAssignee[];
   defaultExpanded?: boolean;
   /** 返回错误文字；成功返回 null。 */
   onPatch: (id: number, patch: OperationReportPatch) => Promise<string | null>;
+  /** No show Evidence 里 Phone AI 那一行只给 Super Admin（G361）。 */
+  isSuperAdmin?: boolean;
+  onUnauthorized?: () => void;
 }) {
+  const isNoShow = report.report_type === "no_show";
+  const [contacts, setContacts] = useState<NoShowContact[] | null>(null);
+  const [rescheduled, setRescheduled] = useState<NoShowRescheduled | null>(
+    null,
+  );
+  const [readyToClose, setReadyToClose] = useState(false);
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [history, setHistory] = useState<OperationReportHistoryEntry[] | null>(
     null,
@@ -112,6 +148,9 @@ export function ReportItem({
       .then((detail) => {
         setHistory(detail.history);
         setUpdates(detail.updates ?? []);
+        setContacts(detail.contacts ?? []);
+        setRescheduled(detail.rescheduled ?? null);
+        setReadyToClose(!!detail.ready_to_close);
       })
       .catch((err) => {
         if (!controller.signal.aborted) setHistoryError(describeError(err));
@@ -166,6 +205,11 @@ export function ReportItem({
             ? ` · ${ABOUT_LABEL[report.complaint_about]}`
             : ""}
         </span>
+        {report.details.farm_out ? (
+          <span data-farm-out className={FARM_OUT_TAG_CLASS}>
+            Farm out
+          </span>
+        ) : null}
         {subject ? (
           <span className="text-[13.5px] font-bold">{subject}</span>
         ) : null}
@@ -177,9 +221,11 @@ export function ReportItem({
         </span>
       </div>
 
-      <p className="mt-1 text-[13.5px] break-words whitespace-pre-wrap">
-        {report.what_happened}
-      </p>
+      {report.what_happened ? (
+        <p className="mt-1 text-[13.5px] break-words whitespace-pre-wrap">
+          {report.what_happened}
+        </p>
+      ) : null}
 
       <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-white/60">
         <span
@@ -198,7 +244,7 @@ export function ReportItem({
                 aria-label={`Status of report ${report.id}`}
                 value={String(report.status)}
                 options={[
-                  ...STATUSES.map((s) => ({
+                  ...statusOptions(report.status).map((s) => ({
                     value: String(s),
                     label: String(STATUS_LABEL[s]),
                   })),
@@ -210,7 +256,17 @@ export function ReportItem({
                 className={SELECT_CLASS}
               />
             </label>
-            <label className="flex items-center gap-1">
+            {/* T2 A：No show 的跟进人放在 Guest decision 里、跟决定一起存；这里只写文字。 */}
+            {isNoShow ? (
+              <span data-follow-up-text>
+                Follow-up:{" "}
+                {report.follow_up?.display_name ?? "not assigned yet"}
+                {followUpDueText(report)}
+              </span>
+            ) : null}
+            <label
+              className={cn("flex items-center gap-1", isNoShow && "hidden")}
+            >
               Follow-up
               <SelectMenu
                 aria-label={`Follow-up of report ${report.id}`}
@@ -244,6 +300,7 @@ export function ReportItem({
         ) : (
           <span>
             Follow-up: {report.follow_up?.display_name ?? "not assigned yet"}
+            {isNoShow ? followUpDueText(report) : ""}
           </span>
         )}
         <button
@@ -273,6 +330,32 @@ export function ReportItem({
                 </div>
               ))}
             </dl>
+          ) : null}
+          {isNoShow ? (
+            <div className="mb-2 flex flex-col gap-2.5">
+              <NoShowPanel
+                report={report}
+                contacts={historyError ? [] : contacts}
+                rescheduled={rescheduled}
+                readyToClose={readyToClose}
+                canEdit={canEdit}
+                canAddContact={canAddUpdate}
+                isSuperAdmin={isSuperAdmin}
+                assignees={assignees}
+                onContactAdded={(c) =>
+                  setContacts((list) => [...(list ?? []), c])
+                }
+                onPatch={onPatch}
+                onUnauthorized={onUnauthorized}
+              />
+              {report.order_number ? (
+                <EarlierRecords
+                  orderNumber={report.order_number}
+                  excludeId={report.id}
+                  onUnauthorized={onUnauthorized}
+                />
+              ) : null}
+            </div>
           ) : null}
           <div>
             {historyError

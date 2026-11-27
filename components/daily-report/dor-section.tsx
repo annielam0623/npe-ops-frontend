@@ -174,9 +174,9 @@ function DorBlock({
         <h2 className="db-title text-[15px]">Daily operation report</h2>
         {data ? (
           <span className="flex flex-wrap gap-x-3 text-[11.5px] font-bold">
-            {(["complaint", "accident", "emergency"] as const).map((t) => (
+            {(["complaint", "accident", "emergency", "no_show"] as const).map((t) => (
               <span key={t} className={TYPE_TEXT_CLASS[t]}>
-                {TYPE_LABEL[t]} {data.counts[t]}
+                {TYPE_LABEL[t]} {data.counts[t] ?? 0}
               </span>
             ))}
           </span>
@@ -229,6 +229,8 @@ function DorBlock({
                 canAddUpdate={!editor.partner}
                 assignees={assignees}
                 onPatch={handlePatch}
+                isSuperAdmin={isSuperAdmin}
+                onUnauthorized={onUnauthorized}
               />
             ))}
           </ul>
