@@ -1,0 +1,557 @@
+<title>No Show Preview G361</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one column of numbered sections. Each = mock screen (ops dark look, copied from the real pages) + 现在 (code refs) + 数据从哪来到哪去 + open questions. Single dark look on purpose: it copies ops. */
+:root{
+  color-scheme:dark;
+  --bg:#06101c; --panel:#0f2238; --line:rgba(255,255,255,.14); --fg:#f8fafc; --muted:rgba(248,250,252,.62); --faint:rgba(248,250,252,.42);
+  --complaint:#7dd3fc; --accident:#fbbf24; --emergency:#f87171; --noshow:#c4b5fd;
+  --open:#fbbf24; --prog:#2dd4bf; --wait:#c4b5fd; --good:#4ade80; --bad:#f87171; --blue:#3b82f6; --link:#38bdf8;
+  --q:#13263d; --rec:#86efac; --paper:#fbfaf7; --ink:#1a1a1a; --farm:#475569;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:14px;line-height:1.5}
+.wrap{max-width:1000px;margin:0 auto;padding-block:24px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:26px}
+h1{font-size:22px;margin:0;text-wrap:balance}
+h2{font-size:17px;margin:0;text-wrap:balance}
+h3{font-size:14px;margin:0}
+p{margin:0}
+.lead{color:var(--muted);max-width:75ch}
+.lead b{color:var(--fg)}
+.sec{display:flex;flex-direction:column;gap:12px}
+.sec-t{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--faint);text-transform:uppercase;border-top:1px solid var(--line);padding-top:18px}
+.tag-mock{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--faint);text-transform:uppercase;margin-bottom:6px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:780px){.grid2{grid-template-columns:minmax(0,1fr)}}
+/* mock pieces */
+.modal{background:var(--panel);border:1px solid rgba(255,255,255,.2);border-radius:14px;box-shadow:0 16px 48px rgba(0,0,0,.55);max-width:560px;min-width:0}
+.mh{display:flex;align-items:center;padding:14px 16px 10px;border-bottom:1px solid rgba(255,255,255,.12);font-weight:700;font-size:16px}
+.mh .x{margin-left:auto;font-size:20px;font-weight:400}
+.mb{padding:12px 16px;display:flex;flex-direction:column;gap:12px}
+.mf{display:flex;gap:8px;align-items:center;padding:10px 16px 14px;border-top:1px solid rgba(255,255,255,.12)}
+.lbl{font-size:11.5px;font-weight:700;letter-spacing:.02em;color:rgba(248,250,252,.62)}
+.req{color:var(--emergency)}
+.seg{display:grid;gap:6px}
+.seg.c3{grid-template-columns:repeat(3,1fr)} .seg.c4{grid-template-columns:repeat(4,1fr)} .seg.c5{grid-template-columns:repeat(5,1fr)}
+@media (max-width:480px){.seg.c4,.seg.c5{grid-template-columns:repeat(2,1fr)}}
+.seg b{border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:6px 4px;text-align:center;font-size:12.5px;font-weight:600}
+.seg b.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.new{outline:2px dashed var(--noshow);outline-offset:3px;border-radius:8px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.in{border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.28);border-radius:8px;padding:7px 9px;font-size:13px;min-height:34px;overflow-wrap:anywhere}
+.in.ph{color:rgba(248,250,252,.35)}
+.in.area{min-height:64px}
+.in.auto{border-color:rgba(196,181,253,.45)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+@media (max-width:480px){.row2,.row3{grid-template-columns:1fr}}
+.hint{font-size:11.5px;color:var(--faint)}
+.from{font-size:10.5px;color:var(--noshow)}
+fieldset{border:1px dashed rgba(196,181,253,.55);border-radius:10px;padding:10px;margin:0;display:flex;flex-direction:column;gap:10px;min-width:0}
+legend{padding:0 4px;font-size:12px;font-weight:700;color:var(--noshow)}
+.btn-save{background:var(--blue);border:1px solid var(--blue);color:#fff;border-radius:9px;padding:7px 18px;font-weight:700;font-size:13px;white-space:nowrap}
+.btn-save.sm{padding:2px 10px;font-size:11.5px;border-radius:6px}
+.btn-ghost{border:1px solid rgba(255,255,255,.3);border-radius:9px;padding:7px 14px;font-size:13px;white-space:nowrap}
+.btn-log{background:var(--fg);color:var(--bg);border-radius:9px;padding:6px 13px;font-weight:700;font-size:12.5px;white-space:nowrap}
+.saved{color:var(--good);font-size:12px;font-weight:600}
+.err{color:var(--bad);font-size:12px}
+.alink{color:var(--link);font-size:12.5px}
+.counts{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;font-weight:700}
+.c-c{color:var(--complaint)} .c-a{color:var(--accident)} .c-e{color:var(--emergency)} .c-n{color:var(--noshow)}
+.page{border:1px solid var(--line);border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:10px;background:rgba(255,255,255,.015);min-width:0}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pill{border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:4px 12px;font-size:12.5px}
+.pill.on{background:var(--fg);color:var(--bg);font-weight:600}
+.sel{border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.28);border-radius:8px;padding:5px 10px;font-size:13px}
+.item{border:1px solid var(--line);background:rgba(255,255,255,.03);border-radius:12px;padding:10px 12px;list-style:none;min-width:0}
+.ih{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+.type{border:1px solid;border-radius:6px;padding:1px 7px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.t-n{border-color:rgba(196,181,253,.55);color:var(--noshow)}
+.t-c{border-color:rgba(125,211,252,.5);color:var(--complaint)}
+.farm{background:var(--farm);color:#fff;border-radius:5px;padding:1px 7px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.subj{font-weight:700;font-size:13.5px}
+.ord{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.when{margin-left:auto;font-size:11.5px;color:var(--muted)}
+.what{margin-top:4px;font-size:13.5px}
+.meta{margin-top:6px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;font-size:12px;color:var(--muted)}
+.st{border:1px solid;border-radius:999px;padding:1px 10px;font-size:11.5px;font-weight:700;white-space:nowrap}
+.st-o{border-color:rgba(251,191,36,.55);background:rgba(251,191,36,.1);color:var(--open)}
+.st-p{border-color:rgba(45,212,191,.55);background:rgba(45,212,191,.1);color:var(--prog)}
+.st-w{border-color:rgba(196,181,253,.6);background:rgba(196,181,253,.12);color:var(--wait)}
+.st-r{border-color:rgba(40,167,69,.6);background:rgba(40,167,69,.1);color:var(--good)}
+.det{margin-top:8px;border-top:1px solid rgba(255,255,255,.1);padding-top:8px;font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:10px}
+dl.kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:2px 12px;margin:0}
+dl.kv dt{color:var(--faint)} dl.kv dd{margin:0;color:var(--fg);overflow-wrap:anywhere}
+.uh{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(248,250,252,.45);margin:0 0 4px}
+.box{border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:rgba(0,0,0,.15)}
+.box.newb{border:1px dashed rgba(196,181,253,.55)}
+.lines{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.lines li{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:12.5px;color:var(--fg)}
+.lines .by{font-size:11.5px;color:rgba(248,250,252,.5)}
+.yes{color:var(--good);font-weight:600} .no{color:var(--open);font-weight:600}
+.ready{border:1px solid rgba(74,222,128,.5);background:rgba(74,222,128,.08);color:var(--good);border-radius:10px;padding:8px 12px;font-weight:600;font-size:13px}
+.mini-sel{border:1px solid rgba(255,255,255,.25);background:var(--panel);border-radius:6px;padding:0 6px;font-size:12px;color:var(--fg)}
+.mono{font-family:var(--mono)}
+/* morning tracking table */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table.mt{border-collapse:collapse;width:100%;min-width:520px;font-size:12.5px}
+table.mt th{text-align:left;font-size:11px;color:var(--faint);font-weight:700;letter-spacing:.04em;padding:6px 10px;border-bottom:1px solid var(--line)}
+table.mt td{padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:top}
+.ns-link{color:#5a7a9a;text-decoration:underline dotted}
+.ns-red{color:#e74c3c;font-weight:600;font-size:11.5px}
+/* light order page card */
+.light{background:var(--paper);color:var(--ink);border:1px solid rgba(96,165,250,.55);border-radius:10px;padding:14px 16px;min-width:0}
+.light h4{margin:0 0 8px;font-size:11px;letter-spacing:.6px;text-transform:uppercase}
+.facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px 20px;font-size:12.5px;margin:0}
+.facts dt{font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#5b6470}
+.facts dd{margin:0}
+.facts .warn{color:#b45309;font-weight:600}
+.facts .goodl{color:#15803d;font-weight:600}
+.facts .newf{outline:2px dashed #7c3aed;outline-offset:4px;border-radius:4px}
+.lt-box{margin-top:10px;border-top:1px solid rgba(0,0,0,.08);padding-top:10px;display:flex;flex-direction:column;gap:8px;font-size:12.5px}
+.lt-item{border:1px solid rgba(0,0,0,.1);border-radius:8px;padding:8px 10px}
+.lt-type{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#6d28d9}
+.lt-link{color:#1d4ed8}
+.lt-farm{background:#475569;color:#fff;border-radius:5px;padding:1px 7px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+/* how to use */
+.howto{background:#1a2f4a;color:#c8ddf0;border-radius:10px;padding:10px 14px}
+.howto summary{color:#7ab3e0;font-weight:600;cursor:pointer}
+.howto ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:13px}
+.howto .newl{color:var(--noshow)}
+/* notes for Annie */
+.now{border-left:3px solid rgba(255,255,255,.25);padding:6px 10px;color:var(--muted);font-size:13px;display:flex;flex-direction:column;gap:4px}
+.now b{color:var(--fg)}
+code{font-family:var(--mono);font-size:12px;background:rgba(255,255,255,.07);padding:0 4px;border-radius:4px;overflow-wrap:anywhere}
+.flow-wrap{overflow-x:auto}
+table.flow{border-collapse:collapse;width:100%;min-width:560px;font-size:12.5px}
+table.flow th,table.flow td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+table.flow th{color:var(--faint);font-size:11px;letter-spacing:.04em}
+.q{background:var(--q);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.q h2 .n{color:var(--noshow);margin-right:6px}
+.opts{display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none}
+.opts li{border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px 12px}
+.opts li.rec{border-color:rgba(134,239,172,.55)}
+.opts .k{font-weight:700;margin-right:6px}
+.opts .r{color:var(--rec);font-weight:700;font-size:12px;margin-left:6px}
+.rules{border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+.rules ul{margin:6px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:4px;color:var(--muted)}
+.phone{max-width:390px;border:1px solid var(--line);border-radius:18px;padding:10px;background:rgba(255,255,255,.02)}
+</style>
+
+<div class="wrap">
+  <header style="display:flex;flex-direction:column;gap:8px">
+    <h1>G361 No Show + G372 Tracking No show 备注 · 前端样稿</h1>
+    <p class="lead">后端已上 main（<code>9f0ec7a5</code>，v187 已在生产执行）。这是前端样子，<b>模拟数据（ZZ Test），还没写代码</b>。业务规则 Annie 已定（Q1–Q12、G372 四题、N1 N2 N4 N5 N6 = A），这里只给前端怎么显示。紫色虚线框 = 新加的东西。每一块下面写「现在」（查过的代码位置）和「数据从哪来、到哪去」。最后 3 道题要 Annie 定；其余照这里画的做。</p>
+    <p class="lead">上线顺序：Railway 部署好后端 <code>9f0ec7a5</code>、Annie 看过样稿说「动手」以后才写代码；做完照常检查、合 main。</p>
+  </header>
+
+  <!-- ================= 1 ================= -->
+  <section class="sec">
+    <div class="sec-t">① Log an incident 选 No show：只填订单号 + 团期，其余自动带出</div>
+    <div class="grid2">
+      <div>
+        <div class="tag-mock">填了订单号、这单有两天 ⇒ 选一天</div>
+        <div class="modal">
+          <div class="mh">Log an incident <span class="x">×</span></div>
+          <div class="mb">
+            <div class="field"><span class="lbl">Report type</span>
+              <div class="seg c4"><b>Complaint</b><b>Accident</b><b>Emergency</b><b class="on new">No show</b></div>
+            </div>
+            <div class="field"><span class="lbl">CHD# / order <span class="req">*</span></span>
+              <div class="in mono">CHDZZTEST1</div>
+            </div>
+            <div class="field"><span class="lbl">Tour date <span class="req">*</span></span>
+              <div class="seg c3 new"><b class="on">Nov 26 · Grand Canyon West</b><b>Nov 27 · Hoover Dam</b></div>
+              <span class="hint">This order has 2 tour days. Pick the one the guest missed.</span>
+            </div>
+            <fieldset>
+              <legend>No show details <span class="farm" style="margin-left:6px">Farm out</span></legend>
+              <div class="from">Filled in from Main manifest and Dispatch. You can change them.</div>
+              <div class="row2">
+                <div class="field"><span class="lbl">Product</span><div class="in auto">Grand Canyon West Rim Day Tour</div></div>
+                <div class="field"><span class="lbl">Pickup location</span><div class="in auto">Circus Circus</div></div>
+              </div>
+              <div class="row3">
+                <div class="field"><span class="lbl">Driver</span><div class="in auto">ZZ Test Driver</div></div>
+                <div class="field"><span class="lbl">Guide</span><div class="in auto">ZZ Test Guide</div></div>
+                <div class="field"><span class="lbl">Vehicle</span><div class="in auto">Bus 1328</div></div>
+              </div>
+              <div class="field"><span class="lbl">Reported by</span>
+                <div class="seg c3"><b class="on">Driver</b><b>Guide</b><b>Office</b></div>
+              </div>
+              <div class="field"><span class="lbl">Reason</span>
+                <div class="in">Choose… ▾ <span class="hint">(Guest didn't show / Wrong pickup info given to guest / Guest says not notified / Other)</span></div>
+              </div>
+            </fieldset>
+            <div class="field"><span class="lbl">What happened</span>
+              <div class="in area ph">Short description</div>
+            </div>
+            <div class="box newb">
+              <div class="uh">Earlier records for CHDZZTEST1 (3)</div>
+              <ul class="lines">
+                <li><span class="type t-c">Complaint · Office / Booking</span> Nov 20 · <span class="st st-r">Resolved</span> <span class="alink">Open ▸</span></li>
+                <li><span>★ Note · ZZ Test Office · Nov 25</span> "Guest asked to change pickup to Circus Circus" <span class="alink">Show ▸</span></li>
+                <li><span>No show mark · Nov 26 · Bus · by ZZ Test Driver (field)</span></li>
+              </ul>
+              <span class="hint">Shows for every report type once an order # is typed.</span>
+            </div>
+            <div class="field"><span class="lbl">Follow-up</span><div class="in">Not assigned — whoever is on shift ▾</div></div>
+          </div>
+          <div class="mf"><span class="btn-save">Save</span><span class="btn-ghost">Cancel</span></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+        <div>
+          <div class="tag-mock">这单这天已有没关的 No show（后端 409）</div>
+          <div class="modal">
+            <div class="mb">
+              <p class="err" style="font-size:13px">There is already an open No show report for CHDZZTEST1 on Nov 26. <span class="alink">Open it →</span></p>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="tag-mock">Order List 里查不到这单（found: false）</div>
+          <div class="modal">
+            <div class="mb">
+              <p class="hint" style="color:var(--open)">This order is not in the Order List. You can still log it: type the tour date and the rest yourself.</p>
+              <div class="row2">
+                <div class="field"><span class="lbl">Tour date <span class="req">*</span></span><div class="in ph">mm/dd/yyyy</div></div>
+                <div class="field"><span class="lbl">Pickup location</span><div class="in ph">Where</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="tag-mock">选 Complaint（Q4 A：多一个 Office / Booking）</div>
+          <div class="modal">
+            <div class="mb">
+              <div class="field"><span class="lbl">Complaint about</span>
+                <div class="seg c4"><b>Driver</b><b>Guide</b><b>Itinerary</b><b class="on new">Office / Booking</b></div>
+              </div>
+              <div class="field"><span class="lbl">Staff or system involved</span><div class="in ph">Who or what (e.g. phone AI, reservations)</div></div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="tag-mock">存好以后（弹窗下面的提示）</div>
+          <p class="saved">Saved. The people on shift got a Notice.</p>
+        </div>
+      </div>
+    </div>
+    <div class="now">
+      <div><b>现在：</b>Report type 只有 Complaint / Accident / Emergency 三个（<code>components/daily-report/log-incident-dialog.tsx:219-225</code>，文字在 <code>config.ts:22-26</code>）；Complaint about 只有 Driver / Guide / Itinerary（<code>config.ts:27-31</code>），旁边那格叫 Driver name / Guide name / Itinerary or tour name（<code>config.ts:62-68</code>）；订单号只是一格文字，不核对、不带出任何东西（<code>log-incident-dialog.tsx:237-249</code>）；What happened 必填（<code>:273-281</code>）；存好后的提示是 "Saved. People in charge notified." 那一组（<code>dor-section.tsx:32-41</code>）。</div>
+      <div><b>改后：</b>第四个类别 No show；必填只有订单号 + 团期（团期按带出来的天数选，一天就直接选好），其余带出、可改、都不必填；What happened 对 No show 改成选填（Complaint / Accident / Emergency 照旧必填）；Complaint about 加 Office / Booking，旁边那格叫 "Staff or system involved"；填了订单号以后，四类都在弹窗里列「Earlier records」。</div>
+    </div>
+    <div class="flow-wrap"><table class="flow">
+      <tr><th>数据</th><th>从哪来</th><th>到哪去</th></tr>
+      <tr><td>团期、产品、客人名、接客点、司机、导游、车号、Farm out</td><td>输入订单号（离开那格时）后读 <code>GET /api/operation-reports/no-show/prefill</code>（后端从 Order List 车道 + Main manifest 当天那一行 + Dispatch 排车取）</td><td>存进这份登记的 details；列表那一行、详情、订单页 Daily report 格都读它</td></tr>
+      <tr><td>Earlier records（以前的登记、★ Notes、No show 标记）</td><td><code>GET /api/operation-reports/order-context</code>；★ Notes 和 No show 标记只有能看订单页的人才有（键不在就不显示那两段）</td><td>只显示，点 Open ▸ 就地展开那份登记 / 那条 Note 全文</td></tr>
+      <tr><td>Reported by、Reason、What happened、Follow-up</td><td>staff 选 / 写（选填）</td><td>登记；Dashboard DOR 块；当班的人收 Notice（N5，后端发）</td></tr>
+    </table></div>
+  </section>
+
+  <!-- ================= 2/3 ================= -->
+  <section class="sec">
+    <div class="sec-t">② ③ No show 登记展开：联系记录 · 客人的决定 · 跟进人 / 期限 · 改期单号 · 可以关了</div>
+    <div class="page">
+      <div class="bar">
+        <span class="counts"><span class="c-c">Complaint 2</span><span class="c-a">Accident 0</span><span class="c-e">Emergency 1</span><span class="c-n new">No show 1</span></span>
+        <span class="btn-log" style="margin-left:auto">+ Log an incident</span>
+      </div>
+      <div class="filters">
+        <span class="pill on">Unresolved</span><span class="pill">Resolved</span><span class="pill">All</span>
+        <span class="sel new">No show ▾</span><span class="sel">Anyone ▾</span><span class="sel">mm/dd/yyyy</span><span class="sel">mm/dd/yyyy</span>
+        <span class="sel" style="flex:1;min-width:150px;color:var(--faint)">Search text or CHD#</span>
+      </div>
+      <ul style="margin:0;padding:0;display:flex;flex-direction:column;gap:8px">
+        <li class="item">
+          <div class="ih">
+            <span class="type t-n">No show · Driver</span>
+            <span class="farm">Farm out</span>
+            <span class="subj">ZZ Test Guest</span>
+            <span class="ord">CHDZZTEST1</span>
+            <span class="when">Nov 26, 7:42 AM · by ZZ Test</span>
+          </div>
+          <p class="what">Driver waited 10 min at Circus Circus, guest not there.</p>
+          <div class="meta">
+            <span class="st st-w">Waiting for rescheduled tour</span>
+            <span>Status <span class="mini-sel">Waiting for rescheduled tour ▾</span></span>
+            <span>Follow-up: ZZ Test Office · due Nov 28</span>
+            <span class="alink" style="margin-left:auto">Hide details</span>
+          </div>
+          <div class="det">
+            <div class="ready">✓ Guest boarded the rescheduled tour - ready to close</div>
+            <dl class="kv">
+              <dt>Tour date</dt><dd>Nov 26, 2026 · Grand Canyon West Rim Day Tour</dd>
+              <dt>Pickup</dt><dd>Circus Circus</dd>
+              <dt>Driver / Guide</dt><dd>ZZ Test Driver · ZZ Test Guide · Bus 1328</dd>
+              <dt>Reported by</dt><dd>Driver</dd>
+              <dt>Reason</dt><dd>Wrong pickup info given to guest</dd>
+              <dt>Logged from</dt><dd>Morning Tracking</dd>
+            </dl>
+
+            <div class="box newb">
+              <div class="uh">Contact log</div>
+              <ul class="lines">
+                <li><span class="by">Nov 26, 9:15 AM · Phone · by ZZ Test Office</span><span class="no">Not reached</span></li>
+                <li><span class="by">Nov 26, 10:40 AM · WhatsApp · by ZZ Test Office</span><span class="yes">Reached</span><span>"Was waiting at Resorts World. OK to go on Nov 29."</span></li>
+              </ul>
+              <div class="row3" style="align-items:end">
+                <div class="field"><span class="lbl">Method</span><div class="in">Phone ▾</div></div>
+                <div class="field"><span class="lbl">When</span><div class="in">11/26/2026 2:05 PM</div></div>
+                <div class="field"><span class="lbl">Reached?</span><div class="seg c3" style="grid-template-columns:1fr 1fr"><b class="on">Yes</b><b>No</b></div></div>
+              </div>
+              <div class="field"><span class="lbl">What the guest said <span class="req">*</span></span><div class="in ph">Required when reached</div></div>
+              <div style="display:flex;gap:10px;align-items:center"><span class="btn-save sm">Save contact</span><span class="saved">Saved</span><span class="hint">Contacts can't be edited or deleted.</span></div>
+            </div>
+
+            <div class="box newb">
+              <div class="uh">Guest decision</div>
+              <div class="seg c3"><b class="on">Accepted reschedule</b><b>Declined</b><b>No reply</b></div>
+              <div class="field"><span class="lbl">New order # <span class="req">*</span></span><div class="in mono">CHDZZTEST9</div></div>
+              <p class="hint">New order CHDZZTEST9 · Nov 29 · Confirmed · Boarded (Bus)</p>
+              <div class="tag-mock" style="margin:4px 0 0">选 Declined 或 No reply 时，换成这两格：</div>
+              <div class="row2">
+                <div class="field"><span class="lbl">Follow-up <span class="req">*</span></span><div class="in">ZZ Test Office ▾</div></div>
+                <div class="field"><span class="lbl">Follow up by <span class="req">*</span></span><div class="in">11/28/2026</div></div>
+              </div>
+              <p class="hint">The follow-up person gets a task in My tasks on that day.</p>
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="btn-save sm">Save</span><span class="err">Please fill in: Follow-up, Follow up by</span></div>
+            </div>
+
+            <div class="box">
+              <div class="uh">Evidence (from the order page)</div>
+              <ul class="lines">
+                <li>Confirmation sent · Nov 24, 3:10 PM · <span class="yes">Delivered</span></li>
+                <li>Pickup reminder · Nov 25, 6:00 PM · <span class="err">Failed: Invalid phone</span></li>
+                <li>Guest reply · none</li>
+                <li>Rezdy changes · 1 (pickup changed Nov 25)</li>
+                <li>Day of tour · Bus: No show by ZZ Test Driver · 7:40 AM</li>
+                <li>★ Notes · 2</li>
+                <li style="color:var(--faint)">Phone AI calls · 1 <span class="hint">(Super Admin only)</span></li>
+              </ul>
+              <span class="alink">Open order page →</span>
+            </div>
+
+            <div>History: Registered by ZZ Test · Nov 26, 7:42 AM → Contact added · 9:15 AM → Decision Accepted reschedule, new order CHDZZTEST9 · 10:45 AM</div>
+            <div>
+              <div class="uh">Updates</div>
+              <ul class="lines"><li><span class="by">ZZ Test Office · Nov 26, 10:50 AM</span><span>Rebooked for Nov 29, no charge.</span></li></ul>
+              <div class="in ph" style="margin-top:6px">Add an update…</div>
+            </div>
+          </div>
+        </li>
+      </ul>
+    </div>
+    <div class="now">
+      <div><b>现在：</b>列表顶上计数只有三类（<code>reports-view.tsx:279-285</code>）；类型筛选 All types / Complaint / Accident / Emergency（<code>:320-332</code>）；Unresolved 不带 status（<code>:45-49</code>）。每条底行 Status、Follow-up 两个下拉，一选马上存（<code>report-item.tsx:195-242</code>，<code>patch(...)</code>）；状态只有 Open / In progress / Resolved（<code>config.ts:20,32-36</code>）。展开只有 Accident 详情、History 一行、Updates（加一条按蓝色 Save 直接存，<code>report-item.tsx:265-352</code>）。没有联系记录、客人决定、改期、Evidence。</div>
+      <div><b>改后：</b>计数和筛选多 No show；状态多 Waiting for rescheduled tour（紫色胶囊，只在选了 Accepted + 新单号后由后端设）；No show 展开多四块：Contact log（一次一行，只加不改，蓝色 Save contact 直接存，同 Updates）、Guest decision（先选后存，一个蓝色 Save）、改期上车后的绿条、Evidence（只读）。其他三类不变。</div>
+    </div>
+    <div class="flow-wrap"><table class="flow">
+      <tr><th>数据</th><th>从哪来</th><th>到哪去</th></tr>
+      <tr><td>Contact log</td><td>staff 填，<code>POST /api/operation-reports/{id}/contacts</code>（partner 403，不出这块的表单）</td><td>详情 <code>contacts</code>（旧的在上）；History 记 add_contact；订单页 Daily report 格</td></tr>
+      <tr><td>Guest decision、新单号、跟进人、期限</td><td>staff 选，按 Save 才 <code>PATCH</code>（details + follow_up_user_id）；缺了后端回 400 + missing，照现有 "Please fill in: …" 显示</td><td>Declined / No reply ⇒ 跟进人的 My tasks 在期限那天出一条（链接 /daily-report?id=N）；Accepted ⇒ 状态 Waiting for rescheduled tour</td></tr>
+      <tr><td>新单状态、ready to close</td><td>详情 <code>rescheduled</code> / <code>ready_to_close</code>（新单在新团那天被标 Boarded / Picked up）</td><td>绿条；跟进人（没有就登记的人）收 Notice（kind no_show_ready）；不自动关，由人在 Status 选 Resolved</td></tr>
+      <tr><td>Evidence</td><td>现有订单详情 <code>GET /api/operations/orders/{order}</code>（confirmations、day_of_tour、rezdy_changes、staff_notes）；Phone AI 只 Super Admin（<code>/voice/call-log</code>）</td><td>只显示</td></tr>
+    </table></div>
+  </section>
+
+  <!-- ================= 4 ================= -->
+  <section class="sec">
+    <div class="sec-t">④ Earlier records（任何类别填了订单号；No show 详情里也有）</div>
+    <div class="grid2">
+      <div class="box newb">
+        <div class="uh">Earlier records for CHDZZTEST1</div>
+        <div class="lbl">Daily reports</div>
+        <ul class="lines">
+          <li><span class="type t-n">No show</span> Nov 26 · <span class="st st-w">Waiting for rescheduled tour</span> <span class="alink">Open ▸</span></li>
+          <li><span class="type t-c">Complaint · Office / Booking</span> Nov 20 · <span class="st st-r">Resolved</span> <span class="alink">Open ▴</span></li>
+        </ul>
+        <div class="box" style="margin-left:12px">
+          <p class="what" style="margin:0">Guest says the phone line gave the wrong pickup.</p>
+          <ul class="lines"><li><span class="by">ZZ Test Office · Nov 20, 4:30 PM</span><span>Called guest, apologised.</span></li></ul>
+          <span class="alink">Open in Daily report →</span>
+        </div>
+        <div class="lbl">★ Notes</div>
+        <ul class="lines"><li><span class="by">ZZ Test Office · Nov 25 · from Morning Tracking</span><span>"Guest asked to change pickup…"</span> <span class="alink">Show ▸</span></li></ul>
+        <div class="lbl">No show marks</div>
+        <ul class="lines"><li>Nov 26 · Bus · ZZ Test Driver (field) · 7:40 AM</li></ul>
+        <span class="hint">No earlier records ⇒ "No earlier records for this order."</span>
+      </div>
+      <div class="now">
+        <div><b>现在：</b>弹窗里填订单号不核对、不列任何东西（<code>log-incident-dialog.tsx:237-249</code>）。要看一单出过什么事，得去 /daily-report 搜 CHD#（<code>reports-view.tsx:363-370</code>）。</div>
+        <div><b>数据：</b><code>GET /api/operation-reports/order-context</code>。reports 带 updates，点 Open ▸ 就地展开（只看），最下面 "Open in Daily report →" 去 /daily-report?id=N；没有订单页权限的人只看到 Daily reports 一段。只显示，不往别处写。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 5 ================= -->
+  <section class="sec">
+    <div class="sec-t">⑤ Morning Tracking：点 No show ⇒ 弹窗写备注</div>
+    <div class="grid2">
+      <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+        <div class="tbl-wrap"><table class="mt">
+          <tr><th>Order</th><th>Guest</th><th>Relay</th><th>Bus</th></tr>
+          <tr><td class="mono">CHDZZTEST1</td><td>ZZ Test Guest</td><td>—</td><td><span class="ns-link">No show</span> <span class="hint">← click</span></td></tr>
+          <tr><td class="mono">CHDZZTEST2</td><td>ZZ Test Two</td><td>—</td><td><span class="ns-red">✗ No show</span> <span class="saved">Saved</span><br><span class="alink">No show report #412 →</span></td></tr>
+          <tr><td class="mono">CHDZZTEST3</td><td>ZZ Test Three</td><td>—</td><td><span class="ns-red">✗ No show</span> <span class="saved">Saved</span><br><span class="err">Note not saved: …</span></td></tr>
+        </table></div>
+        <div class="modal new" style="max-width:420px">
+          <div class="mh">Mark No show <span class="x">×</span></div>
+          <div class="mb">
+            <p><span class="mono">CHDZZTEST1</span> · ZZ Test Guest · Nov 26 · Bus</p>
+            <div class="field"><span class="lbl">Notes (optional)</span><div class="in area ph">What happened, who you called…</div></div>
+            <p class="hint">Saving also logs a No show report in Daily Operation Report, or adds to the open one for this order and day.</p>
+          </div>
+          <div class="mf"><span class="btn-save">Save</span><span class="btn-ghost">Cancel</span></div>
+        </div>
+        <div class="box">
+          <div class="uh">撤回（点红色 No show ⇒ 格子旁 Save，同现在）之后的小字</div>
+          <p class="saved">Saved. No show report #412 closed.</p>
+          <p class="saved">Saved. No show report #415 stays open: someone is already working on it.</p>
+        </div>
+      </div>
+      <div class="now">
+        <div><b>现在：</b>只在 Bus 列能标（<code>components/morning-tracking/mark-cell.tsx:103-104</code>）；点淡色 "No show" ⇒ 变红 "✗ No show" 暂存（<code>:136-162</code>），格子旁蓝色 Save 才存（<code>:247-257</code>，走 <code>morning-tracking-view.tsx:374-406</code> saveMark → <code>lib/morning-tracking-api.ts:16-35</code>，body 只有 date / booking_id / order_number / leg / col / value）；没存就换页会问（<code>:340-342</code>）。没有备注，不建任何登记。</div>
+        <div><b>改后：</b>点 "No show" 先弹窗（备注选填）；Cancel = 什么都不变、不发请求；Save = 发 <code>{…, value: "no_show", note}</code>（Q1 题定一步还是两步）。存好后格子下面出 "No show report #N →"（去 /daily-report?id=N）；备注或登记那部分失败（<code>note_error</code> / <code>report_error</code>）照红字写出来，标记本身已存。撤回照旧两步，存好后写登记关了还是留着（N2）。Relay 列不变；司机 / 导游在手机上标的不建登记（N4）。</div>
+        <div><b>数据：</b>备注 ⇒ 这单的 ★ Notes（source tracking，订单页、Earlier records 都看得到）；No show ⇒ 后端建 / 挂登记（N1），当班的人收 Notice（N5）；撤回 ⇒ 没人动过的登记自动关，有人在跟的留着、加一行 Update（N2）。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 6 ================= -->
+  <section class="sec">
+    <div class="sec-t">⑥ 订单页 / 搜索栏结果：Order lifecycle 多一格 Daily report（Q5 A）</div>
+    <div class="grid2">
+      <div class="light">
+        <h4>Order lifecycle</h4>
+        <dl class="facts">
+          <div><dt>Booked</dt><dd>Nov 2, 3:10 PM</dd></div>
+          <div><dt>Changes</dt><dd class="warn">1</dd></div>
+          <div><dt>Pickup reminder sent</dt><dd class="warn">Failed</dd></div>
+          <div><dt>Tour ended</dt><dd>Nov 26</dd></div>
+          <div class="newf"><dt>Daily report</dt><dd class="warn">1 open · 1 resolved ▴</dd></div>
+        </dl>
+        <div class="lt-box">
+          <div class="lt-item">
+            <div><span class="lt-type">No show · Driver</span> <span class="lt-farm">Farm out</span> · Nov 26 · <b>Waiting for rescheduled tour</b></div>
+            <div>Reason: Wrong pickup info given to guest · Follow-up: ZZ Test Office</div>
+            <div style="color:#5b6470">2 contacts · last: Nov 26, 10:40 AM WhatsApp, reached</div>
+            <div style="color:#5b6470">ZZ Test Office · Nov 26, 10:50 AM — Rebooked for Nov 29, no charge.</div>
+            <a class="lt-link">Open in Daily report →</a>
+          </div>
+          <div class="lt-item"><div><span class="lt-type" style="color:#0369a1">Complaint · Office / Booking</span> · Nov 20 · <b style="color:#15803d">Resolved</b></div><a class="lt-link">Open in Daily report →</a></div>
+        </div>
+        <p style="font-size:11.5px;color:#5b6470;margin-top:8px">No reports ⇒ "None" (grey). All resolved ⇒ "1 resolved ▸" (green). Any open ⇒ yellow.</p>
+      </div>
+      <div class="now">
+        <div><b>现在：</b>Order lifecycle 卡（<code>components/order-lookup/lifecycle.tsx:123-252</code>）有 Booked / Received / Changes / Confirmation sent / Last Minute / Ticket reminder sent / Pickup reminder sent / Guest reply / Guest's lunch pick / Bus manifest lunch / Van at hotel / Tour ended，没有 DOR；格子本身不展开（展开的只有 Changes，<code>:254-315</code>）。这张卡同时用在订单页（<code>order-detail-view.tsx</code>）和搜索栏结果（<code>order-lookup-result.tsx</code>），两处都读 <code>fetchOrder</code>（<code>lib/order-lookup-api.ts:67-77</code>）。</div>
+        <div><b>数据：</b>订单详情多出的 <code>operation_reports[]</code>（四类、新的在前、带 updates）；看不到 DOR 的人这个键不在 ⇒ 这一格不出（partner 也不出）。只看；改去 /daily-report?id=N。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 7 ================= -->
+  <section class="sec">
+    <div class="sec-t">⑦ Farm out 标签</div>
+    <div class="grid2">
+      <div class="box"><div class="ih"><span class="type t-n">No show · Office</span><span class="farm">Farm out</span><span class="subj">ZZ Test Guest</span><span class="ord">CHDZZTEST5</span></div><p class="hint">出在：列表 / Dashboard 那一行、登记弹窗的 No show details 标题、订单页 Daily report 格。流程和自己的团一样（Q12：「一样的处理程序」）。</p></div>
+      <div class="now">
+        <div><b>现在：</b>Farm out 的样子在 Dispatch：灰底白字大写 "Farm out"（<code>components/dispatch/farm-out-block.tsx:51-59</code>，<code>bg-[#475569] text-white</code>）。DOR 里没有。这里照搬那个灰色，不新造颜色。</div>
+        <div><b>数据：</b>登记 details 的 <code>farm_out</code>（后端带出，只读）。只显示。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 8 ================= -->
+  <section class="sec">
+    <div class="sec-t">⑧ How to use（默认折叠；紫字是新加的）</div>
+    <div class="grid2">
+      <details class="howto" open>
+        <summary>📖 How to use — Daily Operation Report</summary>
+        <ol>
+          <li>Click <b>+ Log an incident</b> to record a complaint, an accident, an emergency or a no show.</li>
+          <li class="newl">For a <b>No show</b>, type the order # and pick the tour date. The product, pickup, driver, guide and vehicle fill in from Main manifest and Dispatch; you can change them.</li>
+          <li class="newl">Once you type an order #, <b>Earlier records</b> lists this order's past reports, ★ Notes and No show marks. Click one to see it.</li>
+          <li class="newl">Add every call, text, WhatsApp or email to the guest in the <b>Contact log</b>. Contacts can't be edited or deleted.</li>
+          <li class="newl">Choose the <b>Guest decision</b> and click Save. Declined or No reply needs a follow-up person and a date: that person gets a task in My tasks on that day. Accepted reschedule needs the new order #.</li>
+          <li class="newl">When the guest boards the rescheduled tour, the report shows <b>ready to close</b>. It never closes by itself: set Status to Resolved.</li>
+          <li class="newl"><b>Farm out</b> orders follow the same steps.</li>
+          <li class="newl">Marking No show in Morning Tracking logs a No show report for you.</li>
+          <li>Use <b>Updates</b> for anything else you do. Updates cannot be edited or deleted.</li>
+        </ol>
+      </details>
+      <details class="howto" open>
+        <summary>📖 How to use — Morning Pickup Tracking（只改 No show 那一条）</summary>
+        <ol>
+          <li class="newl">If a guest did not show up, click No show in the Bus column. Write a note if you want (optional) and click Save; Cancel changes nothing. Saving also logs a No show report in Daily Operation Report, or adds to the open one for this order and day. Your note is kept in the order's ★ Notes.</li>
+          <li class="newl">To take it back, click the red No show and click Save. If nobody has worked on the No show report yet, it is closed; otherwise it stays open with a line saying the No show was cleared.</li>
+          <li>Your change shows on Main manifest, the Bus Manifest page and the order page. The guide's own mark is kept: hover over the mark to see it.</li>
+        </ol>
+      </details>
+    </div>
+    <div class="now">
+      <div><b>现在：</b>/daily-report 没有 How to use（<code>components/daily-report/</code> 里没有用 HowToUse）。Morning Tracking 的 How to use 在 <code>morning-tracking-view.tsx:915-968</code>，No show 那条是 <code>:945</code>："If a guest did not show up, click No show in the Bus column so it turns red, then click Save next to it. To take it back, click the red No show and click Save. …"。两处都用 <code>components/ui/how-to-use.tsx</code>（&lt;details&gt;，默认折叠；这里为了看内容画成打开的）。手机上放页面最底。</div>
+    </div>
+  </section>
+
+  <!-- ================= rules ================= -->
+  <section class="sec">
+    <div class="sec-t">样式规矩（照全站规则）</div>
+    <div class="grid2">
+      <div class="rules">
+        <h3>照的规则</h3>
+        <ul>
+          <li>蓝色只给提交键：Save、Save contact、弹窗 Save。+ Log an incident 照现在白键；Open ▸ / Open in Daily report → 是链接色。</li>
+          <li>先选后存：Guest decision、新单号、跟进人、期限都暂存在页面上，按一个 Save 才存；没存就离开页面会问。联系记录和 Updates 一样是「写一条按一次 Save」。Status 下拉照旧（老开关不改）。</li>
+          <li>存好绿字 Saved，失败红字，缺的照 "Please fill in: …"。</li>
+          <li>系统文字一律英文；数据都从订单号带出，只要订单号 + 团期两样输入。</li>
+          <li>没有新开关：DOR 板块开关 daily_operation_report 照旧；Notice 由后端发（N5）。</li>
+        </ul>
+      </div>
+      <div class="phone">
+        <div class="tag-mock">手机（390px）· Guest decision</div>
+        <div class="box newb">
+          <div class="uh">Guest decision</div>
+          <div class="seg c3" style="grid-template-columns:1fr"><b>Accepted reschedule</b><b class="on">Declined</b><b>No reply</b></div>
+          <div class="field"><span class="lbl">Follow-up *</span><div class="in">ZZ Test Office ▾</div></div>
+          <div class="field"><span class="lbl">Follow up by *</span><div class="in">11/28/2026</div></div>
+          <span class="btn-save sm" style="align-self:flex-start">Save</span>
+        </div>
+        <p class="hint" style="margin-top:8px">手机上三个决定竖排；表单一列；说明收进「i」；Earlier records 默认收起成一行 "Earlier records (3) ▸"。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= questions ================= -->
+  <div class="sec-t">要 Annie 定的 3 题</div>
+
+  <section class="q">
+    <h2><span class="n">T1</span>Morning Tracking 的 No show 弹窗：按 Save 一步存，还是还要再按格子旁的 Save？</h2>
+    <p style="color:var(--muted)">现在：点 No show 变红暂存，格子旁出蓝色 Save，按了才存（mark-cell.tsx:136-162、:247-257）。G372 要加弹窗写备注，弹窗本身也有 Save / Cancel。</p>
+    <ul class="opts">
+      <li class="rec"><span class="k">A</span>弹窗里的 Save 就是提交：一按就存标记 + 备注 + 建 / 挂 No show 登记，格子直接显示 Saved。Cancel 什么都不改。撤回（点红色 No show 再按格子旁 Save）照现在两步不变。<span class="r">推荐</span><br><span style="color:var(--muted)">理由：弹窗已经是确认那一步，再按一次格子旁 Save 是重复，也容易忘了按。</span></li>
+      <li><span class="k">B</span>弹窗 Save 只把备注暂存在格子上（格子变红），还要再按格子旁的 Save 才真存。和现在的暂存方式一致，但标一个 No show 要按两次 Save。</li>
+    </ul>
+  </section>
+
+  <section class="q">
+    <h2><span class="n">T2</span>No show 登记的跟进人放在哪？</h2>
+    <p style="color:var(--muted)">现在：每条登记底行有 Follow-up 下拉，一选马上存（report-item.tsx:213-242）。后端规定：No show 选 Declined / No reply 时必须同时给跟进人 + 期限，否则存不了。</p>
+    <ul class="opts">
+      <li class="rec"><span class="k">A</span>No show 的跟进人只放在 Guest decision 块里，和决定、期限、新单号一起按一个蓝色 Save 存（先选后存）。底行不出 Follow-up 下拉，只显示文字「Follow-up: 名字 · due Nov 28」。Complaint / Accident / Emergency 照旧。<span class="r">推荐</span><br><span style="color:var(--muted)">理由：跟进人和期限是一起的，分在两处改容易只改一半，后端也会拒。</span></li>
+      <li><span class="k">B</span>两处都有：底行 Follow-up 下拉照旧马上存，Guest decision 块里也能选，两处显示同一个人。</li>
+    </ul>
+  </section>
+
+  <section class="q">
+    <h2><span class="n">T3</span>No show 详情里的 Evidence 放多少？</h2>
+    <p style="color:var(--muted)">现在：订单页已有 Day of tour 卡（order-detail-view.tsx:1319-1418）、★ Notes 卡（order-staff-notes-card.tsx:57-128）、Order lifecycle 的发送格（lifecycle.tsx:123-252）。No show 登记里还没有任何证据。电话 AI 记录只有 Super Admin 能看（后端不放宽）。</p>
+    <ul class="opts">
+      <li class="rec"><span class="k">A</span>紧凑的 Evidence 块，每样一行：Confirmation sent / Pickup reminder / Guest reply / Rezdy changes / Day of tour 标记 / ★ Notes 条数 /（只 Super Admin）Phone AI calls，最后一个链接「Open order page →」看全部（上面 ② 画的样子）。<span class="r">推荐</span></li>
+      <li><span class="k">B</span>把订单页那几张卡整张搬进登记详情：信息全，但一份登记会很长，手机上要滑很久。</li>
+    </ul>
+  </section>
+</div>
