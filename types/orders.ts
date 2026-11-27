@@ -1,5 +1,6 @@
 import type { StaffNote } from "@/lib/staff-notes-api";
 
+import type { OrderReport } from "./daily-report";
 import type { FarmOutView } from "./farm-out";
 import type { TrackingMark } from "./morning-tracking";
 
@@ -244,6 +245,11 @@ export interface OrderDetail {
    * 生命周期第 2 项（bf 合同，从上线起记）：Rezdy 推送 / Refresh from Rezdy 改了什么，新 → 旧。
    * by：push 是 ""、Refresh 是员工名。field 例「Phone」「Tour date (PRTSET)」「Item PRTSET」（加 / 删项目时 before 或 after 为 null）。
    */
+  /**
+   * G361 Q5 A：这单的 Daily Operation Report 登记（四类，新的在前，带 updates）。看不到 DOR 的人（板块不可见 / 没 report.view）
+   * 这个键不在 ⇒ 生命周期不出 Daily report 那一格。
+   */
+  operation_reports?: OrderReport[];
   rezdy_changes?: {
     at: string;
     source: "rezdy_push" | "refresh_from_rezdy";

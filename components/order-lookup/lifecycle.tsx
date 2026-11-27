@@ -26,7 +26,16 @@ import {
 import { orderDateToYmd } from "@/lib/order-lookup-api";
 import { usePageVisibility } from "@/lib/page-visibility";
 import { cn } from "@/lib/utils";
-import type { OrderDetail, SendLogRow } from "@/types";
+import type { OrderDetail, OrderReport, SendLogRow } from "@/types";
+import {
+  ABOUT_LABEL,
+  DECISION_LABEL,
+  REASON_LABEL,
+  STATUS_LABEL,
+  TYPE_LABEL,
+  formatWhen,
+  formatYmd,
+} from "@/components/daily-report/config";
 
 /**
  * 订单生命周期（Annie 2026-11-18「排法A」「框 1，其余照推荐，动手」）。
@@ -123,6 +132,7 @@ function replyTone(status: string): "good" | "bad" | "warn" | "muted" {
 export function LifecycleCard({ order }: { order: OrderDetail }) {
   const { on, sends } = useOrderLifecycle(order.order_number);
   const [all, setAll] = useState(false);
+  const [reportsOpen, setReportsOpen] = useState(false);
   if (!on) return null;
   const date = orderDateToYmd(order.product.tour_date);
   const rows = sendsOf(sends);
@@ -134,6 +144,7 @@ export function LifecycleCard({ order }: { order: OrderDetail }) {
   const live = liveFor(order, date);
   const van = live ? vanAtHotel(live.arrived_at, live.left_at) : null;
   const ended = tourEndedFor(order);
+  const reports = order.operation_reports;
   return (
     <section
       aria-label="Order lifecycle"
@@ -231,7 +242,17 @@ export function LifecycleCard({ order }: { order: OrderDetail }) {
         <DField label="Tour ended" tone={ended ? undefined : "muted"}>
           {ended ?? "—"}
         </DField>
+        {reports ? (
+          <DailyReportField
+            reports={reports}
+            open={reportsOpen}
+            onToggle={() => setReportsOpen((v) => !v)}
+          />
+        ) : null}
       </dl>
+      {reports && reportsOpen && reports.length ? (
+        <DailyReportList reports={reports} />
+      ) : null}
       {changes.length || everything.length ? (
         <DetailChanges
           shown={all ? everything : changes.slice(0, CHANGES_SHOWN)}
@@ -682,5 +703,131 @@ export function OrderChatHistory({
         )}
       </div>
     </section>
+  );
+}
+
+// ── G361 Q5 A（preview UAhRhQfyGQYt2D8hWjHqZz ⑥）：Daily report 一格，就地展开，只看；改去 /daily-report?id=N ──
+
+function DailyReportField({
+  reports,
+  open,
+  onToggle,
+}: {
+  reports: OrderReport[];
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const unresolved = reports.filter((r) => r.status !== "resolved").length;
+  const resolved = reports.length - unresolved;
+  if (!reports.length)
+    return (
+      <DField label="Daily report" tone="muted">
+        None
+      </DField>
+    );
+  const text = [
+    unresolved ? `${unresolved} open` : "",
+    resolved ? `${resolved} resolved` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <DField label="Daily report" tone={unresolved ? "warn" : "good"}>
+      <button
+        type="button"
+        data-lifecycle-reports
+        aria-expanded={open}
+        onClick={onToggle}
+        className="cursor-pointer p-0 text-left font-[inherit] text-inherit"
+      >
+        {text} {open ? "▴" : "▸"}
+      </button>
+    </DField>
+  );
+}
+
+function DailyReportList({ reports }: { reports: OrderReport[] }) {
+  return (
+    <ul
+      data-lifecycle-report-list
+      className="mt-2.5 flex list-none flex-col gap-2 border-t border-black/[.08] p-0 pt-2.5 text-[12.5px] text-[#1a1a1a] night:border-white/10 night:text-white/85"
+    >
+      {reports.map((r) => {
+        const d = r.details;
+        const type =
+          r.report_type === "complaint" && r.complaint_about
+            ? `${TYPE_LABEL.complaint} · ${ABOUT_LABEL[r.complaint_about]}`
+            : TYPE_LABEL[r.report_type];
+        const lastUpdate = r.updates.at(-1);
+        return (
+          <li
+            key={r.id}
+            data-lifecycle-report={r.id}
+            className="rounded-lg border border-black/10 px-2.5 py-2 night:border-white/12"
+          >
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+              <span className="text-[10px] font-extrabold tracking-[.06em] text-[#6d28d9] uppercase night:text-[#c4b5fd]">
+                {type}
+              </span>
+              {d.farm_out ? (
+                <span className="rounded-[5px] bg-[#475569] px-[7px] py-px text-[10px] font-bold tracking-[.06em] text-white uppercase">
+                  Farm out
+                </span>
+              ) : null}
+              <span>
+                ·{" "}
+                {d.tour_date
+                  ? formatYmd(d.tour_date)
+                  : formatWhen(r.created_at)}{" "}
+                ·{" "}
+              </span>
+              <b
+                className={
+                  r.status === "resolved"
+                    ? "text-[#15803d]"
+                    : "text-[#b45309] night:text-[#fbbf24]"
+                }
+              >
+                {STATUS_LABEL[r.status]}
+              </b>
+              {r.rescheduled_into_this_order ? (
+                <span className="text-[#6b7280] night:text-white/45">
+                  (rescheduled from {r.order_number})
+                </span>
+              ) : null}
+            </div>
+            {d.reason || d.decision || r.follow_up ? (
+              <div>
+                {[
+                  d.reason ? `Reason: ${REASON_LABEL[d.reason]}` : "",
+                  d.decision ? DECISION_LABEL[d.decision] : "",
+                  r.follow_up ? `Follow-up: ${r.follow_up.display_name}` : "",
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </div>
+            ) : null}
+            {r.what_happened ? (
+              <div className="break-words whitespace-pre-wrap">
+                {r.what_happened}
+              </div>
+            ) : null}
+            {lastUpdate ? (
+              <div className="text-[#5b6470] night:text-white/55">
+                {lastUpdate.created_by.display_name ||
+                  lastUpdate.created_by.username}{" "}
+                · {formatWhen(lastUpdate.created_at)} — {lastUpdate.text}
+              </div>
+            ) : null}
+            <PageLink
+              href={`/daily-report?id=${r.id}`}
+              className="text-[#1d4ed8] hover:underline night:text-[#93c5fd]"
+            >
+              Open in Daily report →
+            </PageLink>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
