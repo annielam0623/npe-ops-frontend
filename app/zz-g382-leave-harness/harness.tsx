@@ -94,7 +94,8 @@ const data: LeaveDialogData = {
     { key: "close", label: "Close", sort_order: 3, is_active: true },
   ],
   categories: FALLBACK_LEAVE_CATEGORIES,
-  weekStatusOf: (d) => (d < "2026-11-29" ? "published" : "draft"),
+  // 12/20 起的周页面没读 ⇒ null（请假框用 GET range?weeks=1 去查；这里 12/20 那周回 published）。
+  weekStatusOf: (d) => (d < "2026-11-29" ? "published" : d < "2026-12-20" ? "draft" : null),
 };
 const base = {
   employee_id: N,
@@ -247,6 +248,15 @@ export default function Harness() {
           { headers: { "content-type": "application/json" } },
         );
       }
+      const rq =
+        url.includes("/api/schedule/range?") && method === "GET"
+          ? new URL(url, location.href).searchParams
+          : null;
+      if (rq)
+        return new Response(
+          JSON.stringify({ weeks_info: [{ week_start: rq.get("from"), status: rq.get("from") === "2026-12-20" ? "published" : null, version: null, published_with_gaps: false }] }),
+          { headers: { "content-type": "application/json" } },
+        );
       if (window.__fail) {
         return new Response(
           JSON.stringify({

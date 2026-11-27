@@ -27,6 +27,8 @@ import {
   type ApproveBody,
   type OverviewLeaveRequest,
 } from "@/lib/schedule-leave-api";
+import { weekStartYmd } from "@/lib/la-date";
+import { fetchScheduleRange } from "@/lib/schedule-overview-api";
 import { cn } from "@/lib/utils";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
@@ -124,7 +126,42 @@ export function LeaveRequestDialog({
     hours !== origHourly ||
     (hours && (start !== req.start_time || end !== req.end_time));
   const dates = datesBetween(from, effTo);
-  const published = dates.some((d) => data.weekStatusOf(d) === "published");
+  /*
+   * 日期挪到页面没读的周（fe 11-26）：那周发布没有，用 GET range?from=<周日>&weeks=1 只读查（range 不建周，
+   * 只能批假的人也能读）；查到之前 Approve 灰、不加字。查不到就把后端原话放红框。
+   */
+  const [weekSt, setWeekSt] = useState<Record<string, "draft" | "published">>({});
+  const [weekErr, setWeekErr] = useState<{ key: string; text: string } | null>(null);
+  const statusOf = (d: string) => data.weekStatusOf(d) ?? weekSt[weekStartYmd(d)] ?? null;
+  const unknownWeeks = [
+    ...new Set(dates.filter((d) => statusOf(d) === null).map((d) => weekStartYmd(d))),
+  ].sort();
+  const unknownKey = unknownWeeks.join(",");
+  useEffect(() => {
+    if (!unknownKey) return;
+    const ac = new AbortController();
+    (async () => {
+      try {
+        for (const w of unknownKey.split(",")) {
+          const r = await fetchScheduleRange(w, 1, ac.signal);
+          if (ac.signal.aborted) return;
+          const st = r.weeks_info[0]?.status === "published" ? "published" : "draft";
+          setWeekSt((m) => ({ ...m, [w]: st }));
+        }
+      } catch (e) {
+        if (ac.signal.aborted) return;
+        if (isStatus(e, 401)) {
+          window.location.href = buildLegacyLoginRedirectUrl(window.location.href);
+          return;
+        }
+        setWeekErr({ key: unknownKey, text: leaveErrorText(e, describeError(e)) });
+      }
+    })();
+    return () => ac.abort();
+  }, [unknownKey]);
+  const weekErrText = unknownKey && weekErr?.key === unknownKey ? weekErr.text : null;
+  const statusPending = unknownWeeks.length > 0 && !weekErrText;
+  const published = dates.some((d) => statusOf(d) === "published");
   // 这条假自己还没批，不在 timeOff 里；算空档时把这个人这几天别的假也排除（一人一天一条）。
   const otherOff = data.timeOff;
 
@@ -241,6 +278,8 @@ export function LeaveRequestDialog({
     !multiDayHours &&
     !gapPending &&
     !gapError &&
+    !statusPending &&
+    !weekErrText &&
     unhandled.length === 0 &&
     coverOk;
 
@@ -497,7 +536,7 @@ export function LeaveRequestDialog({
             </thead>
             <tbody>
               {daySlots.map((s) => {
-                const pub = data.weekStatusOf(s.date) === "published";
+                const pub = statusOf(s.date) === "published";
                 const opts = coverCandidates(
                   s.date,
                   s.start_time,
@@ -658,6 +697,7 @@ export function LeaveRequestDialog({
           blockText ??
           (multiDayHours ? "Leave by the hour is for one day only." : null) ??
           gapError ??
+          weekErrText ??
           error
         }
       />

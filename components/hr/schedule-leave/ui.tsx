@@ -27,8 +27,11 @@ export interface LeaveDialogData {
   timeOff: ScheduleTimeOff[];
   shiftTypes: ScheduleShiftType[];
   categories: LeaveCategory[];
-  /** 这一天所在的周发布了没有（Q2 A / Q1 A 只管已发布的周）。 */
-  weekStatusOf: (date: string) => "draft" | "published";
+  /**
+   * 这一天所在的周发布了没有（Q2 A / Q1 A 只管已发布的周）。没建的周算 "draft"；
+   * 不在页面已读的几周里 ⇒ null（请假框自己用 GET range?weeks=1 只读去查，不建周）。
+   */
+  weekStatusOf: (date: string) => "draft" | "published" | null;
 }
 
 export function shiftLabelOf(types: ScheduleShiftType[], key: string): string {

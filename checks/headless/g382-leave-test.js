@@ -120,6 +120,24 @@ const out = (p) => p.evaluate(() => window.__out);
   check("hour draft: yellow gap note", !!(await page.$("[data-draft-gap]")), t.match(/This leaves[^\n]*/)?.[0]);
   check("hour draft: Approve enabled", !(await disabled(page, "[data-leave-approve]")));
 
+  /* 2b. 草稿周 → 挪到页面没读的已发布周（fe 11-26）：只读 GET range?weeks=1 查周状态，不建周；查到以后要选顶班 */
+  await open(page, "hourdraft");
+  await page.$eval('input[aria-label="Date"]', (el) => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+    setter.call(el, "2026-12-22");
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  check("move to unloaded week: Approve grey while checking", await disabled(page, "[data-leave-approve]"));
+  await sleep(900);
+  {
+    const cs = await calls(page);
+    const rg = cs.filter((x) => x.url.includes("/api/schedule/range?"));
+    const q = rg.length ? new URL(rg[0].url, BASE).searchParams : null;
+    check("move to unloaded week: one read-only GET range?from=2026-12-20&weeks=1, no GET weeks/{w}", rg.length === 1 && rg[0].method === "GET" && q.get("from") === "2026-12-20" && q.get("weeks") === "1" && !cs.some((x) => x.url.includes("/api/schedule/weeks/")), JSON.stringify(cs.map((x) => x.method + " " + x.url)));
+    t = await txt(page);
+    check("move draft → published week: cover picker shows, published label, Approve grey", !!(await page.$("[data-cover-select]")) && t.includes("This week is published") && (await disabled(page, "[data-leave-approve]")), t.match(/This (week|leaves).*/)?.[0]);
+  }
+
   /* 3. 按天，草稿周（Q1 A） */
   await open(page, "day");
   t = await txt(page);

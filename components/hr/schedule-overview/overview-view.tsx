@@ -330,7 +330,11 @@ export function ScheduleOverview() {
   };
 
   const weekInfo = (w: string) => range?.weeks_info.find((x) => x.week_start === w);
-  const weekStatusOf = (date: string) => weekInfo(weekStartYmd(date))?.status ?? "draft";
+  /** 没建的周 ⇒ "draft"；不在这几周里 ⇒ null（请假框自己查）。 */
+  const weekStatusOf = (date: string): "draft" | "published" | null => {
+    const i = weekInfo(weekStartYmd(date));
+    return i ? (i.status === "published" ? "published" : "draft") : null;
+  };
 
   const dialogData = (useDraft: boolean): LeaveDialogData => ({
     employees: (range?.employees ?? []).map((e) => ({ ...e, email: "" }) as ScheduleEmployee),
