@@ -264,12 +264,18 @@ export function buildReportInput(
 /** 空串的键不发（后端也会丢，这里先丢，请求干净）。 */
 export function dropBlank<T extends object>(d: T): Partial<T> {
   return Object.fromEntries(
-    Object.entries(d).filter(([, v]) => v !== "" && v !== null && v !== undefined),
+    Object.entries(d).filter(
+      ([, v]) => v !== "" && v !== null && v !== undefined,
+    ),
   ) as Partial<T>;
 }
 
 // ── No show（G361）的选项文字（同后端 no_show_reports.LABELS）──
-export const REPORTED_BY_OPTIONS: NoShowReportedBy[] = ["driver", "guide", "office"];
+export const REPORTED_BY_OPTIONS: NoShowReportedBy[] = [
+  "driver",
+  "guide",
+  "office",
+];
 export const REPORTED_BY_LABEL: Record<NoShowReportedBy, string> = {
   driver: "Driver",
   guide: "Guide",
@@ -287,7 +293,11 @@ export const REASON_LABEL: Record<NoShowReason, string> = {
   not_notified: "Guest says not notified",
   other: "Other",
 };
-export const DECISION_OPTIONS: NoShowDecision[] = ["accepted", "declined", "no_reply"];
+export const DECISION_OPTIONS: NoShowDecision[] = [
+  "accepted",
+  "declined",
+  "no_reply",
+];
 export const DECISION_LABEL: Record<NoShowDecision, string> = {
   accepted: "Accepted reschedule",
   declined: "Declined",

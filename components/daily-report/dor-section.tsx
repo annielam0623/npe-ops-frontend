@@ -174,11 +174,13 @@ function DorBlock({
         <h2 className="db-title text-[15px]">Daily operation report</h2>
         {data ? (
           <span className="flex flex-wrap gap-x-3 text-[11.5px] font-bold">
-            {(["complaint", "accident", "emergency", "no_show"] as const).map((t) => (
-              <span key={t} className={TYPE_TEXT_CLASS[t]}>
-                {TYPE_LABEL[t]} {data.counts[t] ?? 0}
-              </span>
-            ))}
+            {(["complaint", "accident", "emergency", "no_show"] as const).map(
+              (t) => (
+                <span key={t} className={TYPE_TEXT_CLASS[t]}>
+                  {TYPE_LABEL[t]} {data.counts[t] ?? 0}
+                </span>
+              ),
+            )}
           </span>
         ) : null}
         <div className="ml-auto flex flex-wrap items-center gap-x-3 gap-y-2">

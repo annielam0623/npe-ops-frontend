@@ -21,6 +21,9 @@ const KIND_LABEL: Record<string, string> = {
   schedule_confirm_request: "Confirm your schedule",
   schedule_confirm: "Confirm your schedule",
   operation_report: "Incident logged",
+  // G361：登记 No show 发给当班的人（N5）；改期的新单上车 ⇒ 发给跟进人（Q10）。link 都是 /daily-report?id=N。
+  no_show: "No show logged",
+  no_show_ready: "No show ready to close",
   // 同事在 Today's team 点名字发来的站内消息（Annie 2026-10-30「两件都动手」）。
   message: "Message",
   // G297（Annie 2026-11-12「我们还是在notice里吧，同时发给当班的人」）：团确认因酒店空着没发，红色；
@@ -182,7 +185,9 @@ export function noticeLinkLabel(notice: ApiNotice): string {
     ? "Review my schedule →"
     : notice.type.startsWith("schedule_")
       ? "See my schedule →"
-      : notice.type === "operation_report"
+      : notice.type === "operation_report" ||
+          notice.type === "no_show" ||
+          notice.type === "no_show_ready"
         ? "Open report →"
         : notice.type === "pickup_missing" || notice.type === "mention"
           ? "Open order →"

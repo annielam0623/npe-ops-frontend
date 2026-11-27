@@ -97,8 +97,7 @@ export function EarlierRecords({
         onClick={fold.toggle}
         className="flex items-center gap-2 text-left text-[11px] font-bold tracking-[.06em] text-white/45 uppercase max-sm:cursor-pointer sm:pointer-events-none"
       >
-        Earlier records for {data.order_number} ({total})
-        {fold.caret}
+        Earlier records for {data.order_number} ({total}){fold.caret}
       </button>
       <div className={cn("flex flex-col gap-2", fold.hide)}>
         {total === 0 ? (
@@ -166,7 +165,8 @@ export function EarlierRecords({
             <ul className="m-0 flex list-none flex-col gap-1 p-0 text-[#f8fafc]">
               {marks.map((m, i) => (
                 <li key={`${m.tour_date}-${m.col}-${i}`} data-earlier-mark>
-                  {formatYmd(m.tour_date)} · {m.col === "relay" ? "Relay" : "Bus"}
+                  {formatYmd(m.tour_date)} ·{" "}
+                  {m.col === "relay" ? "Relay" : "Bus"}
                   {m.by ? ` · ${m.by}` : ""}
                   {m.source === "field" ? " (field)" : " (office)"}
                   {m.at ? ` · ${formatWhen(m.at)}` : ""}

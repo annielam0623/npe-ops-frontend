@@ -203,7 +203,9 @@ function DorHowToUse() {
           <>
             <b>Farm out</b> orders follow the same steps.
           </>,
-          <>Marking No show in Morning Tracking logs a No show report for you.</>,
+          <>
+            Marking No show in Morning Tracking logs a No show report for you.
+          </>,
           <>
             Use <b>Updates</b> for anything else you do. Updates cannot be
             edited or deleted.

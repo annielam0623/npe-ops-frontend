@@ -6,10 +6,7 @@ export type ReportType = "complaint" | "accident" | "emergency" | "no_show";
 export type ComplaintAbout = "driver" | "guide" | "itinerary" | "office";
 /** waiting_reschedule：只有 No show、选了 Accepted + 新单号后后端设（G361）。 */
 export type ReportStatus =
-  | "open"
-  | "in_progress"
-  | "waiting_reschedule"
-  | "resolved";
+  "open" | "in_progress" | "waiting_reschedule" | "resolved";
 export type PoliceReport = "yes" | "no" | "unknown";
 
 export interface ReportPerson {
@@ -32,12 +29,10 @@ export interface AccidentDetails {
 /** No show（G361）的 details：staff 能填的键 + 后端写的只读键（后端契约 no-show-2026-11-26.md §2）。 */
 export type NoShowReportedBy = "driver" | "guide" | "office";
 export type NoShowReason =
-  | "guest_did_not_show"
-  | "wrong_pickup_info"
-  | "not_notified"
-  | "other";
+  "guest_did_not_show" | "wrong_pickup_info" | "not_notified" | "other";
 export type NoShowDecision = "accepted" | "declined" | "no_reply";
-export type ContactMethod = "phone" | "text" | "whatsapp" | "email" | "in_person";
+export type ContactMethod =
+  "phone" | "text" | "whatsapp" | "email" | "in_person";
 
 export interface NoShowClientDetails {
   /** YYYY-MM-DD，必填。 */

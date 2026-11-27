@@ -36,8 +36,7 @@ const FIELD =
 const LABEL = "text-[11.5px] font-bold text-white/62";
 const BOX =
   "flex flex-col gap-2 rounded-[10px] border border-white/12 bg-black/15 px-3 py-2.5";
-const HEAD =
-  "text-[11px] font-bold tracking-[.06em] text-white/45 uppercase";
+const HEAD = "text-[11px] font-bold tracking-[.06em] text-white/45 uppercase";
 const SAVE =
   "rounded-[9px] border border-[#3b82f6] bg-[#3b82f6] px-3.5 py-[5px] text-[12.5px] font-bold text-white hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:opacity-60";
 
@@ -193,7 +192,10 @@ function ContactLog({
   }
 
   return (
-    <div data-contact-log className={cn(BOX, "border-dashed border-[#c4b5fd]/55")}>
+    <div
+      data-contact-log
+      className={cn(BOX, "border-dashed border-[#c4b5fd]/55")}
+    >
       <div className={HEAD}>Contact log</div>
       {contacts === null ? (
         <p className="m-0">Loading…</p>
@@ -410,7 +412,9 @@ function GuestDecision({
     const details = {
       ...base,
       ...(draft.decision ? { decision: draft.decision } : {}),
-      ...(needsOrder ? { new_order_number: draft.newOrder.trim().toUpperCase() } : {}),
+      ...(needsOrder
+        ? { new_order_number: draft.newOrder.trim().toUpperCase() }
+        : {}),
       ...(needsFollowUp ? { follow_up_due: draft.due } : {}),
     };
     const message = await onPatch(report.id, {
@@ -555,7 +559,9 @@ function GuestDecision({
         </>
       ) : (
         <p className="m-0 text-[#f8fafc]">
-          {stored.decision ? DECISION_LABEL[stored.decision] : "No decision yet"}
+          {stored.decision
+            ? DECISION_LABEL[stored.decision]
+            : "No decision yet"}
           {stored.newOrder ? ` · new order ${stored.newOrder}` : ""}
           {followUpName ? ` · Follow-up: ${followUpName}` : ""}
           {followUpDueText(report)}
@@ -594,7 +600,11 @@ function sendLine(
   return {
     label,
     text: `${formatWhen(c.sent_at)}${statuses.length ? ` · ${statuses.join(" / ")}` : ""}`,
-    tone: failed ? ("bad" as const) : ok ? ("good" as const) : ("muted" as const),
+    tone: failed
+      ? ("bad" as const)
+      : ok
+        ? ("good" as const)
+        : ("muted" as const),
   };
 }
 
@@ -665,7 +675,9 @@ function Evidence({
     const changes = order.rezdy_changes ?? [];
     const marks = (order.day_of_tour ?? []).flatMap((d) =>
       [
-        d.bus_mark?.value === "no_show" ? { d, col: "Bus", m: d.bus_mark } : null,
+        d.bus_mark?.value === "no_show"
+          ? { d, col: "Bus", m: d.bus_mark }
+          : null,
         d.relay_mark?.value === "no_show"
           ? { d, col: "Relay", m: d.relay_mark }
           : null,
@@ -680,7 +692,9 @@ function Evidence({
         ))}
         <li>
           Guest reply ·{" "}
-          {reply ? `${formatWhen(reply.submitted_at)} · ${reply.status}` : "none"}
+          {reply
+            ? `${formatWhen(reply.submitted_at)} · ${reply.status}`
+            : "none"}
         </li>
         <li>
           Rezdy changes · {changes.length}
