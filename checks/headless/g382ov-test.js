@@ -339,6 +339,37 @@ async function run() {
     await waitFor(`!document.querySelector('${SEL.unsaved}')`, 8000);
   });
 
+  // ── Q-1 B：没建的周（后端 86 bf80cd51）──
+  await ctl({ reset: true, viewer: "editor", canPublish: true });
+  if (!skipAll && !(await openOverview())) skipAll = true;
+  await maybe("没建的周：第一次改班先 GET weeks/{w} 建周（复制上一周的班、不带人），改动叠在上面；Save 一次存成", async () => {
+    await evaluate("document.querySelector('button[aria-label=Later]').click(); return 1;");
+    if (!(await waitFor("document.querySelector('[data-ov-week=\"2026-12-13\"]')", 15000))) throw new Error("week 12/13 not shown");
+    await sleep(300);
+    const nb = "[data-ov-week=\"2026-12-13\"] [data-ov-shift]";
+    const before0 = await evaluate("return document.querySelectorAll('" + nb + "').length;");
+    const pick = await evaluate("for (const c of document.querySelectorAll('[data-ov-cell$=\"|2026-12-12\"]')) { const emp = c.dataset.ovCell.split('|')[0]; if (emp === 'null') continue; const sh = c.querySelector('[data-ov-shift]'); if (sh) return { key: sh.dataset.ovShift, emp }; } return null;");
+    if (!pick) throw new Error("no assigned Sat 12/12 shift");
+    const before = (await mockLog()).length;
+    const r = await drag('[data-ov-shift="' + pick.key + '"]', '[data-ov-cell="' + pick.emp + '|2026-12-13"]');
+    await waitFor("document.querySelector('" + SEL.unsaved + "')", 10000);
+    const builtLog = (await mockLog()).slice(before).filter((l) => l.op === "build");
+    const after = await evaluate("return { n: document.querySelectorAll('" + nb + "').length, unassigned: document.querySelectorAll('[data-ov-week=\"2026-12-13\"] [data-ov-cell^=\"null|\"] [data-ov-shift]').length, moved: document.querySelector('[data-ov-cell=\"" + pick.emp + "|2026-12-13\"] [data-ov-shift]') ? 1 : 0, unsaved: document.querySelector('" + SEL.unsaved + "')?.textContent ?? '' };");
+    const b2 = (await mockLog()).length;
+    await evaluate("document.querySelector('" + SEL.save + "').click(); return 1;");
+    await waitFor("document.querySelector('" + SEL.saved + "') || document.querySelector('[data-ov-save-error]')", 10000);
+    const post = (await writes(b2)).filter((l) => l.path === "/api/schedule/range/changes");
+    const body = post[0]?.body;
+    const wk = body?.weeks?.find((w) => w.week_start === "2026-12-13");
+    const saved = await evaluate("return !!document.querySelector('" + SEL.saved + "');");
+    const ops = (body?.ops || []).map((o) => o.op + (o.date ? "@" + o.date : ""));
+    check("没建的周：第一次改班先 GET weeks/{w} 建周（复制上一周的班、不带人），改动叠在上面；Save 一次存成",
+      before0 === 0 && r === "ok" && builtLog.length === 1 && builtLog[0].path === "/api/schedule/weeks/2026-12-13" &&
+        after.unassigned > 0 && after.moved === 1 && after.unsaved === "Not saved yet · 2 changes" &&
+        post.length === 1 && typeof wk?.base_version === "string" && ops.includes("create@2026-12-13") && ops.includes("delete") && ops.length === 2 && saved,
+      JSON.stringify({ before0, r, builtLog: builtLog.length, after, ops, wk, saved }));
+  });
+
   // ── 只能批假的人 ──
   await ctl({ reset: true, viewer: "approver" });
   if (!skipAll && !(await openOverview())) skipAll = true;

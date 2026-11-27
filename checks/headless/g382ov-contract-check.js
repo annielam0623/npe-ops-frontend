@@ -50,6 +50,23 @@ const keys = (o, ks) => ks.every((k) => k in o);
   ok("已发布周删班留新空档 ⇒ 409 coverage_gap", r.s === 409 && r.b.detail.code === "coverage_gap" && r.b.detail.gaps.length > 0, JSON.stringify(r).slice(0, 200));
   r = await j("/api/schedule/range/changes", { method: "POST", body: { weeks: W4, ops: [{ op: "time_off_set", employee_id: 2, date: "2026-12-07", kind: "sick", start_time: "15:00", end_time: "16:00", note: null }] } });
   ok("time_off_set 按小时（草稿周）⇒ 200", r.s === 200, JSON.stringify(r).slice(0, 200));
+  // Q-1 B（后端 86 bf80cd51，interface.md §2.1）：range 只读不建周；没建的周 status / version null、没 slots；要改先 GET weeks/{w}。
+  r = await j("/api/schedule/range?from=2026-11-22&weeks=4");
+  const nb = r.b.weeks_info.find((w) => w.week_start === "2026-12-13");
+  ok("没建的周 12/13：status null、version null、slots 没有这周的行", nb && nb.status === null && nb.version === null && !r.b.slots.some((x) => x.date >= "2026-12-13"), JSON.stringify(nb));
+  r = await j("/api/schedule/range/changes", { method: "POST", body: { weeks: [{ week_start: "2026-12-13", lock_token: "zz", base_version: "x" }], ops: [{ op: "create", ref: "n1", date: "2026-12-14", shift_type: "mid", start_time: "08:00", end_time: "16:30", employee_id: 1 }] } });
+  ok("没建的周直接存班 ⇒ 404 原话", r.s === 404 && r.b.detail === "This week doesn't exist yet. Reload the page.", JSON.stringify(r));
+  await j("/__ctl", { method: "POST", body: { viewer: "approver" } });
+  r = await j("/api/schedule/weeks/2026-12-13");
+  ok("没 schedule.edit 的人 GET 没建的周 ⇒ 403 原话", r.s === 403 && r.b.detail === "This week hasn't been published yet.", JSON.stringify(r));
+  await j("/__ctl", { method: "POST", body: { viewer: "editor" } });
+  ok("…而且什么都没建", (await j("/api/schedule/range?from=2026-12-13&weeks=1")).b.weeks_info[0].version === null);
+  const prevN = (await j("/api/schedule/range?from=2026-12-06&weeks=1")).b.slots.length;
+  r = await j("/api/schedule/weeks/2026-12-13");
+  ok("admin GET 没建的周 ⇒ 建成草稿：copied_from 上一周、班数同上一周、都不带人、有 version", r.s === 200 && r.b.status === "draft" && r.b.copied_from === "2026-12-06" && r.b.slots.length === prevN && prevN > 0 && r.b.slots.every((x) => x.employee_id === null) && typeof r.b.version === "string", JSON.stringify({ s: r.s, n: r.b.slots?.length, prevN, c: r.b.copied_from }));
+  const built = (await j("/api/schedule/range?from=2026-12-13&weeks=1")).b;
+  r = await j("/api/schedule/range/changes", { method: "POST", body: { weeks: [{ week_start: "2026-12-13", lock_token: "zz", base_version: built.weeks_info[0].version }], ops: [{ op: "assign", slot: built.slots.find((x) => x.date === "2026-12-14" && x.shift_type === "open").id, employee_id: 1 }] } });
+  ok("建好以后带 version 存 ⇒ 200", r.s === 200 && r.b.weeks["2026-12-13"].applied === 1, JSON.stringify(r).slice(0, 200));
   // 2.3
   r = await j("/api/schedule/leave-categories");
   ok("leave-categories：PTO / Sick / Leave", r.s === 200 && r.b.categories.map((c) => c.label).join() === "PTO,Sick,Leave" && keys(r.b.categories[0], ["key", "label", "sort_order", "is_active"]));

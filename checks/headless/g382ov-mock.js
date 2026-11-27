@@ -190,7 +190,8 @@ function catLabel(key) {
 }
 
 const timeOffOut = (t) => ({ ...t, kind_label: catLabel(t.kind) });
-const weekStatus = (w) => ctl.weekStatus[w] || state.weeks[w]?.status || "draft";
+// 还没建的周 status = null（interface.md §2.1，后端 86 bf80cd51）。
+const weekStatus = (w) => ctl.weekStatus[w] || state.weeks[w]?.status || null;
 
 // ---- 空档：工作时间里没人在班的时段（按小时请假那段不算在班）；只算 today 起的将来 ----
 function gapsFor(slots, timeOff, dates) {
@@ -432,7 +433,9 @@ http
         if (!slotWeeks.has(w.week_start)) continue;
         if (typeof w.base_version !== "string" || !w.base_version) return send(res, 400, { detail: "base_version must be a non-empty string." });
         const cur = state.weeks[w.week_start];
-        if (cur && w.base_version !== cur.version)
+        // 后端：没建过的周带班的 op → 404（range/changes 不建周，要先 GET weeks/{w}）。
+        if (!cur) return send(res, 404, { detail: "This week doesn't exist yet. Reload the page." });
+        if (w.base_version !== cur.version)
           return conflict(res, "Someone else changed this week. Reload to see the latest.", "stale", { week_start: w.week_start, version: cur.version });
       }
       const idx = ops.map((op, i) => [i, op]);
@@ -675,6 +678,32 @@ http
       }
       if (lockM[2] === "/heartbeat") return send(res, 200, { ok: true });
       return send(res, 200, { released: true });
+    }
+    // GET weeks/{w}（后端 schedule.py:641-685 _get_or_create_week / get_week 880）：有 schedule.edit 的人第一次打开没建的周 →
+    // 建成草稿，照上一周复制班（类型、时间、备注，不带人），记 copied_from；上一周没班就是空草稿。
+    // 没 schedule.edit：不建，没发布 / 没建的周 403「This week hasn't been published yet.」。建周记进 /__log（op "build"）。
+    const wm = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})$/.exec(p);
+    if (wm && method === "GET") {
+      const w = wm[1];
+      if (!state.weeks[w]) {
+        if (!canEdit()) return send(res, 403, { detail: "This week hasn't been published yet." });
+        const prev = addDays(w, -7);
+        for (const s0 of state.slots.filter((x) => weekOf(x.date) === prev))
+          state.slots.push({ ...s0, id: nextId++, date: addDays(s0.date, 7), employee_id: null, updated_at: new Date().toISOString() });
+        state.weeks[w] = { status: "draft", version: bumpVer(), copied_from: prev };
+        log.push({ op: "build", method, path: p, body: null });
+      } else if (!canEdit() && weekStatus(w) !== "published") return send(res, 403, { detail: "This week hasn't been published yet." });
+      return send(res, 200, {
+        week_start: w,
+        status: weekStatus(w),
+        version: state.weeks[w].version,
+        copied_from: state.weeks[w].copied_from ?? null,
+        published_with_gaps: false,
+        slots: state.slots.filter((x) => weekOf(x.date) === w),
+        time_off: state.time_off.filter((t) => weekOf(t.date) === w).map(timeOffOut),
+        gaps: gapsFor(state.slots, state.time_off, rangeDates(w, 1)),
+        violations: [],
+      });
     }
     const pm = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/publish$/.exec(p);
     if (pm && method === "POST") {
