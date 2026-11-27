@@ -38,7 +38,25 @@ export type {
   ReportStatus,
   ReportType,
 } from "./daily-report";
-export type { AllowedUser } from "./daily-report";
+export type {
+  AllowedUser,
+  ContactMethod,
+  NoShowClientDetails,
+  NoShowContact,
+  NoShowContactInput,
+  NoShowDecision,
+  NoShowPrefill,
+  NoShowPrefillDay,
+  NoShowReason,
+  NoShowRescheduled,
+  NoShowReportedBy,
+  NoShowServerDetails,
+  OrderContext,
+  OrderContextMark,
+  OrderReport,
+  ReportDetails,
+} from "./daily-report";
+export { NO_SHOW_SERVER_KEYS } from "./daily-report";
 export type {
   BugTaskCreate,
   BugTaskList,

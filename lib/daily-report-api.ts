@@ -10,6 +10,10 @@ import type {
   OperationReportQuery,
   OperationReportUpdate,
   OperationReport,
+  NoShowContact,
+  NoShowContactInput,
+  NoShowPrefill,
+  OrderContext,
   ReportAssignee,
 } from "@/types";
 
@@ -117,4 +121,45 @@ export async function fetchReportAssignees(
     { cache: "no-store", signal },
   );
   return result.users;
+}
+
+/**
+ * G361 No show：填了订单号后带出团期、产品、接客点、司机、导游、车号、Farm out（后端从 Order List + Main manifest + Dispatch 取）。
+ * found: false = 不在 Order List，照样能登记、格子手填；一单几天 ⇒ days 几项，让 staff 选一天。
+ */
+export function fetchNoShowPrefill(
+  orderNumber: string,
+  signal?: AbortSignal,
+): Promise<NoShowPrefill> {
+  return apiFetch<NoShowPrefill>("/api/operation-reports/no-show/prefill", {
+    cache: "no-store",
+    signal,
+    query: { order_number: orderNumber },
+  });
+}
+
+/**
+ * G361 N6：这单以前的记录（四类登记 + ★ Notes + No show 标记）。没有 orders.view 的人后两样的键不在。
+ */
+export function fetchOrderContext(
+  orderNumber: string,
+  signal?: AbortSignal,
+): Promise<OrderContext> {
+  return apiFetch<OrderContext>("/api/operation-reports/order-context", {
+    cache: "no-store",
+    signal,
+    query: { order_number: orderNumber },
+  });
+}
+
+/** G361 No show 联系记录：只加，不能改 / 删；partner 后端 403。 */
+export async function addNoShowContact(
+  id: number,
+  input: NoShowContactInput,
+): Promise<NoShowContact> {
+  const result = await apiFetch<{ contact: NoShowContact }>(
+    `/api/operation-reports/${id}/contacts`,
+    { method: "POST", body: input },
+  );
+  return result.contact;
 }
