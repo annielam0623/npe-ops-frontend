@@ -327,9 +327,20 @@ function rangeBody(from, weeks) {
       .filter((r) => r.status === "pending")
       // 只能批假的人（approver）：只回自己能批的那条（Nadia 的）。can_decide 给页面判断按钮。
       .filter((r) => ctl.viewer !== "approver" || r.employee_id === EMP.N)
-      .map((r) => ({ ...r, kind_label: catLabel(r.kind), can_decide: ctl.viewer !== "hrview", shifts: shiftsOf(r) })),
+      .map((r) => ({ ...r, kind_label: catLabel(r.kind), can_decide: ctl.viewer !== "hrview", shifts: shiftsOf(r), would_gap: r.start_time ? wouldGap(r, r.date_from, r.start_time, r.end_time) : null })),
     change_requests: canEdit() ? changeRequestsOut(wkList) : [],
   };
+}
+
+// would_gap（后端 86 _new_gaps）：这条假批了以后多出来的空档 = 批后的空档里、批前没有的那几段。不写库；没建的周 ⇒ []；整天 ⇒ []。
+function wouldGap(r, date, st, en) {
+  if (!st || !en) return [];
+  if (!state.weeks[weekOf(date)]) return [];
+  const before = gapsFor(state.slots, state.time_off, [date]);
+  const off = state.time_off
+    .filter((t) => !(t.employee_id === r.employee_id && t.date === date))
+    .concat([{ id: -1, employee_id: r.employee_id, date, kind: r.kind, start_time: st, end_time: en, note: null }]);
+  return gapsFor(state.slots, off, [date]).filter((g) => !before.some((b) => b.start_time <= g.start_time && b.end_time >= g.end_time));
 }
 
 function shiftsOf(r) {
@@ -371,7 +382,7 @@ http
     if (p === "/__ctl" && method === "POST") {
       const b = (await readBody(req)) || {};
       if (b.reset) reset();
-      for (const k of ["viewer", "canPublish", "canManageLeaveTypes", "weekStatus", "fail", "today"]) if (k in b) ctl[k] = b[k];
+      for (const k of ["viewer", "canPublish", "canManageLeaveTypes", "weekStatus", "fail", "today", "selfEmp"]) if (k in b) ctl[k] = b[k];
       return send(res, 200, { ok: true, ctl });
     }
     if (p === "/__log") return send(res, 200, log);
@@ -573,6 +584,26 @@ http
         return send(res, 400, { detail: `${NAMES[t.employee_id]} has a shift on ${t.date}. Move the shift before adding a whole day off.` });
       Object.assign(t, next);
       return send(res, 200, { time_off: timeOffOut(t) });
+    }
+
+    // GET leave-requests/{id}/would-gap?date=&start_time=&end_time=（后端 86）：权限同 approve；不能批 ⇒ 404、自己的 ⇒ 403；
+    // 校验同 approve 的 adjust（一天、半点）；整天（两个时间都空）⇒ []；已处理 ⇒ 409 already_decided。
+    const wgm = /^\/api\/schedule\/leave-requests\/(\d+)\/would-gap$/.exec(p);
+    if (wgm && method === "GET") {
+      if (ctl.viewer === "none") return send(res, 403, { detail: "You don't have permission: Schedule: View." });
+      const r = state.leave_requests.find((x) => x.id === Number(wgm[1]));
+      if (!r || (ctl.viewer === "approver" && r.employee_id !== EMP.N)) return send(res, 404, { detail: "Leave request not found." });
+      if (ctl.selfEmp != null && r.employee_id === ctl.selfEmp) return send(res, 403, { detail: "You can't decide your own leave request." });
+      if (r.status !== "pending") return conflict(res, "This request was already decided.", "already_decided", { request: r });
+      const date = url.searchParams.get("date");
+      const st = url.searchParams.get("start_time") || null;
+      const en = url.searchParams.get("end_time") || null;
+      if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return send(res, 400, { detail: 'date must be "YYYY-MM-DD".' });
+      if (!st && !en) return send(res, 200, { would_gap: [] });
+      if (!st || !en) return send(res, 400, { detail: "Give both a start and an end time, or neither for a whole day." });
+      if (!isHalfHour(st) || !isHalfHour(en)) return send(res, 400, { detail: 'Times must be on the half hour ("HH:MM").' });
+      if (en <= st) return send(res, 400, { detail: "The end time must be after the start time." });
+      return send(res, 200, { would_gap: wouldGap(r, date, st, en) });
     }
 
     // 请假批 / 拒（approve 的 body 可选：adjust / shifts / cover / note，这里只做最简单的：note 长度、批了生成 time_off）

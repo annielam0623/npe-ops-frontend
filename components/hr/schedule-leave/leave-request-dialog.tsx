@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 
 import { cleanNote } from "@/components/schedule/add-shift-dialog";
 import { leaveTimeLabel, rejectLeaveRequest } from "@/lib/leave-api";
@@ -15,19 +15,22 @@ import {
   deleteSlotGaps,
   hhmm,
   hourlyError,
-  hourlyLeaveGaps,
   isHourly,
   mins,
   type Span,
 } from "@/lib/schedule-leave";
 import {
   approveLeaveWithChanges,
+  fetchLeaveWouldGap,
   leaveCategoryLabel,
   leaveErrorText,
   type ApproveBody,
   type OverviewLeaveRequest,
 } from "@/lib/schedule-leave-api";
 import { cn } from "@/lib/utils";
+import { describeError, isStatus } from "@/lib/api-errors";
+import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import type { ScheduleGap } from "@/types";
 
 import {
   BTN_BLUE,
@@ -143,38 +146,61 @@ export function LeaveRequestDialog({
 
   /* ── 按小时：会空出来的时段 ── */
   const hourErr = hours ? hourlyError(start, end) : null;
-  const gaps: Span[] = useMemo(() => {
-    if (!hours || hourErr) return [];
-    // 没改时间：只用后端的 would_gap（后端 86 bf80cd51：同发布周空档同一套算法，前端不另算）；没给就当没有空档。
-    if (!adjusted)
-      return (req.would_gap ?? [])
-        .map((g) => ({
-          start: mins(g.start_time) ?? 0,
-          end: mins(g.end_time) ?? 0,
-        }))
-        .filter((g) => g.end > g.start);
-    // 批复人改了日期 / 时段：后端没有「按改过的时间预算空档」的接口，只能在这里算（已报 fe / 86）。
-    return hourlyLeaveGaps(
-      emp,
-      from,
-      start,
-      end,
-      data.employees,
-      data.slots,
-      otherOff,
-    );
-  }, [
-    hours,
-    hourErr,
-    adjusted,
-    req.would_gap,
-    emp,
-    from,
-    start,
-    end,
-    data,
-    otherOff,
-  ]);
+  /*
+   * 空档只听后端（后端 86，同发布周空档一套算法 _new_gaps；前端不另算）：
+   * 时间没改 ⇒ 请求行上的 would_gap；改了日期 / 时段 ⇒ GET leave-requests/{id}/would-gap（停手 300ms 再问，只认最后一次）。
+   * 没问到之前 Approve 是灰的（不加新字）；400 / 409 原话放原来的红框。
+   */
+  const timeChanged =
+    hours &&
+    (!origHourly ||
+      from !== req.date_from ||
+      start !== req.start_time ||
+      end !== req.end_time);
+  const askKey = hours && !hourErr && timeChanged ? `${from}|${start}|${end}` : null;
+  const [asked, setAsked] = useState<{ key: string; gaps: ScheduleGap[] } | null>(null);
+  const [gapErr, setGapErr] = useState<{ key: string; text: string } | null>(null);
+  useEffect(() => {
+    if (!askKey) return;
+    const ac = new AbortController();
+    const t = setTimeout(() => {
+      fetchLeaveWouldGap(req.id, { date: from, start_time: start, end_time: end }, ac.signal)
+        .then((g) => {
+          if (ac.signal.aborted) return;
+          setGapErr(null);
+          setAsked({ key: askKey, gaps: g });
+        })
+        .catch((e: unknown) => {
+          if (ac.signal.aborted) return;
+          if (isStatus(e, 401)) {
+            window.location.href = buildLegacyLoginRedirectUrl(window.location.href);
+            return;
+          }
+          setGapErr({ key: askKey, text: leaveErrorText(e, describeError(e)) });
+        });
+    }, 300);
+    return () => {
+      clearTimeout(t);
+      ac.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [askKey, req.id]);
+  const gapRows: ScheduleGap[] | null =
+    !hours || hourErr
+      ? []
+      : !timeChanged
+        ? (req.would_gap ?? [])
+        : asked?.key === askKey
+          ? asked.gaps
+          : null;
+  const gapPending = gapRows === null;
+  const gapError = askKey && gapErr?.key === askKey ? gapErr.text : null;
+  const gaps: Span[] = (gapRows ?? [])
+    .map((g) => ({
+      start: mins(g.start_time) ?? 0,
+      end: mins(g.end_time) ?? 0,
+    }))
+    .filter((g) => g.end > g.start);
   const needCover = hours && published && gaps.length > 0;
   const coverList = useMemo(
     () =>
@@ -213,6 +239,8 @@ export function LeaveRequestDialog({
     !busy &&
     !blockText &&
     !multiDayHours &&
+    !gapPending &&
+    !gapError &&
     unhandled.length === 0 &&
     coverOk;
 
@@ -629,6 +657,7 @@ export function LeaveRequestDialog({
         text={
           blockText ??
           (multiDayHours ? "Leave by the hour is for one day only." : null) ??
+          gapError ??
           error
         }
       />

@@ -214,35 +214,8 @@ export function othersCoverage(
   return merge(all);
 }
 
-/**
- * 按小时请假会空出来的时段：请假时段 ∩ 他那天的班，再减去别人那段时间的覆盖。
- * 原样的请求只用后端的 `would_gap`（interface.md 第 3 节）；这个只在批复人改了日期 / 时段时用。
- */
-export function hourlyLeaveGaps(
-  employeeId: number,
-  date: string,
-  start: string,
-  end: string,
-  people: LeavePerson[],
-  slots: LeaveSlot[],
-  timeOff: LeaveOff[],
-): Span[] {
-  const leave = spanOf(start, end);
-  if (!leave) return [];
-  const own = slots
-    .filter((s) => s.employee_id === employeeId && s.date === date)
-    .map((s) => spanOf(s.start_time, s.end_time))
-    .filter((x): x is Span => !!x);
-  const lost = intersect([leave], own);
-  const others = othersCoverage(
-    date,
-    employeeId,
-    people,
-    slots,
-    timeOff.filter((t) => !(t.employee_id === employeeId && t.date === date)),
-  );
-  return subtract(lost, others);
-}
+// 按小时请假会空出来的时段只听后端：请求行上的 would_gap / GET leave-requests/{id}/would-gap（后端 86，_new_gaps）。
+// 前端原来的 hourlyLeaveGaps 已删（fe 11-26：只留一套规则）。
 
 /** 删掉这个班会空出来的时段（Q1 A：拿走的班算空档）。 */
 export function deleteSlotGaps(

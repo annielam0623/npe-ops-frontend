@@ -23,6 +23,8 @@ declare global {
     __calls: { url: string; method: string; body: unknown }[];
     __fail: string | null;
     __out: unknown[];
+    /** GET leave-requests/{id}/would-gap 的回包：不设 ⇒ 200，整段请假时段都算空档（整天 ⇒ []）。 */
+    __wg: { status: number; body: unknown } | null;
   }
 }
 
@@ -205,6 +207,7 @@ export default function Harness() {
     window.__calls = [];
     window.__out = [];
     window.__fail = null;
+    window.__wg = null;
     const real = window.fetch.bind(window);
     window.fetch = async (input, init) => {
       const url =
@@ -217,6 +220,33 @@ export default function Harness() {
       const method = init?.method ?? "GET";
       const body = init?.body ? JSON.parse(String(init.body)) : null;
       window.__calls.push({ url, method, body });
+      // 后端 86：改过的时间预算空档（同 _new_gaps，不写库）。
+      if (url.includes("/would-gap?") && method === "GET") {
+        if (window.__wg)
+          return new Response(JSON.stringify(window.__wg.body), {
+            status: window.__wg.status,
+            headers: { "content-type": "application/json" },
+          });
+        const q = new URL(url, location.href).searchParams;
+        const st = q.get("start_time"),
+          en = q.get("end_time");
+        return new Response(
+          JSON.stringify({
+            would_gap:
+              st && en
+                ? [
+                    {
+                      date: q.get("date"),
+                      start_time: st,
+                      end_time: en,
+                      reason: { kind: "leave", employee_id: N, employee_name: "Nadia", leave_kind_label: "Leave" },
+                    },
+                  ]
+                : [],
+          }),
+          { headers: { "content-type": "application/json" } },
+        );
+      }
       if (window.__fail) {
         return new Response(
           JSON.stringify({

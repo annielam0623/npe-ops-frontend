@@ -172,6 +172,22 @@ export function approveLeaveWithChanges(
   });
 }
 
+/**
+ * 批复人改了日期 / 时段时预算空档（后端 86：GET leave-requests/{id}/would-gap，同队列里 would_gap 一套算法 _new_gaps，不写库）。
+ * 整天（两个时间都空）⇒ []；没建的周 ⇒ []；400 同 approve 的 adjust 原话；不能批 404、自己的 403、已处理 409 already_decided。
+ */
+export async function fetchLeaveWouldGap(
+  id: number,
+  at: { date: string; start_time: string; end_time: string },
+  signal?: AbortSignal,
+): Promise<ScheduleGap[]> {
+  const res = await apiFetch<{ would_gap?: ScheduleGap[] | null }>(
+    `/api/schedule/leave-requests/${id}/would-gap`,
+    { query: at, cache: "no-store", signal },
+  );
+  return res.would_gap ?? [];
+}
+
 export interface LeaveSaveError {
   detail: string;
   code?: string;

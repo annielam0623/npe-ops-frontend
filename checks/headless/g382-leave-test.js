@@ -66,6 +66,14 @@ const out = (p) => p.evaluate(() => window.__out);
   /* 1b. 调整（Q11） */
   await open(page, "hour");
   await selectVal(page, 'select[aria-label="To"]', "16:00");
+  check("adjust: Approve grey while asking would-gap", await disabled(page, "[data-leave-approve]"));
+  await sleep(700);
+  {
+    const wg = (await calls(page)).filter((x) => x.url.includes("/would-gap"));
+    const q = wg.length ? new URL(wg[wg.length - 1].url, BASE).searchParams : null;
+    check("adjust: asks GET leave-requests/71/would-gap?date=2026-11-27&start_time=15:00&end_time=16:00 (one call after the pause)", wg.length === 1 && wg[0].method === "GET" && wg[0].url.includes("/leave-requests/71/would-gap?") && q.get("date") === "2026-11-27" && q.get("start_time") === "15:00" && q.get("end_time") === "16:00", JSON.stringify(wg));
+    check("adjust: backend gap ⇒ cover picker + Approve grey", !!(await page.$("[data-cover-select]")) && (await disabled(page, "[data-leave-approve]")));
+  }
   t = await txt(page);
   check("adjust: yellow changed-from", !!(await page.$("[data-adjusted]")) && t.includes("Changed from Fri 11/27 3:00–5:00 PM (Leave)") && t.includes("approved as Fri 11/27 3:00–4:00 PM (Leave)"));
   await selectVal(page, "[data-cover-select]", "4");
@@ -73,6 +81,28 @@ const out = (p) => p.evaluate(() => window.__out);
   await sleep(400);
   c = (await calls(page)).pop();
   check("adjust: body.adjust", c && c.body.adjust?.end_time === "16:00" && c.body.adjust.start_time === "15:00" && c.body.adjust.kind === "personal", JSON.stringify(c?.body));
+
+  /* 1b2. would-gap：后端说没空档 / 400 / 409（后端 86：前端不另算） */
+  await open(page, "hour");
+  await page.evaluate(() => (window.__wg = { status: 200, body: { would_gap: [] } }));
+  await selectVal(page, 'select[aria-label="From"]', "15:30");
+  await sleep(700);
+  check("would-gap []: no cover picker, Approve enabled", !(await page.$("[data-cover-select]")) && !(await disabled(page, "[data-leave-approve]")));
+  await page.evaluate(() => (window.__wg = { status: 400, body: { detail: "Pick times on the hour or half hour." } }));
+  await selectVal(page, 'select[aria-label="To"]', "16:30");
+  await sleep(700);
+  t = await txt(page);
+  check("would-gap 400: backend text in the red box, Approve grey", t.includes("Pick times on the hour or half hour.") && (await disabled(page, "[data-leave-approve]")), t.match(/Pick[^\n]*/)?.[0]);
+  await page.evaluate(() => (window.__wg = { status: 409, body: { detail: { detail: "Someone already decided this request.", code: "already_decided" } } }));
+  await selectVal(page, 'select[aria-label="To"]', "17:00");
+  await selectVal(page, 'select[aria-label="From"]', "16:00");
+  await sleep(700);
+  t = await txt(page);
+  check("would-gap 409: backend text in the red box, Approve grey", t.includes("Someone already decided this request.") && (await disabled(page, "[data-leave-approve]")));
+  {
+    const n = (await calls(page)).filter((x) => x.url.includes("/would-gap")).length;
+    check("would-gap: quick changes ⇒ one call per pause (3)", n === 3, `n=${n}`);
+  }
 
   /* 1c. 后端 409 原话 */
   await open(page, "hour");
