@@ -37,6 +37,11 @@ export function savedMessage(result: OperationReportCreateResult): string {
   if (skipped) return "Saved. Notifications are off.";
   // 置顶 109：一个都没通知到（新后端 sent 空、failed 有人）不说「已通知」，红字那行列谁没收到。
   if (sent && sent.length === 0 && failed?.length) return "Saved.";
+  // G361 N5：No show 不看总开关，Notice 发给此刻在班的人（没人在班 ⇒ Super Admin），不发邮件。
+  if (result.report.report_type === "no_show")
+    return result.notification.in_app > 0
+      ? "Saved. The people on shift got a Notice."
+      : "Saved.";
   return "Saved. People in charge notified.";
 }
 

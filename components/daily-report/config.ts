@@ -334,7 +334,7 @@ export function clientDetails(d: ReportDetails): Partial<NoShowClientDetails> {
 
 /** "2026-11-26" → "Nov 26, 2026"（不经时区换算）。 */
 export function formatYmd(ymd: string | null | undefined): string {
-  if (!ymd || !/^d{4}-d{2}-d{2}$/.test(ymd)) return ymd ?? "";
+  if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return ymd ?? "";
   const [y, m, d] = ymd.split("-").map(Number);
   return new Intl.DateTimeFormat("en-US", {
     timeZone: "UTC",

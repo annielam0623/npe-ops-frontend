@@ -10,14 +10,20 @@ import {
 
 import { capsPlaceholder } from "@/components/ui/placeholder";
 import { Modal } from "@/components/ui/modal";
+import { ApiError } from "@/types";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   createOperationReport,
+  fetchNoShowPrefill,
   fetchReportAssignees,
 } from "@/lib/daily-report-api";
 import { laToday } from "@/lib/la-date";
 import { cn } from "@/lib/utils";
 import type {
+  NoShowPrefill,
+  NoShowPrefillDay,
+  NoShowReason,
+  NoShowReportedBy,
   OperationReportCreateResult,
   PoliceReport,
   ReportAssignee,
@@ -28,8 +34,13 @@ import {
   ABOUT_LABEL,
   COMPLAINT_ABOUTS,
   POLICE_LABEL,
+  REASON_LABEL,
+  REASON_OPTIONS,
+  REPORTED_BY_LABEL,
+  REPORTED_BY_OPTIONS,
   REPORT_TYPES,
   TYPE_LABEL,
+  formatYmd,
   buildReportInput,
   emptyReportForm,
   missingFields,
@@ -38,6 +49,11 @@ import {
   type ReportForm,
 } from "./config";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { EarlierRecords, orderLooksComplete } from "./earlier-records";
+
+/** Dispatch 的 Farm out 灰底白字（farm-out-block.tsx:51-59），DOR 里照搬。 */
+export const FARM_OUT_TAG_CLASS =
+  "rounded-[5px] bg-[#475569] px-[7px] py-px text-[10px] font-bold tracking-[.06em] text-white uppercase";
 
 const FIELD_CLASS =
   "w-full rounded-lg border border-white/20 bg-black/[.28] px-[9px] py-[7px] text-[13px] text-[#f8fafc] placeholder:text-white/35 [color-scheme:dark] focus:border-white/50 focus:outline-none";
@@ -85,14 +101,21 @@ function Segmented<T extends string>({
 }: {
   legend: string;
   options: readonly T[];
-  value: T;
+  /** "" = 都没选（No show 的 Reported by 选填）。 */
+  value: T | "";
   onChange: (next: T) => void;
   label: (option: T) => string;
 }) {
   return (
     <div role="group" aria-label={legend} className="flex flex-col gap-1">
       <span className={LABEL_CLASS}>{legend}</span>
-      <div className="grid grid-cols-3 gap-1.5">
+      <div
+        className={cn(
+          "grid gap-1.5",
+          // 四个（Report type 加了 No show、Complaint about 加了 Office / Booking）：手机上 2 × 2。
+          options.length === 4 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3",
+        )}
+      >
         {options.map((option) => (
           <button
             key={option}
@@ -147,7 +170,55 @@ export function LogIncidentDialog({
   const [clientToken] = useState(newClientToken);
   const [assignees, setAssignees] = useState<ReportAssignee[]>([]);
   const [error, setError] = useState<string | null>(null);
+  /** G361：这单这天已有没关的 No show（后端 409 existing_id）⇒ 红字后面给「Open it →」。 */
+  const [existingId, setExistingId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const [prefill, setPrefill] = useState<NoShowPrefill | null>(null);
+  const [farmOut, setFarmOut] = useState(false);
+  const isNoShow = form.type === "no_show";
+  const prefillOrder = isNoShow ? form.orderNumber.trim().toUpperCase() : "";
+
+  /** 选了一天 ⇒ 那天带出来的值填进格子（空的就留空、能手填）。 */
+  function applyDay(day: NoShowPrefillDay) {
+    setFarmOut(day.farm_out);
+    setForm((prev) => ({
+      ...prev,
+      nsTourDate: day.tour_date,
+      nsProductCode: day.product_code,
+      nsProductName: day.product_name,
+      nsPickup: day.pickup_location,
+      nsDriver: day.driver_name,
+      nsGuide: day.guide_name,
+      nsVehicle: day.vehicle,
+      subject: day.guest_name,
+    }));
+  }
+
+  // G361 No show：订单号像样了（停 400ms）⇒ 后端从 Order List + Main manifest + Dispatch 带出团期等；一单一天就直接选上。
+  useEffect(() => {
+    setPrefill(null);
+    setFarmOut(false);
+    if (!prefillOrder || !orderLooksComplete(prefillOrder)) return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      fetchNoShowPrefill(prefillOrder, controller.signal)
+        .then((p) => {
+          setPrefill(p);
+          if (p.days.length === 1) applyDay(p.days[0]);
+        })
+        .catch((err: unknown) => {
+          if (controller.signal.aborted) return;
+          if (isStatus(err, 401)) onUnauthorized();
+          // 带不出来不挡登记：当成查不到，格子手填。
+          else
+            setPrefill({ order_number: prefillOrder, found: false, days: [] });
+        });
+    }, 400);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [prefillOrder, onUnauthorized]);
 
   // 跟进人下拉：拿不到就只剩「不指定」，不挡登记。
   useEffect(() => {
@@ -171,6 +242,7 @@ export function LogIncidentDialog({
       return;
     }
     setError(null);
+    setExistingId(null);
     setSaving(true);
     try {
       const result = await createOperationReport(
@@ -182,6 +254,11 @@ export function LogIncidentDialog({
         onUnauthorized();
       } else {
         setError(describeError(err));
+        const existing =
+          err instanceof ApiError && isStatus(err, 409)
+            ? (err.body as { existing_id?: unknown } | null)?.existing_id
+            : null;
+        setExistingId(typeof existing === "number" ? existing : null);
       }
       setSaving(false);
     }
@@ -233,8 +310,17 @@ export function LogIncidentDialog({
             />
           ) : null}
 
-          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-            <Field label="CHD# / order" htmlFor={`${id}-order`}>
+          <div
+            className={cn(
+              "grid grid-cols-1 gap-2.5",
+              !isNoShow && "sm:grid-cols-2",
+            )}
+          >
+            <Field
+              label="CHD# / order"
+              htmlFor={`${id}-order`}
+              required={isNoShow}
+            >
               <input
                 id={`${id}-order`}
                 type="text"
@@ -247,7 +333,7 @@ export function LogIncidentDialog({
                 className={FIELD_CLASS}
               />
             </Field>
-            {!isAccident ? (
+            {!isAccident && !isNoShow ? (
               <Field
                 label={subjectLabel(form.type, form.about)}
                 htmlFor={`${id}-subject`}
@@ -270,7 +356,27 @@ export function LogIncidentDialog({
             ) : null}
           </div>
 
-          <Field label="What happened" htmlFor={`${id}-what`} required>
+          {isNoShow ? (
+            <NoShowFields
+              id={id}
+              form={form}
+              set={set}
+              prefill={prefill}
+              farmOut={farmOut}
+              onPickDay={applyDay}
+            />
+          ) : null}
+
+          <EarlierRecords
+            orderNumber={form.orderNumber}
+            onUnauthorized={onUnauthorized}
+          />
+
+          <Field
+            label="What happened"
+            htmlFor={`${id}-what`}
+            required={!isNoShow}
+          >
             <textarea
               id={`${id}-what`}
               placeholder="Short description"
@@ -417,6 +523,18 @@ export function LogIncidentDialog({
           {error ? (
             <p role="alert" className="text-xs text-[#f87171]">
               {error}
+              {existingId ? (
+                <>
+                  {" "}
+                  <a
+                    href={`/daily-report?id=${existingId}`}
+                    data-open-existing
+                    className="font-semibold text-[#38bdf8] hover:underline"
+                  >
+                    Open it →
+                  </a>
+                </>
+              ) : null}
             </p>
           ) : null}
         </div>
@@ -440,5 +558,151 @@ export function LogIncidentDialog({
         </div>
       </form>
     </Modal>
+  );
+}
+
+/**
+ * G361 No show 那一块（preview UAhRhQfyGQYt2D8hWjHqZz ①）：团期必填（几天就按钮选一天；Order List 里查不到就自己填日期），
+ * 其余从 prefill 带出、可改、选填。
+ */
+function NoShowFields({
+  id,
+  form,
+  set,
+  prefill,
+  farmOut,
+  onPickDay,
+}: {
+  id: string;
+  form: ReportForm;
+  set: <K extends keyof ReportForm>(key: K, value: ReportForm[K]) => void;
+  prefill: NoShowPrefill | null;
+  farmOut: boolean;
+  onPickDay: (day: NoShowPrefillDay) => void;
+}) {
+  const days = prefill?.days ?? [];
+  const text = (
+    key: "nsProductName" | "nsPickup" | "nsDriver" | "nsGuide" | "nsVehicle",
+    label: string,
+    max: number,
+    placeholder: string,
+  ) => (
+    <Field label={label} htmlFor={`${id}-${key}`}>
+      <input
+        id={`${id}-${key}`}
+        type="text"
+        autoComplete="off"
+        maxLength={max}
+        placeholder={placeholder}
+        value={form[key]}
+        onChange={(e) => set(key, e.target.value)}
+        className={FIELD_CLASS}
+      />
+    </Field>
+  );
+  const picked = (d: NoShowPrefillDay) =>
+    form.nsTourDate === d.tour_date && form.nsProductCode === d.product_code;
+  return (
+    <>
+      {days.length > 1 ? (
+        <div
+          role="group"
+          aria-label="Tour date"
+          className="flex flex-col gap-1"
+        >
+          <span className={LABEL_CLASS}>
+            Tour date<span className="text-[#f87171]"> *</span>
+          </span>
+          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+            {days.map((d) => (
+              <button
+                key={`${d.tour_date}|${d.product_code}`}
+                type="button"
+                data-ns-day={d.tour_date}
+                aria-pressed={picked(d)}
+                onClick={() => onPickDay(d)}
+                className={cn(
+                  "rounded-lg border px-2 py-1.5 text-left text-[12.5px] font-semibold",
+                  picked(d)
+                    ? "border-[#f8fafc] bg-[#f8fafc] text-[#06101c]"
+                    : "border-white/25 text-[#f8fafc] hover:bg-white/[.08]",
+                )}
+              >
+                {formatYmd(d.tour_date)}
+                {d.product_name ? ` · ${d.product_name}` : ""}
+              </button>
+            ))}
+          </div>
+          <span className="text-[11.5px] text-white/42">
+            This order has {days.length} tour days. Pick the one the guest
+            missed.
+          </span>
+        </div>
+      ) : (
+        <Field label="Tour date" htmlFor={`${id}-nsdate`} required>
+          <input
+            id={`${id}-nsdate`}
+            type="date"
+            value={form.nsTourDate}
+            onChange={(e) => set("nsTourDate", e.target.value)}
+            className={FIELD_CLASS}
+          />
+        </Field>
+      )}
+      {prefill && !prefill.found ? (
+        <p data-ns-not-found className="text-[11.5px] text-[#fbbf24]">
+          This order is not in the Order List. You can still log it: type the
+          tour date and the rest yourself.
+        </p>
+      ) : null}
+      <fieldset className="flex min-w-0 flex-col gap-2.5 rounded-[10px] border border-dashed border-[#c4b5fd]/55 p-2.5">
+        <legend className="flex items-center gap-1.5 px-1 text-xs font-bold text-[#c4b5fd]">
+          No show details
+          {farmOut ? (
+            <span data-farm-out className={FARM_OUT_TAG_CLASS}>
+              Farm out
+            </span>
+          ) : null}
+        </legend>
+        {prefill?.found ? (
+          <span className="text-[10.5px] text-[#c4b5fd]">
+            Filled in from Main manifest and Dispatch. You can change them.
+          </span>
+        ) : null}
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          {text("nsProductName", "Product", 300, "Tour")}
+          {text("nsPickup", "Pickup location", 300, "Where")}
+        </div>
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+          {text("nsDriver", "Driver", 200, "Who")}
+          {text("nsGuide", "Guide", 200, "Who")}
+          {text("nsVehicle", "Vehicle", 50, "Bus / van")}
+        </div>
+        <Segmented<NoShowReportedBy>
+          legend="Reported by"
+          options={REPORTED_BY_OPTIONS}
+          value={form.nsReportedBy}
+          onChange={(next) =>
+            set("nsReportedBy", form.nsReportedBy === next ? "" : next)
+          }
+          label={(o) => REPORTED_BY_LABEL[o]}
+        />
+        <Field label="Reason" htmlFor={`${id}-reason`}>
+          <SelectMenu
+            id={`${id}-reason`}
+            value={String(form.nsReason)}
+            options={[
+              { value: "", label: "Choose…" },
+              ...REASON_OPTIONS.map((o) => ({
+                value: String(o),
+                label: String(REASON_LABEL[o]),
+              })),
+            ]}
+            onChange={(next) => set("nsReason", next as "" | NoShowReason)}
+            className={FIELD_CLASS}
+          />
+        </Field>
+      </fieldset>
+    </>
   );
 }
