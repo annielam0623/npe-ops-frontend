@@ -71,6 +71,7 @@ import { LiveDriversBoard } from "./live-drivers";
 import { PhoneTrackingList } from "./phone-tracking-list";
 import { TrackingTable } from "./tracking-table";
 import { type MarkEditing, markKey, type MarkSaveStatus } from "./mark-cell";
+import { NoShowNoteDialog } from "./no-show-note-dialog";
 import { replaceUrl, useLeaveGuard } from "@/lib/use-leave-guard";
 import { setVisibleInterval } from "@/lib/visible-poll";
 
@@ -350,12 +351,62 @@ export function MorningTrackingView() {
     return true;
   }
 
+  // G372（T1 A）：点 No show ⇒ 先弹窗写备注，弹窗 Save 就存（标记 + 备注 + No show 登记一步）；Cancel 什么都不改。
+  const [nsPopup, setNsPopup] = useState<{
+    row: MorningTrackingRow;
+    col: TrackingMarkCol;
+  } | null>(null);
+  const [nsSaving, setNsSaving] = useState(false);
+  const [nsError, setNsError] = useState<string | null>(null);
+
+  async function saveNoShow(note: string) {
+    if (!nsPopup || nsSaving) return;
+    const { row, col } = nsPopup;
+    const key = markKey(row.id, col);
+    setNsSaving(true);
+    setNsError(null);
+    try {
+      const result = await saveTrackingMark({
+        date: dateRef.current,
+        bookingId: row.id,
+        orderNumber: row.order_number,
+        col,
+        value: "no_show",
+        note,
+      });
+      setStaged((m) => {
+        if (!m.has(key)) return m;
+        const next = new Map(m);
+        next.delete(key);
+        return next;
+      });
+      setMarkStatus((m) =>
+        new Map(m).set(key, {
+          kind: "saved",
+          report: result?.no_show_report,
+        }),
+      );
+      setNsPopup(null);
+      setNsSaving(false);
+      await load(dateRef.current, true);
+    } catch (error) {
+      setNsSaving(false);
+      if (isStatus(error, 401)) redirectToLogin();
+      else setNsError(describeError(error));
+    }
+  }
+
   function stageMark(
     row: MorningTrackingRow,
     col: TrackingMarkCol,
     value: TrackingMarkValue | null | undefined,
   ) {
     const key = markKey(row.id, col);
+    if (value === "no_show") {
+      setNsError(null);
+      setNsPopup({ row, col });
+      return;
+    }
     setStaged((m) => {
       const next = new Map(m);
       if (value === undefined) next.delete(key);
@@ -384,7 +435,7 @@ export function MorningTrackingView() {
       });
     setStatus({ kind: "saving" });
     try {
-      await saveTrackingMark({
+      const result = await saveTrackingMark({
         date: dateRef.current,
         bookingId: row.id,
         orderNumber: row.order_number,
@@ -396,7 +447,8 @@ export function MorningTrackingView() {
         next.delete(key);
         return next;
       });
-      setStatus({ kind: "saved" });
+      // G361 N2：撤回后后端写那份 No show 登记关了还是留着。
+      setStatus({ kind: "saved", report: result?.no_show_report });
       // 后端同一次写入已记成「已处理」：重拉一次拿新标记和「✓ 谁」。
       await load(dateRef.current, true);
     } catch (error) {
@@ -942,7 +994,10 @@ export function MorningTrackingView() {
                   'Relay shows what the relay driver marked: Picked up or No show. Bus shows what the guide marked when guests got on the bus: Boarded or No show. Guests who board at Treasure Island have no relay, so Relay shows "—". The Bus mark is the final word on a No show.',
                   ...(canTakeMorning
                     ? [
-                        "If a guest did not show up, click No show in the Bus column so it turns red, then click Save next to it. To take it back, click the red No show and click Save. Your change shows on Main manifest, the Bus Manifest page and the order page. The guide's own mark is kept: hover over the mark to see it.",
+                        // G372 / G361（preview UAhRhQfyGQYt2D8hWjHqZz ⑧）。
+                        "If a guest did not show up, click No show in the Bus column. Write a note if you want (optional) and click Save; Cancel changes nothing. Saving also logs a No show report in Daily Operation Report, or adds to the open one for this order and day. Your note is kept in the order's ★ Notes.",
+                        "To take it back, click the red No show and click Save. If nobody has worked on the No show report yet, it is closed; otherwise it stays open with a line saying the No show was cleared.",
+                        "Your change shows on Main manifest, the Bus Manifest page and the order page. The guide's own mark is kept: hover over the mark to see it.",
                       ]
                     : []),
                   "Only guests who were sent the morning pickup text are listed here. A guest who was not sent it has no row, so you can't change their mark on this page. The guide's Bus mark for that guest still shows on Main manifest, the Bus Manifest page and the order page.",
@@ -981,6 +1036,23 @@ export function MorningTrackingView() {
           }}
           onUnauthorized={redirectToLogin}
           sendBoth={conversationBoth}
+        />
+      ) : null}
+      {nsPopup ? (
+        <NoShowNoteDialog
+          row={nsPopup.row}
+          date={new Intl.DateTimeFormat("en-US", {
+            timeZone: "UTC",
+            month: "short",
+            day: "numeric",
+          }).format(new Date(`${dateRef.current}T12:00:00Z`))}
+          saving={nsSaving}
+          error={nsError}
+          onSave={(note) => void saveNoShow(note)}
+          onCancel={() => {
+            setNsPopup(null);
+            setNsError(null);
+          }}
         />
       ) : null}
     </main>

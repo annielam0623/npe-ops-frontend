@@ -13,7 +13,11 @@ import { formatMarkTime, isStaffMark, markHover, markLabel } from "./config";
 /** 一格的保存结果：Saving… / Saved（绿）/ 红字照后端原话。 */
 export type MarkSaveStatus =
   | { kind: "saving" }
-  | { kind: "saved" }
+  | {
+      kind: "saved";
+      /** G361：后端建 / 挂 / 关了哪份 No show 登记（没跑就没有）。 */
+      report?: import("@/lib/morning-tracking-api").TrackingNoShowReport;
+    }
   | { kind: "error"; message: string };
 
 /**
@@ -232,9 +236,7 @@ export function MarkCell({
   }
 
   const who =
-    mark && !staff
-      ? [mark.vehicle, mark.by].filter(Boolean).join(" ")
-      : "";
+    mark && !staff ? [mark.vehicle, mark.by].filter(Boolean).join(" ") : "";
 
   return (
     <div
@@ -269,9 +271,15 @@ export function MarkCell({
         <span className="text-[11px] text-[#7a9bbe]">{who}</span>
       ) : null}
       {status?.kind === "saved" && !dirty ? (
-        <span data-mark-saved className="text-[11px] font-semibold text-[#2ecc71]">
+        <span
+          data-mark-saved
+          className="text-[11px] font-semibold text-[#2ecc71]"
+        >
           Saved
         </span>
+      ) : null}
+      {status?.kind === "saved" && !dirty && status.report ? (
+        <NoShowReportLine report={status.report} />
       ) : null}
       {status?.kind === "error" ? (
         <span
@@ -299,5 +307,58 @@ export function MarkCell({
         ) : null
       ) : null}
     </div>
+  );
+}
+
+/**
+ * G361 / G372：存好后那份 No show 登记的一行（存：「No show report #N →」；撤回：关了还是留着，N2）。
+ * 备注 / 登记那部分没成（note_error / report_error）红字照原话写，标记本身已存。
+ */
+function NoShowReportLine({
+  report,
+}: {
+  report: import("@/lib/morning-tracking-api").TrackingNoShowReport;
+}) {
+  const link = report.report_id ? (
+    <a
+      href={`/daily-report?id=${report.report_id}`}
+      data-ns-report-link={report.report_id}
+      className="text-[11px] text-[#38bdf8] hover:underline"
+    >
+      No show report #{report.report_id} →
+    </a>
+  ) : null;
+  const errors = [
+    "note_error" in report && report.note_error
+      ? `Note not saved: ${report.note_error}`
+      : "",
+    report.report_error
+      ? `No show report not saved: ${report.report_error}`
+      : "",
+  ].filter(Boolean);
+  return (
+    <span
+      data-ns-report
+      className="flex max-w-[260px] flex-col gap-0.5 whitespace-normal"
+    >
+      {"closed" in report ? (
+        <span className="text-[11px] text-[#2ecc71]">
+          {report.closed
+            ? `No show report #${report.report_id} closed.`
+            : `No show report #${report.report_id} stays open: someone is already working on it.`}
+        </span>
+      ) : (
+        link
+      )}
+      {errors.map((e) => (
+        <span
+          key={e}
+          data-ns-report-error
+          className="text-[11px] text-[#f87171]"
+        >
+          {e}
+        </span>
+      ))}
+    </span>
   );
 }
