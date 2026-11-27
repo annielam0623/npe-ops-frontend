@@ -145,13 +145,15 @@ export function LeaveRequestDialog({
   const hourErr = hours ? hourlyError(start, end) : null;
   const gaps: Span[] = useMemo(() => {
     if (!hours || hourErr) return [];
-    if (!adjusted && req.would_gap)
-      return req.would_gap
+    // 没改时间：只用后端的 would_gap（后端 86 bf80cd51：同发布周空档同一套算法，前端不另算）；没给就当没有空档。
+    if (!adjusted)
+      return (req.would_gap ?? [])
         .map((g) => ({
           start: mins(g.start_time) ?? 0,
           end: mins(g.end_time) ?? 0,
         }))
         .filter((g) => g.end > g.start);
+    // 批复人改了日期 / 时段：后端没有「按改过的时间预算空档」的接口，只能在这里算（已报 fe / 86）。
     return hourlyLeaveGaps(
       emp,
       from,

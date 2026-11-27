@@ -216,7 +216,7 @@ export function othersCoverage(
 
 /**
  * 按小时请假会空出来的时段：请假时段 ∩ 他那天的班，再减去别人那段时间的覆盖。
- * 后端会在请求行上带 `would_gap`（interface.md 第 3 节）；有就用后端的，没有才用这个（mock / 旧后端）。
+ * 原样的请求只用后端的 `would_gap`（interface.md 第 3 节）；这个只在批复人改了日期 / 时段时用。
  */
 export function hourlyLeaveGaps(
   employeeId: number,

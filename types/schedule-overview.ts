@@ -21,8 +21,9 @@ export type { LeaveCategory };
 /** 2.1 weeks_info 一行。 */
 export interface OverviewWeekInfo {
   week_start: string;
-  status: ScheduleWeekStatus;
-  /** 还没建的周 = null。 */
+  /** 还没建的周 = null（interface.md §2.1，后端 86 bf80cd51）。 */
+  status: ScheduleWeekStatus | null;
+  /** 还没建的周 = null；要改这一周先 GET weeks/{w} 建出来。 */
   version: string | null;
   published_with_gaps: boolean;
 }

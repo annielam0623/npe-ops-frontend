@@ -252,8 +252,77 @@ export function ScheduleOverview() {
   };
 
   // ---- 改草稿 ----
-  const edit = async (weeks: string[], change: (d: Draft) => Draft) => {
+  /**
+   * Q-1 B（后端 86，interface.md §2.1）：range 只读、不建周；还没建的周（version=null）第一次改班前
+   * 先 GET weeks/{w}——后端照上一周复制班（不带人）建成草稿、给 version。再把复制来的班并进 base 和草稿，
+   * 用户的改动叠在上面。没权限的 GET 给 403，什么都不建。返回报错文字或 null。
+   */
+  const buildWeeks = async (weeks: string[]): Promise<string | null> => {
+    if (!range) return null;
+    const need = [...new Set(weeks)]
+      .filter((w) => {
+        const i = range.weeks_info.find((x) => x.week_start === w);
+        return i && i.version == null;
+      })
+      .sort();
+    if (!need.length) return null;
+    let fresh: ScheduleRange;
+    try {
+      for (const w of need) await fetchScheduleWeek(w);
+      fresh = await fetchScheduleRange(range.from, range.weeks);
+    } catch (error) {
+      if (isStatus(error, 401)) {
+        redirectToLogin();
+        return "Please sign in again.";
+      }
+      return leaveErrorText(error, describeError(error));
+    }
+    const built = new Set(need);
+    const inBuilt = (x: { date: string }) => built.has(weekStartYmd(x.date));
+    const copied = draftFrom(fresh.slots.filter(inBuilt), []).slots;
+    // 按 id 去重：两次改动几乎同时到（range 还没刷新）时第二次 GET 拿到的是同一批班，不能并两遍。
+    const ids = new Set(copied.map((s) => s.key));
+    setBase((b) => ({
+      ...b,
+      slots: [...b.slots.filter((s) => !inBuilt(s) && !ids.has(s.key)), ...copied],
+    }));
+    setDraft((d) => ({ ...d, slots: [...d.slots.filter((s) => !ids.has(s.key)), ...copied] }));
+    setLoad((l) =>
+      l.kind !== "ready"
+        ? l
+        : {
+            kind: "ready",
+            range: {
+              ...l.range,
+              weeks_info: l.range.weeks_info.map(
+                (i) =>
+                  (built.has(i.week_start) &&
+                    fresh.weeks_info.find((f) => f.week_start === i.week_start)) ||
+                  i,
+              ),
+              slots: [...l.range.slots.filter((s) => !inBuilt(s)), ...fresh.slots.filter(inBuilt)],
+              gaps: [...l.range.gaps.filter((g) => !inBuilt(g)), ...fresh.gaps.filter(inBuilt)],
+            },
+          },
+    );
+    if (copied.length)
+      setBanner({
+        tone: "ok",
+        text: `Set up ${need.map((w) => `the week of ${mdy(w)}`).join(", ")} from the week before (shifts copied, no people). Your change is added on top. Press Save to keep it.`,
+      });
+    return null;
+  };
+
+  const edit = async (
+    weeks: string[],
+    change: (d: Draft) => Draft,
+    opts?: { leaveOnly?: boolean },
+  ) => {
     setEditError(null);
+    if (!opts?.leaveOnly) {
+      const err = await buildWeeks(weeks);
+      if (err) return setEditError(err);
+    }
     const r = await locks.ensure(weeks);
     if (!r.ok) return setEditError(r.detail);
     setDraft((d) => change(d));
@@ -723,14 +792,18 @@ export function ScheduleOverview() {
             onClose={close}
             onSubmit={(entry) => {
               close();
-              void edit([weekStartYmd(entry.date)], (d) => setOff(d, { ...entry, kind_label: null }));
+              void edit([weekStartYmd(entry.date)], (d) => setOff(d, { ...entry, kind_label: null }), {
+                leaveOnly: true,
+              });
               return null;
             }}
             onDelete={
               ex
                 ? async () => {
                     close();
-                    await edit([weekStartYmd(ex.date)], (d) => deleteOff(d, ex.key));
+                    await edit([weekStartYmd(ex.date)], (d) => deleteOff(d, ex.key), {
+                      leaveOnly: true,
+                    });
                     return null;
                   }
                 : undefined
