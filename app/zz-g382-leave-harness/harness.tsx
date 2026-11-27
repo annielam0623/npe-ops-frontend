@@ -112,6 +112,15 @@ const hourReq = {
   start_time: "15:00",
   end_time: "17:00",
   note: "Doctor appointment",
+  // 后端 86 bf80cd51：待批的按小时请假带 would_gap（同发布周空档同一套算法）；请假框不再自己算。
+  would_gap: [
+    {
+      date: PUB,
+      start_time: "15:00",
+      end_time: "17:00",
+      reason: { kind: "leave" as const, employee_id: N, employee_name: "Nadia", leave_kind_label: "Leave" },
+    },
+  ],
 };
 const hourDraftReq = {
   ...hourReq,
@@ -120,6 +129,14 @@ const hourDraftReq = {
   employee_name: "Jing",
   date_from: "2026-12-08",
   date_to: "2026-12-08",
+  would_gap: [
+    {
+      date: "2026-12-08",
+      start_time: "15:00",
+      end_time: "17:00",
+      reason: { kind: "leave" as const, employee_id: J, employee_name: "Jing", leave_kind_label: "Leave" },
+    },
+  ],
 };
 const dayReq = {
   ...base,
