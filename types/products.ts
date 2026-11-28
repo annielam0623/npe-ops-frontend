@@ -241,6 +241,11 @@ export interface ManifestSetupGroup {
    * 后端没上线时没有这个键。
    */
   relay_round?: string | null;
+  /**
+   * G333 团含不含餐（后端 82f9fec8）：true / false；null = 这个设置从没存过（后端照按团之前的判据：票型 / 产品名带 Lunch）。
+   * 旧后端没有这个键 ⇒ 不出这一格。
+   */
+  includes_lunch?: boolean | null;
   extras: ManifestExtra[];
   /**
    * G374 票名改名表（后端合同 g374-ticket-labels-2026-11-23，migrate_v183）：Bus Manifest Pax 格里一种票的原文 → 要显示的名字，

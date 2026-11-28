@@ -1998,10 +1998,14 @@ function ManifestTable({
     // 看不到钱的人不标（标了就等于告诉他没收齐款）。
     const unpaidFee =
       seeMoney && !canSend(r) && Number(r.values.total_due ?? 0) !== 0;
+    // G333（Annie 2026-11-20「这个订单在main manifest里标红，并在餐上写原因」，11-27「动手」）：不带餐却写了三明治 ⇒ 整行同样的淡红。
+    const noLunchBooked = r.lunch_no_booked === true;
     return (
       <tr
         key={r.row_key}
         data-row={r.row_key}
+        data-no-lunch-booked={noLunchBooked ? "" : undefined}
+        title={noLunchBooked && r.lunch_note ? r.lunch_note : undefined}
         data-highlight={r.row_key === highlight ? "" : undefined}
         className={cn(
           "border-b-[0.5px] border-black/[.06] align-middle last:border-b-0 night:border-white/[.06]",
@@ -2009,7 +2013,7 @@ function ManifestTable({
             ? "bg-[#fff3cd] hover:bg-[#ffecb3] night:bg-amber-400/15 night:hover:bg-amber-400/20"
             : sentTickets
               ? "bg-[#fff8e1] hover:bg-[#fff3cd] night:bg-amber-400/[.06] night:hover:bg-amber-400/10"
-              : missingCfm || unpaidFee
+              : missingCfm || unpaidFee || noLunchBooked
                 ? "bg-[#fdeceb] hover:bg-[#fbdedb] night:bg-rose-400/10 night:hover:bg-rose-400/15"
                 : "hover:bg-[#fafaf8] night:hover:bg-white/[.03]",
         )}
@@ -2554,6 +2558,18 @@ function Cell({
   fieldKey: string;
 }) {
   const text = formatValue(field, row.values[fieldKey], row);
+  // G333：不带餐却写了三明治 ⇒ Special requirements 原文下面一行红字原因，在 G364 橙字上面。
+  const noLunch =
+    fieldKey === "special_requirements" &&
+    row.lunch_no_booked === true &&
+    row.lunch_note ? (
+      <span
+        data-no-lunch-why
+        className="mt-0.5 block max-w-xs min-w-48 text-[11.5px] leading-[1.35] whitespace-normal text-[#c00000] night:text-red-300"
+      >
+        {row.lunch_note}
+      </span>
+    ) : null;
   // G364 Q1 A：Special requirements 格下面一行橙字（只在后端说不一样的单；这一列关了就不出）。
   const guestLunch =
     fieldKey === "special_requirements" &&
@@ -2570,6 +2586,7 @@ function Cell({
     return (
       <>
         <span className="text-[#1a1a1a] night:text-white/25">—</span>
+        {noLunch}
         {guestLunch}
       </>
     );
@@ -2580,13 +2597,14 @@ function Cell({
         className={cn(
           long
             ? "block max-w-xs min-w-48 [overflow-wrap:anywhere] whitespace-pre-line"
-            : guestLunch
+            : guestLunch || noLunch
               ? "block whitespace-nowrap"
               : "whitespace-nowrap",
         )}
       >
         {text}
       </span>
+      {noLunch}
       {guestLunch}
     </>
   );
@@ -2816,7 +2834,10 @@ function ManifestsHowToUse() {
           picked … — check Rezdy&rdquo; under Special requirements means the
           guest picked a different lunch in the tour confirmation, so the lunch
           in Rezdy is probably wrong. Check it and fix Special Requirements in
-          Rezdy.
+          Rezdy. A light red row with a red reason under Special requirements
+          means the guest wrote sandwiches but has no lunch (a tour without
+          lunch, a shuttle, or a No Lunch ticket). Those sandwiches are not
+          counted. Check the order.
         </>,
         <>
           Click <b>☰ Columns</b> to choose which fields to show. Every field

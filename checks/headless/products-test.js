@@ -1369,6 +1369,73 @@ async function run() {
   }
   check("电脑：How to use 照旧在上面、说明照旧全显示", (await evaluate(`return ${howProducts} < document.querySelector('table').getBoundingClientRect().top + scrollY;`)) && (await evaluate("const f = document.querySelector('[data-field]'); return !f || f.querySelector('p').getBoundingClientRect().height > 0;")));
   await ticketChecks();
+  await tourLunchChecks();
+}
+
+// ── G333 Includes lunch（后端 82f9fec8；Annie 2026-11-27「其他同意推荐，动手」= Q1 B 先选后存；preview Nu5iBNZDo9NqVyqyPxVXRf ①）──
+async function tourLunchChecks() {
+  const F = "$q('[data-tour-lunch]').closest('[data-field]')";
+  const box = "$q('[data-tour-lunch]')";
+  const tourSel = "$q('[aria-label=\"Tour group\"]')";
+  const PATH1 = "/api/settings/manifest-setup/groups/1/includes-lunch";
+  const openSetup = async () => {
+    await goto(`${APP}/settings/products`);
+    await waitFor("document.querySelector('[data-setup-toggle]')", 30000);
+    await h();
+    await evaluate("const t = document.querySelector('[data-setup-toggle]'); if (t.getAttribute('aria-expanded') === 'false') t.click(); return 1;");
+    await waitFor("$q('[data-field=extras]')", 15000);
+  };
+  await ctl({ g333: false });
+  await openSetup();
+  check("G333 旧后端没带 includes_lunch：不出 Includes lunch、How to use 没那句、Lunch sheet line 照旧编号 3", await evaluate("return !$q('[data-tour-lunch]') && !document.querySelector('[data-howto-tour-lunch]') && [...document.querySelectorAll('[data-field]')].some(f => f.firstElementChild.textContent === '3' && f.querySelector('h3').textContent === 'Lunch sheet line');"));
+
+  await ctl({ g333: true, tourLunchFail: "" });
+  await openSetup();
+  await waitFor("$q('[data-tour-lunch]')", 15000);
+  check("G333：Includes lunch 编号 3、放在 Lunch sheet line 上面，Lunch sheet line 变 ↳",
+    await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|').includes('↳:Extras|3:Includes lunch|↳:Lunch sheet line|4:Guests per bus');"),
+    await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|');"));
+  check("G333：没设过（null）⇒ 没勾，旁边灰字 Not set yet…；Save 灰的",
+    await evaluate(`return !${box}.checked && $q('[data-tour-lunch-unset]')?.textContent.replace(/\\s+/g, ' ').trim() === 'Not set yet: lunch still follows the ticket and product name.' && ${F}.querySelector('[data-save-btn]').disabled;`),
+    await evaluate(`return JSON.stringify({ g: $q('[aria-label="Tour group"]')?.value, checked: ${box}.checked, unset: $q('[data-tour-lunch-unset]')?.textContent, dis: ${F}.querySelector('[data-save-btn]')?.disabled, how: document.querySelector('[data-howto-tour-lunch]')?.textContent.slice(0, 160) });`));
+  check("G333：How to use 一条，75 原文但「Click Save to keep it.」（不写 saves right away）",
+    await evaluate("const t = document.querySelector('[data-howto-tour-lunch]')?.textContent.replace(/\\s+/g, ' ') ?? ''; return t.startsWith('Includes lunch: tick it for a tour that includes lunch (for example Antelope Canyon, South Rim, Bryce & Zion). Click Save to keep it. Guests in its tour sections then count in LUNCH') && t.includes('Meal and Grab and Go tickets on West Rim are still counted in their own boxes at the bottom of the Bus Manifest.') && !t.includes('saves right away');"));
+  let before = (await mockLog()).length;
+  await evaluate(`${box}.click(); return 1;`);
+  await sleep(400);
+  check("G333 先选后存：勾了先不发 PUT；框变橙、Save 能按、Not set yet 收起",
+    (await since(before, (e) => e.path === PATH1)).length === 0 && (await evaluate(`return ${box}.checked && ${box}.closest('label').className.includes('outline-[#f59e0b]') && !${F}.querySelector('[data-save-btn]').disabled && !$q('[data-tour-lunch-unset]');`)));
+  // 有没存的改动时换团：先问
+  await evaluate(`await $sel(${tourSel}, '7');`);
+  await waitFor("document.querySelector('[data-leave-dialog]')");
+  check("G333：没存就换团 ⇒ 弹 Leave without saving?，列出 Upper Antelope: Includes lunch", await evaluate("return document.querySelector('[data-leave-dialog]').textContent.includes('Upper Antelope: Includes lunch');"));
+  await evaluate("$btn('Cancel', document.querySelector('[data-leave-dialog]')).click();");
+  await sleep(300);
+  before = (await mockLog()).length;
+  await evaluate(`${F}.querySelector('[data-save-btn]').click(); return 1;`);
+  let put = await waitPut(before, PATH1);
+  await waitFor(`!!${F}.querySelector('[data-save-ok]')`);
+  check("G333 按 Save：PUT {includes_lunch: true}，绿字 Saved、还是勾着",
+    JSON.stringify(put?.body) === '{"includes_lunch":true}' && (await evaluate(`const ok = ${F}.querySelector('[data-save-ok]'); return ${box}.checked && /Saved/.test(ok.textContent) && getComputedStyle(ok).color !== getComputedStyle(document.body).color;`)), JSON.stringify(put?.body));
+  await evaluate(`await $sel(${tourSel}, '7');`);
+  await waitFor(`${tourSel}.value === '7' && !!$q('[data-tour-lunch]')`);
+  await sleep(300);
+  check("G333：勾了一个团以后，其他没设过的团（Private）变成没勾、不再写 Not set yet", await evaluate(`return !${box}.checked && !$q('[data-tour-lunch-unset]');`));
+  await evaluate(`await $sel(${tourSel}, '1');`);
+  await waitFor(`${tourSel}.value === '1' && $q('[data-tour-lunch]')?.checked === true`);
+  // 存不上：红字后端原话，改的留着
+  await ctl({ tourLunchFail: "Only admins can change Includes lunch." });
+  await evaluate(`${box}.click(); return 1;`);
+  before = (await mockLog()).length;
+  await evaluate(`${F}.querySelector('[data-save-btn]').click(); return 1;`);
+  put = await waitPut(before, PATH1);
+  await waitFor(`!!${F}.querySelector('[data-save-error]')`);
+  check("G333 存不上：红字写后端原话，没勾的草稿留着、Save 还在",
+    JSON.stringify(put?.body) === '{"includes_lunch":false}' && (await evaluate(`const e = ${F}.querySelector('[data-save-error]'); return e.textContent.includes('Only admins can change Includes lunch.') && !${box}.checked && !${F}.querySelector('[data-save-btn]').disabled;`)),
+    await evaluate(`return ${F}.querySelector('[data-save-error]')?.textContent;`));
+  // 收尾：改回已存的，不留草稿（后面没测了，也不让离开页面卡住）
+  await evaluate(`${box}.click(); return 1;`);
+  await ctl({ g333: false, tourLunchFail: "" });
 }
 
 // ── G374 票名改名表（Annie 2026-11-23「同意，动手」；后端窗口 47 合同 g374-ticket-labels-2026-11-23）──

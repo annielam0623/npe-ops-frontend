@@ -245,6 +245,8 @@ export interface ManifestLunchMismatch {
   lunch_text: string;
   bus_label: string;
   tour: string;
+  /** G333：不带餐却写了三明治 ⇒ 原因一句（英文）；其他餐不符 ⇒ null / 没有。 */
+  reason?: string | null;
 }
 
 /** Lankun 版合计一排下面的餐厅块（定 19 / Q30）：店名、Contact 两行、这台车的 B / T / V 合计。 */

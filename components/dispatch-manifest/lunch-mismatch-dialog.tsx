@@ -46,6 +46,8 @@ export function LunchMismatchDialog({
 }) {
   const [title, button] = VERB[action];
   const n = orders.length;
+  // G333（preview Nu5iBNZDo9NqVyqyPxVXRf ③）：有「不带餐却写了三明治」的单 ⇒ 黄框标题多半句，Lunch 栏下面写原因。
+  const anyNoLunch = orders.some((o) => !!o.reason);
   const d = differs.length;
   const differsHead =
     d === 1
@@ -70,7 +72,9 @@ export function LunchMismatchDialog({
           {n ? (
             <>
               <b>
-                {n} booking{n === 1 ? "" : "s"}: lunch doesn&rsquo;t match pax.
+                {n} booking{n === 1 ? "" : "s"}: lunch doesn&rsquo;t match pax
+                {anyNoLunch ? ", or sandwiches on a booking without lunch" : ""}
+                .
               </b>
               <br />
               Check {n === 1 ? "it" : "them"} before you{" "}
@@ -127,6 +131,14 @@ export function LunchMismatchDialog({
                       <td className={TD}>{o.pax}</td>
                       <td className={`${TD} font-semibold text-[#c00000]`}>
                         {o.lunch_text || "-"}
+                        {o.reason ? (
+                          <span
+                            data-mismatch-reason
+                            className="block text-[11.5px] leading-[1.3] font-medium whitespace-normal"
+                          >
+                            {o.reason}
+                          </span>
+                        ) : null}
                       </td>
                     </tr>
                   ))}

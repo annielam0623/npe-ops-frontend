@@ -121,6 +121,7 @@ async function main() {
     await runColumns();
     await runViewOnly();
     await runPhoneFit();
+    await runG333();
   } finally {
     ws.close();
     chrome.kill();
@@ -1816,4 +1817,28 @@ async function runPhoneFit() {
   await evaluate("document.querySelector('[data-mf-full-close]').click(); return 1;");
   await cdp("Emulation.clearDeviceMetricsOverride");
   await ctl({ textSize: false, assist: false });
+}
+
+// ── G333 Q2 B（Annie 2026-11-27「其他同意推荐，动手」；preview Nu5iBNZDo9NqVyqyPxVXRf ②③）：不带餐却写了三明治 ⇒
+//    红字下面一行小红字原因（屏幕上）；打印 / 下载前提醒框里 Lunch 栏下写原因、黄框多半句 ──
+async function runG333() {
+  const why = "Booked without lunch, but Special requirements ask for 2 T. Check the order.";
+  await ctl({ bmv: true, version: "general", busCols: false, partner: false, staffPerms: null, superAdmin: false, layout: false, canyon: false, canyonHoover: false, g198: false, textSize: false, g333Note: why });
+  await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+  await waitFor("document.querySelector('tr[data-guest=CHD2] [data-notes-cell]')", 60000);
+  await helpers();
+  check("G333 Q2 B：CHD2 红字下面一行小红字原因（后端 lunch_note），悬停也是这句",
+    await evaluate(`const td = document.querySelector('tr[data-guest=CHD2] [data-notes-cell]'); const w = td.querySelector('[data-no-lunch-why]'); return !!w && w.textContent === ${JSON.stringify(why)} && getComputedStyle(w).color === 'rgb(192, 0, 0)' && getComputedStyle(w).display === 'block' && td.title === ${JSON.stringify(why)};`),
+    await evaluate("return document.querySelector('tr[data-guest=CHD2] [data-notes-cell]')?.innerHTML;"));
+  check("G333：没有 lunch_note 的客人（CHD1、CHD3）不出原因行", await evaluate("return !document.querySelector('tr[data-guest=CHD1] [data-no-lunch-why], tr[data-guest=CHD3] [data-no-lunch-why]');"));
+  await evaluate("window.__opened = []; window.open = (u) => { window.__opened.push(String(u)); return null; }; document.addEventListener('click', (e) => { const a = e.target.closest && e.target.closest('a[target=_blank]'); if (a) e.preventDefault(); }); return 1;");
+  await evaluate("[...document.querySelectorAll('main a')].find(a => a.textContent.trim().startsWith('Print all buses')).click(); return 1;");
+  await waitFor("document.querySelector('[data-lunch-mismatch-dialog]')", 5000);
+  check("G333 ③ 提醒框：黄框「… lunch doesn’t match pax, or sandwiches on a booking without lunch.」；CHD2 的 Lunch 栏下写原因，CHD3（份数不对）不写",
+    await evaluate(`const d = document.querySelector('[data-lunch-mismatch-dialog]'); const y = d.querySelector('[data-mismatch-yellow]').textContent.replace(/\\s+/g, ' '); const r2 = d.querySelector('tr[data-mismatch-row=CHD2] [data-mismatch-reason]'); return y.includes('2 bookings: lunch doesn’t match pax, or sandwiches on a booking without lunch.') && !!r2 && r2.textContent === ${JSON.stringify(why)} && !d.querySelector('tr[data-mismatch-row=CHD3] [data-mismatch-reason]');`),
+    await evaluate("return document.querySelector('[data-lunch-mismatch-dialog]')?.textContent;"));
+  await evaluate("$btn('Cancel', document.querySelector('[data-lunch-mismatch-dialog]')).click(); return 1;");
+  check("G333 How to use：Red text 那条加了「不带餐却写了三明治」那句（原因在红字下面）",
+    await evaluate("return document.body.textContent.replace(/\\s+/g, ' ').includes('Red text can also mean the guest wrote sandwiches but has no lunch (a tour without lunch, a shuttle, or a No Lunch ticket). The reason is under the red text. Those sandwiches are not counted and are not on the lunch sheet. Check the order.');"));
+  await ctl({ g333Note: "" });
 }
