@@ -380,6 +380,20 @@ async function run() {
   check("每台车一块：色条（司机、BUS #）、节标题用节颜色", await evaluate("const b = document.querySelector('section[aria-label=\"Bus 2041=A\"]'); return !!b && b.textContent.includes('FREDDY') && b.textContent.includes('BUS #: 2041=A') && [...b.querySelectorAll('td')].some(td => td.textContent === 'LOWER ANTELOPE - 4 PAX' && td.style.background.includes('191, 227, 176'));"));
   check("shuttle 节：票种后加红色 OUTBOUND", await evaluate("return [...document.querySelectorAll('tr[data-guest=CHD9] td')].some(td => td.textContent === 'Shuttle OUTBOUND');"));
   check("票种有 + 标黄、三明治读不出红字原文", await evaluate("const r = document.querySelector('tr[data-guest=CHD2]'); return [...r.children].some(td => td.className.includes('fff200') && td.textContent.includes('+')) && [...r.children].some(td => td.className.includes('d00000') && td.title.includes('Sandwiches could not be read'));"));
+  // G333：后端给了 lunch_note（不带餐却写了三明治）⇒ 红字悬停写这句原因；没给 ⇒ 照旧「读不出」（上一项）。
+  {
+    const why = "Booked without lunch, but Special requirements ask for 1 T. Check the order.";
+    await ctl({ g333Note: why });
+    await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+    await waitFor("document.querySelector('tr[data-guest=CHD2] [data-notes-cell]')", 30000);
+    await helpers();
+    check("G333：红字 Special Requirements 悬停用后端 lunch_note 的原因", await evaluate(`const td = document.querySelector('tr[data-guest=CHD2] [data-notes-cell]'); return td.className.includes('d00000') && td.title === ${JSON.stringify(why)};`), await evaluate("return document.querySelector('tr[data-guest=CHD2] [data-notes-cell]')?.title;"));
+    await ctl({ g333Note: "" });
+    await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+    await waitFor("document.querySelector('tr[data-guest=CHD2] [data-notes-cell]')", 30000);
+    await helpers();
+    check("G333：没有 lunch_note ⇒ 悬停照旧「Sandwiches could not be read…」", await evaluate("return document.querySelector('tr[data-guest=CHD2] [data-notes-cell]').title.startsWith('Sandwiches could not be read');"));
+  }
   check("司机标了上车显示 ✓", await evaluate("return [...document.querySelector('tr[data-guest=CHD3]').children].at(-1).textContent === '✓';"));
   check("G65：主 Manifest 找不到的单，单号下不再写橙字「Not in main manifest — check Rezdy」（Annie 2026-10-30「4 全按推荐 动手」：订单流固定，不再叫人去 Rezdy），人数照算（仍在车上）", await evaluate("const r = document.querySelector('tr[data-guest=CHD3]'); return !!r && !r.querySelector('[data-sync-missing]') && !document.body.textContent.includes('check Rezdy') && r.closest('section').getAttribute('aria-label') === 'Bus 2041=A';"));
   check("G65：取消 / 改期单独一块在最下面（How to use 之前）：0 (was N)、原来的车、原因；不在车上和 Not on a bus 里", await evaluate("const s = document.querySelector('section[data-gone]'); if (!s) return false; const c = s.querySelector('tr[data-gone-row=CHD21]'); const m = s.querySelector('tr[data-gone-row=CHD22]'); const after = [...document.querySelectorAll('section[aria-label^=\"Bus\"], section[aria-label=\"Not on a bus yet\"]')].every(x => x.compareDocumentPosition(s) & Node.DOCUMENT_POSITION_FOLLOWING); return s.textContent.includes('Cancelled / moved · 2 orders') && s.textContent.includes('0 pax — not counted, not printed') && c.textContent.includes('0(was 3)') && c.textContent.includes('Cancelled in Rezdy (Oct 14, 8:12 PM)') && [...c.children][5].textContent === 'A' && m.textContent.includes('Moved to 10/15 South Rim') && [...m.children][5].textContent === '—' && !document.querySelector('tr[data-guest=CHD21], tr[data-guest=CHD22]') && after;"), await evaluate("return document.querySelector('section[data-gone]')?.textContent;"));

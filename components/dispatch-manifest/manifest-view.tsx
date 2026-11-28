@@ -2510,7 +2510,9 @@ function NotesCell({
       )}
       title={
         g.notes_check
-          ? "Sandwiches could not be read: this is the full Rezdy text. Check the booking."
+          ? // G333：不带餐却写了三明治也是红字，后端给原因（lunch_note）；没有 ⇒ 照旧「读不出」那句（同旧页 tour_manifest.html）。
+            g.lunch_note ||
+            "Sandwiches could not be read: this is the full Rezdy text. Check the booking."
           : editable
             ? "Click to edit"
             : undefined

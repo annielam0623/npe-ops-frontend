@@ -74,8 +74,10 @@ export interface ManifestGuest {
   ticket: string;
   /** 去掉三明治后的 Special Requirements；notes_check 时是 Rezdy 原文。 */
   notes: string;
-  /** 三明治读不出来：notes 是原文，要人工核对。 */
+  /** 三明治读不出来：notes 是原文，要人工核对。G333 起「不带餐却写了三明治」也是 true（原因在 lunch_note）。 */
   notes_check: boolean;
+  /** G333：这一单不带餐（不含餐的团、shuttle 节、No Lunch 票）却写了三明治 ⇒ 原因一句（英文）；别的情况 null / 没有。 */
+  lunch_note?: string | null;
   /**
    * Special Requirements 可编辑（Annie 2026-10-18）：`notes` 是「有效值」（staff 改过就是改后的）；
    * `notes_edited` = staff 改过（含删空）；`rezdy_notes` = Rezdy 原文（Reset 用）。
