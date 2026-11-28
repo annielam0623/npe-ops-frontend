@@ -3,6 +3,7 @@
 const { spawn } = require("child_process");
 const path = require("path");
 const { SELECT_HELPERS } = require("./select-menu-helper");
+const { CONTRAST_HELPERS } = require("./contrast-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -377,6 +378,15 @@ async function run() {
   await waitFor(`document.querySelector('[data-notice-preview]')?.textContent.includes('Thank you')`);
   check("发送窗：三行；已发过的行淡黄、默认不勾；缺酒店的行红、不能勾，写 Missing pick-up location", await evaluate(`const f = document.querySelector('[data-notice-row="CHDF001"]'), m = document.querySelector('[data-notice-row="CHDF003"]'), t = document.querySelector('[data-notice-row="CHDF002"]'); return /fff8e1/.test(f.className) && !f.querySelector('input[type=checkbox]').checked && f.querySelector('input[type=checkbox]').disabled && /Sent by Annie on/.test(f.textContent) && /fdecec/.test(m.className) && m.querySelector('input[type=checkbox]').disabled && m.textContent.includes('Missing pick-up location') && t.querySelector('input[type=checkbox]').checked;`));
   check("发送窗：标题条灰蓝（#475569）、有 Phone / Email 两列，显示后端给的号码 / 邮箱，没有写 —", await evaluate(`const d = document.querySelector('[role=dialog]'); const head = [...d.querySelectorAll('div')].find(x => x.textContent.startsWith('Guests on the farm out vehicle') && x.className.includes('bg-[#475569]')); const ths = [...d.querySelectorAll('thead th')].map(x => x.textContent.trim()); const r3 = d.querySelector('[data-notice-row="CHDF003"]'); const r1 = d.querySelector('[data-notice-row="CHDF001"]'); return !!head && ths.includes('Phone') && ths.includes('Email') && r1.querySelector('[data-notice-phone]').textContent === '+1 702 555 0142' && r1.querySelector('[data-notice-email]').textContent === 'zz.guest@example.com' && r3.querySelector('[data-notice-email]').textContent === '—';`));
+  // 浅色底板（Annie 2026-11-27「检查所有浅色底板」）：以前标题条同时带 previewHeaderClass 的浅蓝底，浅蓝压过灰蓝 ⇒ 浅底白字。看算出来的颜色，不只看类名。
+  for (const w of [1600, 390]) {
+    await cdp("Emulation.setDeviceMetricsOverride", { width: w, height: w === 390 ? 844 : 1000, deviceScaleFactor: 1, mobile: w === 390 });
+    await sleep(300);
+    await evaluate(CONTRAST_HELPERS);
+    const m = await evaluate("const d = document.querySelector('[role=dialog]'); const head = [...d.querySelectorAll('div')].find(x => x.textContent.startsWith('Guests on the farm out vehicle') && x.className.includes('bg-[#475569]')); return { bg: getComputedStyle(head).backgroundColor, title: $contrastOf(head.querySelector('b')).ratio, count: $contrastOf(head.querySelector('span')).ratio, bad: $lowContrast(d) };");
+    check(`发送窗 ${w}：标题条真的是灰蓝底（#475569）、白字对比度 ≥ 4.5；窗里浅色底上的字都 ≥ 4.5`, m.bg === "rgb(71, 85, 105)" && m.title >= 4.5 && m.count >= 4.5 && m.bad.length === 0, JSON.stringify(m));
+  }
+  await cdp("Emulation.clearDeviceMetricsOverride");
   check("按钮：Send 1 notice (SMS + Email)；右边是通知原文", await evaluate(`return document.querySelector('[data-farm-out-send-go]').textContent.replace(/\\s+/g, ' ').trim() === 'Send 1 notice (SMS + Email)' && document.body.textContent.includes('Subject: Your West Rim pick-up');`), await evaluate(`return document.querySelector('[data-farm-out-send-go]').textContent;`));
   check("135 题 2 B：Step 2 How to use — Buses & drivers 第 8 条写 Send farm out notice 的确认框（在 Arrange seats 后、yellow bar 前）", await evaluate(`const li = document.querySelector('[data-howto-farm-out-other-day]'); if (!li) return false; const t = li.textContent.replace(/\\s+/g, ' ').trim(); const prev = li.previousElementSibling.textContent, next = li.nextElementSibling.textContent; return t === 'Send farm out notice: if the day is not today (Los Angeles time), a box shows that day in large red letters. Click “Yes, I need to send for …” only if you really mean to send for that day; Cancel sends nothing. Farm out notices are usually sent the day before, so the box shows almost every time.' && [...li.parentElement.children].indexOf(li) === 7 && prev.includes('Arrange seats') && next.includes('A yellow bar');`), await evaluate(`return document.querySelector('[data-howto-farm-out-other-day]')?.textContent ?? 'none';`));
   // 135：发的日子不是今天（今天 10-17、发 10-18）⇒ 先弹 This is not today；Cancel 不发（Annie 2026-11-13「135还是提醒一下吧，告诉staff他发的是这个日期，要他们确认」）
