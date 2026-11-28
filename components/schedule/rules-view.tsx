@@ -89,7 +89,7 @@ export function RulesView({
   onSave,
   onPaper,
 }: RulesViewProps) {
-  const t = TONE[onPaper ? "paper" : "dark"];
+  const tone = TONE[onPaper ? "paper" : "dark"];
   const [editing, setEditing] = useState<Rule | "new" | null>(null);
   const [deleting, setDeleting] = useState<Rule | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -121,11 +121,11 @@ export function RulesView({
   const today = laToday();
 
   return (
-    <section className={t.card} data-rules-view>
-      <div className={t.header}>
+    <section className={tone.card} data-rules-view>
+      <div className={tone.header}>
         <div>
-          <h2 className={cn("text-[14px] font-semibold", t.title)}>Rules</h2>
-          <p className={cn(t.muted, "text-[12px]")}>
+          <h2 className={cn("text-[14px] font-semibold", tone.title)}>Rules</h2>
+          <p className={cn(tone.muted, "text-[12px]")}>
             Auto-fill follows these rules when it schedules a week.
             {canEdit ? "" : " Only supervisors and admins can change them."}
             {/* 置顶 85 Q5（Annie「全部同意推荐」；2c 定放这里，不另加 How to use 框）。 */}
@@ -148,13 +148,13 @@ export function RulesView({
         ) : null}
       </div>
       {error ? (
-        <p role="alert" className={cn("px-4 pt-3 text-[12.5px]", t.error)}>
+        <p role="alert" className={cn("px-4 pt-3 text-[12.5px]", tone.error)}>
           {error}
         </p>
       ) : null}
       <div className="flex flex-col px-4 py-2">
         {ordered.length === 0 ? (
-          <p className={cn("py-6 text-center text-[13px]", t.empty)}>
+          <p className={cn("py-6 text-center text-[13px]", tone.empty)}>
             No rules yet. {canEdit ? "Add the first rule to start." : ""}
           </p>
         ) : (
@@ -164,7 +164,7 @@ export function RulesView({
               data-rule-row={rule.id}
               className={cn(
                 "grid grid-cols-[44px_1fr_auto] items-center gap-3 border-t py-2.5 first:border-t-0 max-sm:grid-cols-[44px_1fr]",
-                t.row,
+                tone.row,
               )}
             >
               <button
@@ -176,7 +176,7 @@ export function RulesView({
                 onClick={() => void toggle(rule)}
                 className={cn(
                   "relative h-5 w-9 rounded-full transition-colors",
-                  rule.enabled ? "bg-blue-500" : t.off,
+                  rule.enabled ? "bg-blue-500" : tone.off,
                   canEdit ? "cursor-pointer" : "cursor-default opacity-80",
                 )}
               >
@@ -188,14 +188,14 @@ export function RulesView({
                 />
               </button>
               <div className="min-w-0">
-                <b className={cn("block text-[13.5px]", t.name)}>
+                <b className={cn("block text-[13.5px]", tone.name)}>
                   {RULE_TYPES.find((t) => t.type === rule.type)?.label ??
                     rule.type}
                 </b>
                 <span
                   className={cn(
                     "text-[12.5px]",
-                    rule.enabled ? t.on : cn(t.disabled, "line-through"),
+                    rule.enabled ? tone.on : cn(tone.disabled, "line-through"),
                   )}
                 >
                   {describeRule(rule, ctx)}
@@ -206,7 +206,7 @@ export function RulesView({
                   // 置顶 110 续：例外另起一行；过期的灰掉写 (past)（题 5 A）。
                   <span
                     data-rule-exceptions={rule.id}
-                    className={cn("block text-[12.5px]", t.exceptions)}
+                    className={cn("block text-[12.5px]", tone.exceptions)}
                   >
                     Exceptions:{" "}
                     {describeExceptions(
@@ -217,7 +217,7 @@ export function RulesView({
                       <span
                         key={i}
                         data-exception-past={x.past || undefined}
-                        className={x.past ? t.past : undefined}
+                        className={x.past ? tone.past : undefined}
                       >
                         {i ? " · " : ""}
                         {x.text}
@@ -230,7 +230,7 @@ export function RulesView({
                   <span
                     key={t}
                     data-rule-conflict={rule.id}
-                    className={cn("block text-[12px]", t.conflict)}
+                    className={cn("block text-[12px]", tone.conflict)}
                   >
                     {t}
                   </span>
@@ -241,14 +241,14 @@ export function RulesView({
                   <button
                     type="button"
                     onClick={() => setEditing(rule)}
-                    className={t.button}
+                    className={tone.button}
                   >
                     Edit
                   </button>
                   <button
                     type="button"
                     onClick={() => setDeleting(rule)}
-                    className={t.button}
+                    className={tone.button}
                   >
                     Delete
                   </button>
