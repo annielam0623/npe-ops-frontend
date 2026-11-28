@@ -68,9 +68,9 @@ table.flow th{background:var(--paper)}
 
 <main>
 <header style="display:grid;gap:8px">
-  <p class="tag">Dispatch · CCL fill-and-replace · preview v2 · 给 Annie · 2026-11-27 · e2</p>
+  <p class="tag">Dispatch · CCL fill-and-replace · preview v3 · 给 Annie · 2026-11-27 · e2</p>
   <h1>CCL 去掉的车：不删，整张卡标红</h1>
-  <p>你的原话：「CCL的discord进来不要把整张bus card和relay card 冲掉，只做填充和替换可以么」「对，CCL去掉的车不要自动删」「对，CCL去掉的车整张卡标红」。左边是 ops 现在的样子（ops 真页面截图，模拟数据），右边是改后样稿。v2 照你 R1 的回答加了 Schedule check 那一条和 Send 的挡法，R2 拿掉。代码等后端 32 的契约和你说「动手」。</p>
+  <p>你的原话：「CCL的discord进来不要把整张bus card和relay card 冲掉，只做填充和替换可以么」「对，CCL去掉的车不要自动删」「对，CCL去掉的车整张卡标红」。左边是 ops 现在的样子（ops 真页面截图，模拟数据），右边是改后样稿。v2 照你 R1 的回答加了 Schedule check 那一条和 Send 的挡法，R2 拿掉。①–⑥ 你已说「动手」，在写代码。v3 新加 ⑦ 座位不够（你说「换的车座位少就要标出来少了几个，建议是什么」），只是样稿，等你定 QS1、说「动手」。</p>
 </header>
 
 <section>
@@ -223,16 +223,71 @@ table.flow th{background:var(--paper)}
 </section>
 
 <section>
+  <h2>⑦ 新：车座位不够（v3）——卡上写少几个座、给建议</h2>
+  <p class="mute">你的原话：「换的车座位少就要标出来少了几个，建议是什么」。另：「CCL只是决定哪台车哪个司机开，然后多于1辆的时候放AB，但是哪些客人坐在哪台车里是staff定的，所以BUS A 或B的转换跟客人没关系，除非座位的数量不一样」。</p>
+  <ul class="facts">
+    <li>现在：Bus card 上<b>不提</b>座位够不够。只有 Assign 标签下面的 Arrange seats 里，每台车头上写「17 / 14 seats」，超了变红字、红条（components/dispatch/seating.tsx:403、:450-462）。Schedule check 也没有这一条（components/dispatch/config.ts <code>analyze()</code> 里没有座位的判断）。</li>
+    <li>改后：只要一台 Bus 车坐的客人比座位多（不管是 CCL 换的车，还是 staff 自己换的），Bus card 上「Ready / Needs …」那一排下面出一条琥珀色的字，写少几个座 + 建议；Schedule check 加一条琥珀色的「!」（同缺导游那种，不是红的），Fix › 带到这张卡。</li>
+    <li>建议怎么写：同一个团里别的车还有空位 ⇒「Move 3 guests to Bus A (19 seats free) in Arrange seats, or change to a vehicle with at least 17 seats.」；没有空位 ⇒「Change to a vehicle with at least 17 seats, or add a bus.」。不写「ask CCL」（车是 CCL 派的，但换车这件事 staff 在页面上就能做）。</li>
+    <li>Morning Relay 的车不出这一条：Relay 是按酒店接人，卡上没有「这台车坐几位」（座位表只有 Bus 团有，后端 tour_manifest.py:2697 <code>seating_view</code>）。</li>
+    <li>车在 Vehicles 里没填座位数：不出这一条（算不出少几个）。现在别的地方也是这样处理的：没填就按这个团的「每车几位」算（后端 tour_manifest.py:2501 <code>bus_capacity</code>）。有多少台车没填座位数：<b>未核</b>（要看生产的 Vehicles 数据）。</li>
+    <li>跟红卡的关系：一张卡又是「CCL removed」又座位不够 ⇒ 只出红的（车都要删 / 换了，座位不用看）。</li>
+  </ul>
+  <div class="pair">
+    <div class="col"><p class="tag">现在（ops 截图）</p><div class="shot"><img src="shots/3_bus_now.png" alt="Bus card now"></div></div>
+    <div class="col"><p class="tag new">改后（样稿：CCL 把 Bus B 从 1960 换成 2056，Bus B 坐了 17 位）</p>
+      <div class="card">
+        <div class="left"><span style="font-size:11px;font-weight:700;letter-spacing:.06em">BUS</span><b>B</b><span>#2056</span></div>
+        <div class="body">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span>GIA drives and guides · 1 hotel</span><span class="pill ok">Ready</span></div>
+          <div data-v3-seats style="color:#8a5a00;background:#fdf6e7;border:1px solid #e7b75a;border-radius:8px;padding:6px 10px;font-size:12.5px;line-height:1.45">
+            <b>Not enough seats: 14 seats, 17 guests — 3 short.</b><br>
+            Move 3 guests to Bus A (19 seats free) in Arrange seats, or change to a vehicle with at least 17 seats.
+          </div>
+          <div class="selrow"><span class="sel">GIA</span><span class="sel">Driver Guide</span><span class="sel">2056</span><span class="sel">Bus B</span></div>
+          <div><span class="chip">1 Treasure Island ×</span></div>
+        </div>
+      </div>
+      <p class="mute" style="margin:.6em 0 0">没有别的车有空位时，第二行换成：「Change to a vehicle with at least 17 seats, or add a bus.」</p>
+    </div>
+  </div>
+  <div class="pair">
+    <div class="col"><p class="tag new">Schedule check 那一条（样稿）</p>
+      <div class="dark" style="background:#0c1828;max-width:320px;color:#e2e8f0;font-size:12.5px;display:grid;gap:10px">
+        <div style="display:flex;gap:10px"><span style="flex:none;width:17px;height:17px;border-radius:50%;background:rgba(251,191,36,.16);color:#fbbf24;font-size:10px;font-weight:700;display:grid;place-items:center">!</span>
+          <div style="flex:1"><div style="display:flex;justify-content:space-between;gap:8px"><b>West Rim Bus Tour: Bus B is 3 seats short</b><span style="color:#93c5fd;font-weight:600">Fix ›</span></div>
+          <div style="color:#64748b;font-size:11.5px">17 guests, 14 seats. Move 3 guests to Bus A or change to a bigger vehicle.</div></div></div>
+      </div>
+    </div>
+    <div class="col"><p class="tag">什么时候出、什么时候消失</p>
+      <ul class="facts" style="margin:0">
+        <li>换了车号马上算（座位数用页面上现在选的车 + 这一天的座位调整，不用先 Save）。</li>
+        <li>客人数用存着的座位表（Arrange seats 挪了人、Save 以后重新读，dispatch-view.tsx:1012-1025）。</li>
+        <li>挪走 3 位、换大车、或把座位调整加上去 ⇒ 够了就消失。</li>
+      </ul>
+    </div>
+  </div>
+  <h3 style="margin-top:1.2em">数据从哪来、到哪去（座位这一条）</h3>
+  <div class="flowwrap"><table class="flow">
+    <tr><th>数据</th><th>从哪来</th><th>到哪去</th></tr>
+    <tr><td>这台车坐了几位</td><td>Main manifest 的客人，按 Bus 字母分（staff 在 Arrange seats 定）；后端 GET /api/dispatch/seating 每台车的 <code>pax</code>（tour_manifest.py:2742，回程段不算座位 :1249 <code>seat_pax</code>）</td><td>Bus card 那一条、Schedule check 那一条；Arrange seats 照旧</td></tr>
+    <tr><td>这台车几个座</td><td>Vehicles 里这台车的座位数 + 这一天的座位调整（后端 tour_manifest.py:2177，下限 1；前端同口径 bus-windows.ts:51-61）；没填 = 不判断</td><td>同上</td></tr>
+    <tr><td>哪台车有空位</td><td>同一个团、同一天其余 Bus 车：座位 − 已坐</td><td>建议那一句</td></tr>
+  </table></div>
+  <p>这一条前端自己就能算（座位表接口已经有），不用等后端。只有 QS1 选 B（挡发送）时要后端在 driver-notice / guide-notice 也挡。</p>
+</section>
+
+<section>
   <h2>📌 要 Annie 定的</h2>
-  <p class="mute">已答：R1 你说「Q1 在check list就要提示staff把车删掉或改其它车，因为CCL已经没有派这台车了」⇒ ④ Schedule check 那一条、⑥ 删车或换车号就不红，照这句做。R2（司机页 / 导游页 / 打印）你说「第一个问题解决了第二个问题就不存在了」⇒ 拿掉。</p>
+  <p class="mute">已答：Q1 选 B（CCL 去掉的红卡不处理就不能 Send to driver / guide）；Q2 选 A（司机页、导游页、打印照旧出，不标红）——你说「Q1选B，Q2选A，动手」，①–⑥ 已在写代码（只对着模拟后端测，等后端 32 上了再合 main）。</p>
   <div class="q">
-    <h3>Q1　Dispatch 上 CCL 去掉、还没处理的红卡：只提示，还是不处理就不能 Send to driver / Send to guide？</h3>
-    <p><b>现在：</b>还没有红卡（CCL 去掉的车按 Apply 就删了）。改成留着、标红以后，Schedule check 会出一条 “CCL removed Bus B (West Rim) — Remove it or change it to another vehicle.”；但 Schedule check 本身不挡任何东西（rail.tsx:126 “Nothing here stops you from saving.”），红卡存着就会照常进 Send to driver / guide 的名单（后端 relay_pull.py:538 / :624），司机会收到短信、司机页上有这台车。</p>
+    <h3>QS1　Dispatch Bus card「Not enough seats」：只提示，还是不改好就不能 Send to driver / Send to guide？</h3>
+    <p><b>现在：</b>Bus card 和 Schedule check 都不提座位不够；只有 Arrange seats 里那台车的人数变红（seating.tsx:403）。座位数来自 Vehicles 里每台车填的座位数 + 当天调整（后端 tour_manifest.py:2177）；没填座位数的车算不出来。有多少车没填：未核。</p>
     <ol>
-      <li><b>A 只提示</b>：Schedule check 有那一条，Send 照常能按；staff 没处理也能发出去，这台车的司机会收到。</li>
-      <li><b>B 不处理就不能发</b>（推荐）：这一天还有红卡时，Send to driver、Send to guide 两块顶上红框 “Can’t send yet: CCL removed 1 vehicle. Remove it or change it to another vehicle on the Assign tab, Save, then Refresh.” 列出是哪台，Send texts now 灰掉；处理完（删掉或换车号、Save）就能发。后端也挡，绕不过去；跟 G368「没填完不能发」同一个做法。</li>
+      <li><b>A 只提示</b>（推荐）：Bus card 琥珀色那一条 + Schedule check 一条，Send 照常能按。</li>
+      <li><b>B 不改好就不能发</b>：跟红卡一样，Send to driver / guide 顶上出框、键灰掉，后端也挡。</li>
     </ol>
-    <p class="rec">推荐 B：CCL 已经没派这台车，发出去司机会去跑一台不存在的车；处理一下只要删掉或换车号。</p>
+    <p class="rec">推荐 A：座位数可能填错、或当天临时多加座（座位调整没改），挡住发送会把司机通知卡死；而且客人坐哪台车是 staff 在 Arrange seats 定的，提示了 staff 就能挪。红卡不一样：那台车 CCL 根本没派。</p>
   </div>
 </section>
 </main>
