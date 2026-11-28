@@ -25,7 +25,7 @@ import {
   TH,
   TR,
   YELLOW_BOX,
-  previewHeaderClass,
+  PREVIEW_HEADER_BASE,
 } from "@/components/tickets-send/legacy-ui";
 import { describeError } from "@/lib/api-errors";
 import { previewFarmOutNotice, sendFarmOutNotice } from "@/lib/farm-out-api";
@@ -281,8 +281,9 @@ export function FarmOutNoticeDialog({
             <div className={PREVIEW_CARD}>
               <div
                 className={cn(
-                  previewHeaderClass("blue"),
                   // 灰蓝（slate）标题条，和 Farm out 车左边那格同一个色；Send 键仍是蓝键。
+                  // 只用版式、不叠 previewHeaderClass 的浅蓝底（cn 不合并类名，以前浅蓝底压过灰蓝 ⇒ 浅底白字，Annie 2026-11-27「检查所有浅色底板」）。
+                  PREVIEW_HEADER_BASE,
                   "bg-[#475569] text-[13px] text-white",
                 )}
               >

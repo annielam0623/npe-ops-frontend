@@ -6,11 +6,26 @@
 // - 不看藏起来的、disabled 的。
 const CONTRAST_HELPERS = `
 (() => {
+  // Tailwind v4 的色板色（text-red-300、bg-orange-600…）算出来是 oklch(…)：画到 1px canvas 上读回 RGB。
+  const cv = document.createElement("canvas");
+  cv.width = cv.height = 1;
+  const cx = cv.getContext("2d", { willReadFrequently: true });
   const parse = (c) => {
-    const m = /rgba?\\(([^)]+)\\)/.exec(c || "");
-    if (!m) return null;
-    const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number);
-    return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1];
+    if (!c || c === "transparent") return null;
+    const m = /^rgba?\\(([^)]+)\\)$/.exec(c);
+    if (m) {
+      const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number);
+      return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1];
+    }
+    const a = /\\/\\s*([0-9.]+%?)\\s*\\)$/.exec(c);
+    const al = a ? (a[1].endsWith("%") ? parseFloat(a[1]) / 100 : Number(a[1])) : 1;
+    if (al === 0) return null;
+    cx.clearRect(0, 0, 1, 1);
+    cx.fillStyle = "#000";
+    cx.fillStyle = c;
+    cx.fillRect(0, 0, 1, 1);
+    const d = cx.getImageData(0, 0, 1, 1).data;
+    return d[3] ? [(d[0] * 255) / d[3], (d[1] * 255) / d[3], (d[2] * 255) / d[3], al] : null;
   };
   const over = (t, b) => [0, 1, 2].map((i) => t[i] * t[3] + b[i] * (1 - t[3])).concat(1);
   const lum = (c) => {
