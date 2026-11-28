@@ -82,7 +82,7 @@ export function MapField({
 }) {
   const on = active === zone;
   // 手机上灰字说明收进标题后的「i」（Annie 2026-11-01 手机版规则）。
-  const info = usePhoneInfo(`About ${title}`);
+  const info = usePhoneInfo(`About ${title}`, { onPaper: true });
   return (
     <div
       data-field={zone}

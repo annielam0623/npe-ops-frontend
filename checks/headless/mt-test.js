@@ -4,6 +4,7 @@ const { spawn } = require("child_process");
 const path = require("path");
 const { SELECT_HELPERS } = require("./select-menu-helper");
 const { resizeChecks } = require("./resize-checks");
+const { CONTRAST_HELPERS } = require("./contrast-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -709,6 +710,15 @@ async function run() {
   await evaluate(`${msgCard("T1")}.click();`);
   await waitFor("document.querySelector('[role=alert]')?.textContent.includes('Could not')", 8000);
   check("取不到 tracking 行时：对话框里写原因 + 「Open the tracking page instead」链接", await evaluate("const a = [...document.querySelectorAll('a')].find((x) => x.textContent.includes('Open the tracking page instead')); return !!a && (a.getAttribute('href') || '').includes('tracking');"));
+  // 浅色底板（Annie 2026-11-27「检查所有浅色底板」）：这个对话框的标题「Order T1」和 Close 键以前没定字色，跟着 Dashboard 的 #f8fafc 成了浅底白字。
+  for (const w of [1600, 390]) {
+    await cdp("Emulation.setDeviceMetricsOverride", { width: w, height: w === 390 ? 844 : 1000, deviceScaleFactor: 1, mobile: w === 390 });
+    await sleep(300);
+    await evaluate(CONTRAST_HELPERS);
+    const m = await evaluate("const d = document.querySelector('#reply-loading').closest('[role=dialog]'); return { bad: $lowContrast(d), title: $contrastOf(d.querySelector('#reply-loading')).ratio, close: $contrastOf([...d.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Close')).ratio };");
+    check(`取不到 tracking 行的对话框 ${w}：浅色底上的字（标题 Order T1、Close、原因、链接）对比度都 ≥ 4.5`, m.bad.length === 0 && m.title >= 4.5 && m.close >= 4.5, JSON.stringify(m));
+  }
+  await cdp("Emulation.clearDeviceMetricsOverride");
   await evaluate("[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Close').click();");
   await sleep(200);
   await goto(`${APP}/morning-pickup/send`);

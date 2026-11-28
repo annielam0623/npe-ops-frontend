@@ -85,7 +85,7 @@ export function PartnerDetail({
   const [reloadKey, setReloadKey] = useState(0);
   const [saved, setSaved] = useState("");
   const [importOpen, setImportOpen] = useState(false);
-  const info = usePhoneInfo("About pick-up locations");
+  const info = usePhoneInfo("About pick-up locations", { onPaper: true });
   const dirtyNow = locations !== null && snapshot(locations) !== saved;
   useEffect(() => onDirty?.(dirtyNow), [dirtyNow, onDirty]);
   useEffect(() => () => onDirty?.(false), [onDirty]);

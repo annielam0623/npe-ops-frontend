@@ -63,8 +63,15 @@ export function PhoneShortcutsSlot({
   );
 }
 
-/** 页头介绍、区块说明：手机上收进标题后的「i」，点开再看。 */
-export function usePhoneInfo(label = "About this section") {
+/**
+ * 页头介绍、区块说明：手机上收进标题后的「i」，点开再看。
+ * onPaper：「i」放在浅色底板（白卡片 / bg-paper）上用深一点的蓝（Annie 2026-11-27「检查所有浅色底板」：浅蓝 #7ab3e0 在浅底上看不清）；
+ * 全深色主题（night:）照旧浅蓝。不传 = 深色外框上的样子，跟以前一样。
+ */
+export function usePhoneInfo(
+  label = "About this section",
+  { onPaper = false }: { onPaper?: boolean } = {},
+) {
   const [open, setOpen] = useState(false);
   const button = (
     <button
@@ -76,9 +83,13 @@ export function usePhoneInfo(label = "About this section") {
       onClick={() => setOpen((v) => !v)}
       className={cn(
         "ml-2 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-[1.5px] align-middle font-serif text-[12px] leading-none font-bold italic sm:hidden",
-        open
-          ? "border-[#7ab3e0] bg-[#7ab3e0] text-[#0b1626]"
-          : "border-[#7ab3e0] text-[#7ab3e0]",
+        onPaper
+          ? open
+            ? "border-[#1d4ed8] bg-[#1d4ed8] text-white night:border-[#7ab3e0] night:bg-[#7ab3e0] night:text-[#0b1626]"
+            : "border-[#1d4ed8] text-[#1d4ed8] night:border-[#7ab3e0] night:text-[#7ab3e0]"
+          : open
+            ? "border-[#7ab3e0] bg-[#7ab3e0] text-[#0b1626]"
+            : "border-[#7ab3e0] text-[#7ab3e0]",
       )}
     >
       i

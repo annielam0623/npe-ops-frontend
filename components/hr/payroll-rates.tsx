@@ -319,9 +319,9 @@ export function PayrollRates({
   const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [saveErr, setSaveErr] = useState<string | null>(null);
 
-  const pricesInfo = usePhoneInfo("About prices");
-  const extrasInfo = usePhoneInfo("About extras");
-  const vehicleInfo = usePhoneInfo("About vehicle extras");
+  const pricesInfo = usePhoneInfo("About prices", { onPaper: true });
+  const extrasInfo = usePhoneInfo("About extras", { onPaper: true });
+  const vehicleInfo = usePhoneInfo("About vehicle extras", { onPaper: true });
 
   const load = useCallback(
     (signal?: AbortSignal) => {

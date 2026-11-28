@@ -71,9 +71,15 @@ function reset() {
     weekStatus: {},
     fail: {},
     today: "2026-11-25",
+    rules: [],
     lockMode: "",
     superAdmin: false,
     takenWeeks: [],
+    // 周锁加固（week-lock-hardening 2026-11-27）：busyWeeks = 这些周别人占着（占的时候 409）；lockedAtSave = 存的那一刻别人占着（range/changes 409 locked）；
+    // renewTokens ⇒ 回包 lock_tokens 给新 token（renewed-<w>）。
+    busyWeeks: [],
+    lockedAtSave: [],
+    renewTokens: false,
   });
   const slots = [];
   const add = (date, type, emp, start, end, note = null) =>
@@ -394,7 +400,7 @@ http
     if (p === "/__ctl" && method === "POST") {
       const b = (await readBody(req)) || {};
       if (b.reset) reset();
-      for (const k of ["viewer", "canPublish", "canManageLeaveTypes", "weekStatus", "fail", "today", "selfEmp", "extraViolations", "extraGaps", "extraLeave", "extraChange", "lockMode", "superAdmin", "takenWeeks"]) if (k in b) ctl[k] = b[k];
+      for (const k of ["viewer", "canPublish", "canManageLeaveTypes", "weekStatus", "fail", "today", "selfEmp", "extraViolations", "extraGaps", "extraLeave", "extraChange", "lockMode", "superAdmin", "takenWeeks", "busyWeeks", "lockedAtSave", "renewTokens", "rules"]) if (k in b) ctl[k] = b[k];
       return send(res, 200, { ok: true, ctl });
     }
     if (p === "/__log") return send(res, 200, log);
@@ -427,7 +433,17 @@ http
       // 被 Super Admin 接手的周：旧 token 整批都不存（后端 lock-takeover §3）。
       if (weeks.some((w) => (ctl.takenWeeks || []).includes(w.week_start) && w.lock_token === `lock-${w.week_start}`))
         return conflict(res, "Annie took over editing at 3:30 PM. Your changes that weren't saved were not kept.", "lock_taken_over");
+      // 周锁加固：列出的每一周都要占着（只改假的周也算）。别人占着 ⇒ 409 locked（套两层）；没带 token ⇒ 照「没占」处理（mock 记下，测试用来查）。
+      for (const w of weeks)
+        if ((ctl.lockedAtSave || []).includes(w.week_start))
+          return conflict(res, "ZZ Test Sam is editing this week (since 3:05 PM). You can look, but you cannot change it until they save or leave.", "locked");
       const wkSet = new Set(weeks.map((w) => w.week_start));
+      // time_off_delete 的那条假要在列出的周里（后端 400「Change n is on a week that isn't in this save.」）。
+      for (let i = 0; i < ops.length; i++)
+        if (ops[i].op === "time_off_delete") {
+          const row = state.time_off.find((t) => t.id === ops[i].id);
+          if (row && !wkSet.has(weekOf(row.date))) return send(res, 400, { detail: `Change ${i + 1} is on a week that isn't in this save.` });
+        }
       const work = state.slots.map((s) => ({ ...s }));
       const off = state.time_off.map((t) => ({ ...t }));
       const refs = {};
@@ -542,7 +558,8 @@ http
           lock_token: lock,
         };
       }
-      return send(res, 200, { weeks: weeksOut, time_off: offRows.map(timeOffOut), violations: afterV });
+      const lockTokens = Object.fromEntries(weeks.map((w) => [w.week_start, ctl.renewTokens ? `renewed-${w.week_start}` : (w.lock_token ?? `lock-${w.week_start}`)]));
+      return send(res, 200, { weeks: weeksOut, lock_tokens: lockTokens, time_off: offRows.map(timeOffOut), violations: afterV });
     }
 
     // 2.3 请假类别
@@ -716,7 +733,8 @@ http
     if (p === "/api/schedule/employees" && method === "GET") {
       return send(res, 200, { employees: Object.values(EMP).map((id, i) => ({ id, name: NAMES[id], email: `zztest${id}@example.com`, is_active: true, sort_order: i + 1 })) });
     }
-    if (p === "/api/schedule/rules" && method === "GET") return send(res, 200, { version: 1, rules: [] });
+    // ctl.rules：浅色底板字色检查（Annie 2026-11-27「检查所有浅色底板，这个是staff schedule的rules」）用几条规则。
+    if (p === "/api/schedule/rules" && method === "GET") return send(res, 200, { version: 1, rules: ctl.rules || [] });
     // 编辑占用（同 sch-mock 形状）：ctl.lockMode ""/"ok" = 占得到（token 按周），"busy" = 别人在改，"missing" = 接口没上线(404)。
     // Take over（lock-takeover 2026-11-27）：GET edit-lock 回 {edit_lock, can_take_over}（superAdmin 才 true）；POST take-over 换成 taken-<w>；
     // ctl.takenWeeks 里的周：旧 token（lock-<w>）的心跳 / range/changes 一律 409 {detail: {detail, code: "lock_taken_over"}}。
@@ -724,7 +742,8 @@ http
     const SAM = { by: "ZZ Test Sam", since: "2026-11-25T23:05:00Z", last_edit: null, by_me: false };
     const lockM = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/edit-lock(\/heartbeat|\/release|\/take-over)?$/.exec(p);
     if (lockM && method === "GET" && !lockM[2]) {
-      return send(res, 200, { edit_lock: ctl.lockMode === "busy" ? SAM : null, can_take_over: !!ctl.superAdmin });
+      const busyHere = ctl.lockMode === "busy" || (ctl.busyWeeks || []).includes(lockM[1]) || (ctl.lockedAtSave || []).includes(lockM[1]);
+      return send(res, 200, { edit_lock: busyHere ? SAM : null, can_take_over: !!ctl.superAdmin });
     }
     if (lockM && method === "POST") {
       if (ctl.lockMode === "missing") return send(res, 404, { detail: "Not Found" });
@@ -733,10 +752,12 @@ http
         if (ctl.lockMode === "busy" && body?.holder_since !== SAM.since)
           return conflict(res, "ZZ Test Sam is editing this week now. Look again before taking over.", "holder_changed");
         ctl.lockMode = "ok";
+        ctl.busyWeeks = (ctl.busyWeeks || []).filter((x) => x !== lockM[1]);
+        ctl.lockedAtSave = (ctl.lockedAtSave || []).filter((x) => x !== lockM[1]);
         return send(res, 200, { token: `taken-${lockM[1]}`, remind_after_s: 600, auto_save_after_s: 300, heartbeat_every_s: 60, took_over_from: { by: SAM.by, since: SAM.since, last_edit: null } });
       }
       if (!lockM[2]) {
-        if (ctl.lockMode === "busy") return send(res, 409, { detail: "ZZ Test Sam is editing this schedule (since 3:05 PM). Please try again later." });
+        if (ctl.lockMode === "busy" || (ctl.busyWeeks || []).includes(lockM[1])) return send(res, 409, { detail: "ZZ Test Sam is editing this schedule (since 3:05 PM). Please try again later." });
         return send(res, 200, { token: `lock-${lockM[1]}`, heartbeat_every_s: 60 });
       }
       if (lockM[2] === "/heartbeat") {

@@ -79,7 +79,7 @@ export function MissingCard({
   const [confirming, setConfirming] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   // 手机上卡片说明收进标题后的「i」（Annie 2026-11-01 手机版规则）。
-  const introInfo = usePhoneInfo("About this list");
+  const introInfo = usePhoneInfo("About this list", { onPaper: true });
 
   const update = (code: string, patch: Partial<RowState>) =>
     setRows((all) => ({ ...all, [code]: { ...all[code], ...patch } }));

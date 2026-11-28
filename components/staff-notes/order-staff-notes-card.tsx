@@ -66,7 +66,7 @@ export function OrderStaffNotesCard({
   onUnauthorized: () => void;
 }) {
   const directory = useMentionDirectory(!readOnly);
-  const info = usePhoneInfo("About ★ Notes");
+  const info = usePhoneInfo("About ★ Notes", { onPaper: true });
   const products = useOrderNoteProducts(
     order.order_number,
     onUnauthorized,

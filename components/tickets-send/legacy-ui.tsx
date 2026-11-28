@@ -143,11 +143,12 @@ export const PREVIEW_CARD =
   "mb-5 w-full overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-paper";
 
 /** .preview-header（标题字色另给）。 */
+/** .preview-header 的版式（不含底色）：要别的底色的标题条（例如 Farm out 发送窗的灰蓝）用它，不要再叠 previewHeaderClass 的浅色底。 */
+export const PREVIEW_HEADER_BASE =
+  "flex flex-wrap items-center justify-between gap-3 border-b-[0.5px] border-black/[.08] px-4 py-3";
+
 export function previewHeaderClass(theme: SendTheme): string {
-  return cn(
-    "flex flex-wrap items-center justify-between gap-3 border-b-[0.5px] border-black/[.08] px-4 py-3",
-    THEME[theme].headBg,
-  );
+  return cn(PREVIEW_HEADER_BASE, THEME[theme].headBg);
 }
 
 /** .tbl-wrap / table.preview-tbl / thead td / tbody tr / tbody td */

@@ -3,6 +3,7 @@
 const { spawn } = require("child_process");
 const path = require("path");
 const { SELECT_HELPERS } = require("./select-menu-helper");
+const { CONTRAST_HELPERS } = require("./contrast-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -164,6 +165,20 @@ async function maybe(name, fn) {
 /** 只算写请求里跟编辑锁无关的（占锁 / 心跳 / 放锁不算「存」）。 */
 const writes = async (from = 0) =>
   (await mockLog()).slice(from).filter((l) => !/\/edit-lock/.test(l.path));
+/** Settings › Rules 弹窗用的几条规则（一条关着，看划掉的那行）。 */
+const RULES_FIXTURE = [
+  { id: "r1", type: "weekend_rotation", enabled: true, params: { slots: [{ day: 6, shift_type: "open" }, { day: 0, shift_type: "open" }], employee_ids: [1, 2], exclusive: true } },
+  { id: "r2", type: "cannot_work", enabled: true, params: { employee_id: 3, shift_type: "close", days: [1, 2] } },
+  { id: "r3", type: "fixed_shift", enabled: false, params: { employee_id: 4, shift_type: "mid", days: [3] } },
+];
+async function openRules() {
+  await evaluate("[...document.querySelectorAll('button[data-ov-edit]')].find((b) => b.textContent.trim() === 'Rules')?.click() ?? (() => { const more = [...document.querySelectorAll('button')].find((b) => /More|⋯/.test(b.textContent.trim())); more?.click(); })();");
+  if (!(await waitFor("document.querySelector('[data-rules-view] [data-rule-row]')", 3000))) {
+    await evaluate("[...document.querySelectorAll('button[data-ov-edit]')].find((b) => b.textContent.trim() === 'Rules')?.click();");
+    if (!(await waitFor("document.querySelector('[data-rules-view] [data-rule-row]')", 10000))) throw new Error("Rules dialog did not open");
+  }
+  await sleep(300);
+}
 async function openOverview() {
   await goto(PAGE);
   const ok = await waitFor(`document.querySelector('${SEL.root}') && document.querySelectorAll('${SEL.week}').length > 0`, 30000);
@@ -510,12 +525,106 @@ async function run() {
     if (hits.length) console.log("  tokenless callers:", hits.join(", "));
     return hits.length === 0;
   })());
+  // ── 周锁加固（后端 week-lock-hardening 2026-11-27）：只改假的周也要占锁、带 token；回包 lock_tokens 换上；被占走同一个红框 + Take over ──
+  const LEAVE_WEEK = "2026-11-29"; // mock 的假 id 31 在 12/2
+  const deleteSeedLeave = async () => {
+    await waitFor("document.querySelector('[data-ov-leave=\"31\"]')", 8000);
+    await evaluate("document.querySelector('[data-ov-leave=\"31\"]').click(); return 1;");
+    await waitFor("[...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Delete leave')", 5000);
+    await evaluate("[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Delete leave').click(); return 1;");
+  };
+  await maybe("周锁加固：只删一条假 ⇒ 先占那一周、Save 时这一周带 token（不是 null），列的是这条假所在的周", async () => {
+    await ctl({ reset: true, viewer: "editor" });
+    if (!(await openOverview())) throw new Error("overview did not open");
+    const before = (await mockLog()).length;
+    await deleteSeedLeave();
+    await waitFor(`document.querySelector('${SEL.unsaved}')`, 8000);
+    await evaluate(`document.querySelector('${SEL.save}').click(); return 1;`);
+    await waitFor(`document.querySelector('${SEL.saved}') || document.querySelector('[data-ov-save-error]')`, 10000);
+    const log = (await mockLog()).slice(before);
+    const acq = log.filter((l) => l.path === `/api/schedule/weeks/${LEAVE_WEEK}/edit-lock`);
+    const save = log.find((l) => l.path === "/api/schedule/range/changes");
+    const wk = save?.body?.weeks ?? [];
+    const saved = await evaluate(`return !!document.querySelector('${SEL.saved}');`);
+    check("周锁加固：只删一条假 ⇒ 先占那一周、Save 时这一周带 token（不是 null），列的是这条假所在的周",
+      acq.length >= 1 && wk.length === 1 && wk[0].week_start === LEAVE_WEEK && wk[0].lock_token === `lock-${LEAVE_WEEK}` &&
+        JSON.stringify(save.body.ops) === JSON.stringify([{ op: "time_off_delete", id: 31 }]) && saved,
+      JSON.stringify({ acq: acq.length, weeks: wk, ops: save?.body?.ops, saved }));
+  });
+  await maybe("周锁加固：回包 lock_tokens 换上（存完放锁用的是新 token）", async () => {
+    await ctl({ reset: true, viewer: "editor", renewTokens: true });
+    if (!(await openOverview())) throw new Error("overview did not open");
+    const before = (await mockLog()).length;
+    await deleteSeedLeave();
+    await waitFor(`document.querySelector('${SEL.unsaved}')`, 8000);
+    await evaluate(`document.querySelector('${SEL.save}').click(); return 1;`);
+    await waitFor(`document.querySelector('${SEL.saved}')`, 10000);
+    await sleep(500);
+    const rel = (await mockLog()).slice(before).filter((l) => l.path === `/api/schedule/weeks/${LEAVE_WEEK}/edit-lock/release`);
+    check("周锁加固：回包 lock_tokens 换上（存完放锁用的是新 token）", rel.length === 1 && rel[0].body?.token === `renewed-${LEAVE_WEEK}`, JSON.stringify(rel.map((r) => r.body)));
+  });
+  await maybe("周锁加固：只改假的周存的那一刻被别人占着（409 locked）⇒ 同一个红框 + Take over（Super Admin），没存", async () => {
+    await ctl({ reset: true, viewer: "editor", superAdmin: true });
+    if (!(await openOverview())) throw new Error("overview did not open");
+    await deleteSeedLeave();
+    await waitFor(`document.querySelector('${SEL.unsaved}')`, 8000);
+    await ctl({ lockedAtSave: [LEAVE_WEEK] });
+    await evaluate(`document.querySelector('${SEL.save}').click(); return 1;`);
+    const shown = await waitFor("document.querySelector('[data-ov-take-over]')", 8000);
+    const m = await evaluate(`return { box: document.querySelector('[data-ov-edit-error]')?.textContent ?? '', unsaved: !!document.querySelector('${SEL.unsaved}') };`);
+    await evaluate("document.querySelector('[data-ov-take-over]')?.click(); return 1;");
+    const dlg = await waitFor("document.querySelector('[data-take-over-text]')?.textContent.startsWith('ZZ Test Sam is editing this week')", 5000);
+    await evaluate("[...document.querySelectorAll('[role=dialog] button')].find((x) => x.textContent.trim() === 'Cancel')?.click(); return 1;");
+    check("周锁加固：只改假的周存的那一刻被别人占着（409 locked）⇒ 同一个红框 + Take over（Super Admin），没存",
+      shown && /ZZ Test Sam is editing this week/.test(m.box) && m.unsaved && dlg, JSON.stringify({ shown, m, dlg }));
+  });
+  await maybe("周锁加固：只改假的周一开始就被别人占着 ⇒ 动手那一下红框 + Take over，改动没进草稿", async () => {
+    await ctl({ reset: true, viewer: "editor", superAdmin: true, busyWeeks: [LEAVE_WEEK] });
+    if (!(await openOverview())) throw new Error("overview did not open");
+    await deleteSeedLeave();
+    const shown = await waitFor("document.querySelector('[data-ov-take-over]')", 8000);
+    const unsaved = await evaluate(`return !!document.querySelector('${SEL.unsaved}');`);
+    check("周锁加固：只改假的周一开始就被别人占着 ⇒ 动手那一下红框 + Take over，改动没进草稿", shown && !unsaved, JSON.stringify({ shown, unsaved }));
+  });
+
   // ── 只能批假的人 ──
   await ctl({ reset: true, viewer: "approver" });
   if (!skipAll && !(await openOverview())) skipAll = true;
   await maybe("can_edit=false：没有任何编辑键、没有 Save、只有 Leave requests 能点、没有 Shift change requests 栏", async () => {
     const m = await evaluate(`return { edit: document.querySelectorAll('${SEL.editKey}').length, save: !!document.querySelector('${SEL.save}'), leave: !!document.querySelector('${SEL.leaveReqs}'), change: !!document.querySelector('${SEL.changeReqs}'), cells: document.querySelectorAll('${SEL.cell}').length, viewOnly: document.querySelector('[data-ov-view-only]')?.textContent ?? '' };`);
     check("can_edit=false：没有任何编辑键、没有 Save、只有 Leave requests 能点、没有 Shift change requests 栏", m.edit === 0 && !m.save && m.leave && !m.change && m.cells === 0 && /View only/.test(m.viewOnly), JSON.stringify(m));
+  });
+
+  // ── Settings › Rules 弹窗：浅色底板上的字看得清（Annie 2026-11-27「检查所有浅色底板，这个是staff schedule的rules」）──
+  // 以前弹窗是浅色 bg-paper、里面的 RulesView 是深色外框的白字 ⇒ 规则名、说明、Edit / Delete、标题都几乎看不见。
+  await ctl({ reset: true, viewer: "editor", canPublish: true, rules: RULES_FIXTURE });
+  // 班卡右上角的「!」（规则问题）：白字 9px，底色同一个橙色系里深一档（orange-700），对比度 ≥ 4.5（fe 转 f2 量的 orange-600 只有 3.58）。
+  await maybe("班卡「!」：白字对比度 ≥ 4.5、还是 13px 圆点", async () => {
+    if (!(await openOverview())) throw new Error("overview did not open");
+    await evaluate(CONTRAST_HELPERS);
+    const m = await evaluate(`const b = [...document.querySelectorAll('${SEL.shift} > span')].filter((s) => s.textContent.trim() === '!'); return { n: b.length, marks: b.map((x) => ({ r: $contrastOf(x).ratio, w: Math.round(x.getBoundingClientRect().width), round: getComputedStyle(x).borderRadius })) };`);
+    check("班卡「!」：白字对比度 ≥ 4.5、还是 13px 圆点", m.n > 0 && m.marks.every((x) => x.r >= 4.5 && x.w === 13 && x.round !== "0px"), JSON.stringify(m));
+  });
+  for (const w of [1600, 390]) {
+    await maybe(`Rules 弹窗 ${w}：浅色底上的字对比度都 ≥ 4.5（标题、说明、规则名、说明行、Edit / Delete）`, async () => {
+      if (w === 390) await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+      if (!(await openOverview())) throw new Error("overview did not open");
+      await evaluate(CONTRAST_HELPERS);
+      await openRules();
+      const m = await evaluate(`const d = document.querySelector('[data-rules-view]').closest('[role=dialog]'); return { rows: document.querySelectorAll('[data-rule-row]').length, bad: $lowContrast(d), edit: [...d.querySelectorAll('button')].filter((b) => b.textContent.trim() === 'Edit').map((b) => $contrastOf(b).ratio), title: $contrastOf(d.querySelector('#ov-rules')).ratio, paper: getComputedStyle(d).backgroundColor };`);
+      check(`Rules 弹窗 ${w}：浅色底上的字对比度都 ≥ 4.5（标题、说明、规则名、说明行、Edit / Delete）`, m.rows === RULES_FIXTURE.length && m.bad.length === 0 && m.edit.length === RULES_FIXTURE.length && m.edit.every((r) => r >= 4.5) && m.title >= 4.5, JSON.stringify(m));
+      if (w === 390) await cdp("Emulation.clearDeviceMetricsOverride");
+    });
+  }
+  await maybe("Rules 弹窗 ?theme=night：照旧深色底、白字", async () => {
+    await goto(`${PAGE}&theme=night`);
+    await waitFor(`document.querySelector('${SEL.root}') && document.querySelectorAll('${SEL.week}').length > 0`, 30000);
+    await helpers();
+    await evaluate(CONTRAST_HELPERS);
+    await openRules();
+    const m = await evaluate(`const d = document.querySelector('[data-rules-view]').closest('[role=dialog]'); const name = d.querySelector('[data-rule-row] b'); return { theme: document.documentElement.dataset.theme, panel: $contrastOf(name).bg, light: $contrastOf(name).light, name: getComputedStyle(name).color, title: getComputedStyle(d.querySelector('#ov-rules')).color, ratio: $contrastOf(name).ratio };`);
+    check("Rules 弹窗 ?theme=night：照旧深色底、白字", m.theme === "night" && !m.light && m.name === "rgb(255, 255, 255)" && m.title === "rgb(255, 255, 255)" && m.ratio >= 4.5, JSON.stringify(m));
+    await goto(`${PAGE}&theme=day`);
   });
 
   // ── 过去的问题不提醒（Annie 2026-11-27「过去的周有任何问题都不要再来做现在的限制或提醒了」「动手」）：

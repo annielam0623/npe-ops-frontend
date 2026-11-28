@@ -40,7 +40,7 @@ export function UploadForm({
   const input = inputClass("orange");
   const tourTypeGroups = useTourTypeGroups();
   // 手机上上传说明收进标题后的「i」（手机版规则）。
-  const info = usePhoneInfo("About this upload");
+  const info = usePhoneInfo("About this upload", { onPaper: true });
   return (
     <form
       noValidate

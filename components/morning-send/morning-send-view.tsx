@@ -100,7 +100,7 @@ function selectedInFileOrder(
 
 export function MorningSendView() {
   // 手机上上传说明收进标题后的「i」（手机版规则）。
-  const info = usePhoneInfo("About this upload");
+  const info = usePhoneInfo("About this upload", { onPaper: true });
   const [file, setFile] = useState<File | null>(null);
   const [fileInputKey, setFileInputKey] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);

@@ -772,8 +772,8 @@ export function Payroll({
   );
   /** Change history 重拉的记号：每次存好加 1。 */
   const [version, setVersion] = useState(0);
-  const byPersonInfo = usePhoneInfo("About Payroll by person");
-  const needsInfo = usePhoneInfo("About Needs review");
+  const byPersonInfo = usePhoneInfo("About Payroll by person", { onPaper: true });
+  const needsInfo = usePhoneInfo("About Needs review", { onPaper: true });
 
   const load = useCallback(
     (d: string, opts?: { signal?: AbortSignal; silent?: boolean }) => {

@@ -136,7 +136,13 @@ export function VisibilityControl({
         </span>
       ) : null}
       {error ? (
-        <span role="alert" className="text-[11.5px] text-[#f87171]">
+        <span
+          role="alert"
+          className={cn(
+            "text-[11.5px]",
+            light ? "text-[#b91c1c]" : "text-[#f87171]",
+          )}
+        >
           Could not change who can see this: {error}
         </span>
       ) : null}
