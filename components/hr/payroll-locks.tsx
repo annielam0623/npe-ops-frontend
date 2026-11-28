@@ -74,7 +74,7 @@ export function PayrollLocks({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
-  const info = usePhoneInfo("About locked dates");
+  const info = usePhoneInfo("About locked dates", { onPaper: true });
   /** 正在就地改的锁（Edit，Annie 2026-11-17 样稿第 2 版「改锁的日期和备注」动手；小题 1 A 直接存）。 */
   const [edit, setEdit] = useState<{
     id: number;

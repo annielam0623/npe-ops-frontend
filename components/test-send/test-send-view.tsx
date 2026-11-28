@@ -81,7 +81,7 @@ export function TestSendView() {
     title: string;
   } | null>(null);
 
-  const info = usePhoneInfo("About this page");
+  const info = usePhoneInfo("About this page", { onPaper: true });
   const redirectingRef = useRef(false);
   const toLogin = useCallback(() => {
     if (redirectingRef.current) return;

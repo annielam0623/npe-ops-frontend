@@ -171,7 +171,7 @@ export function TourTrackingView() {
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [lunchId, setLunchId] = useState<number | null>(null);
   /** 置顶 115 题 8 A：手机上午餐小卡收进 i。 */
-  const lunchInfo = usePhoneInfo("Lunch counts");
+  const lunchInfo = usePhoneInfo("Lunch counts", { onPaper: true });
   /** 状态下拉改了还没按 ✓ 的（按行 id）。 */
   const [drafts, setDrafts] = useState<Map<number, string>>(new Map());
   const [busyId, setBusyId] = useState<number | null>(null);

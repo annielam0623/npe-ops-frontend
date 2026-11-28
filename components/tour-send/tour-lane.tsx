@@ -417,7 +417,7 @@ export function TourLaneSection({
 
   const closeDialog = useCallback(() => setDialog(null), []);
   // 手机上上传说明（和 Last Minute 那句红字）收进标题后的「i」（手机版规则）。
-  const info = usePhoneInfo("About this upload");
+  const info = usePhoneInfo("About this upload", { onPaper: true });
 
   return (
     <div data-lane={lane}>
