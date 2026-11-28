@@ -135,7 +135,7 @@ export function WeekBlock(p: WeekBlockProps) {
         {...(bad ? { "data-ov-bad": "" } : {})}
       >
         {bad ? (
-          <span className="absolute -top-1 -right-1 grid size-[13px] place-items-center rounded-full bg-orange-600 text-[9px] leading-none font-extrabold text-white">
+          <span className="absolute -top-1 -right-1 grid size-[13px] place-items-center rounded-full bg-orange-700 text-[9px] leading-none font-extrabold text-white">
             !
           </span>
         ) : null}
