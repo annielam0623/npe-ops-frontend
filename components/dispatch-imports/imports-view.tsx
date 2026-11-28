@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { BTN_GHOST } from "@/components/dispatch/legacy-styles";
+import { PageLink } from "@/components/ui/page-link";
 import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchDispatchImports, pullFromDiscord } from "@/lib/dispatch-api";
@@ -59,6 +61,12 @@ function fmtDay(ymd: string): string {
   return `${dow} ${String(m).padStart(2, "0")}/${String(d).padStart(2, "0")}`;
 }
 
+/** 从 Dispatch「Import history →」进来时带的那天（?back=），返回键回到那一天。 */
+function backDateFromUrl(): string | null {
+  const v = new URLSearchParams(window.location.search).get("back");
+  return isYmd(v) ? v : null;
+}
+
 function sinceFromUrl(): string | null {
   const v = new URLSearchParams(window.location.search).get("since");
   return isYmd(v) ? v : null;
@@ -78,6 +86,7 @@ export function DispatchImportsView() {
   /** Pull 回来的「上次成功」（服务端已按洛杉矶格式化好）；比列表里的新。 */
   const [lastOkText, setLastOkText] = useState<string | null>(null);
   const redirectingRef = useRef(false);
+  const [backDate, setBackDate] = useState<string | null>(null);
 
   const redirectToLogin = useCallback(() => {
     if (!redirectingRef.current) {
@@ -88,6 +97,7 @@ export function DispatchImportsView() {
 
   useEffect(() => {
     setSince(sinceFromUrl());
+    setBackDate(backDateFromUrl());
   }, []);
 
   useEffect(() => {
@@ -184,10 +194,18 @@ export function DispatchImportsView() {
   return (
     <Shell>
       {/* .page-header */}
-      <header className="mb-[18px] flex flex-wrap items-center justify-end gap-3">
+      <header className="mb-[18px] flex flex-wrap items-center justify-between gap-3">
         <h2 className="sr-only">
           📥 Dispatch Imports
         </h2>
+        {/* Annie 2026-11-27「缺少一个返回刚才的dispatch页面的键，加一个」：回到进来前看的那天。 */}
+        <PageLink
+          href={backDate ? `/dispatch?date=${backDate}` : "/dispatch"}
+          data-testid="back-to-dispatch"
+          className={cn(BTN_GHOST, "inline-flex items-center no-underline")}
+        >
+          ← Back to Dispatch
+        </PageLink>
         <div className="flex flex-wrap items-center gap-3">
           {/* .pull-meta 旧色 #666 在深色底上看不清，用旧后台的灰 #94a3b8。 */}
           <span className="text-[12px] text-[#94a3b8]" data-testid="last-pull">

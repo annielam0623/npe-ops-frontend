@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import type { DispatchDay, DispatchPrivateOrder, DispatchRow } from "@/types";
 
 import { RowSave, type UnitSaveState } from "./unit-save";
+import { seatShortHint, seatShortTitle, type SeatShort } from "./seat-short";
 
 import {
   alsoDriving as alsoBy,
@@ -921,6 +922,8 @@ export interface RowProps {
   save?: UnitSaveState;
   /** 这个团还没选 Shuttle 上车点、这是第一台车：值是 Shuttle 客人数，「Add hotel」右边出提示。 */
   shuttleAsk?: number;
+  /** ⑦ 座位不够（Annie 2026-11-27 QS1 A）：卡上琥珀色一条，只提示。只有 Bus 车块用。 */
+  seatShort?: SeatShort;
 }
 
 /** fieldset 去掉浏览器默认的边框、内边距和 min-width（不然窄屏会撑破格子）。 */
@@ -1275,6 +1278,7 @@ export function VanBlock({
   orders,
   save,
   shuttleAsk,
+  seatShort,
 }: RowProps) {
   const viewOnly = useViewOnly();
   const row = rows[idx];
@@ -1445,6 +1449,16 @@ export function VanBlock({
             {save ? <RowSave s={save} /> : null}
           </div>
         </div>
+        {seatShort ? (
+          <div
+            data-seat-short
+            className="mt-2 rounded-[8px] border border-[#e7b75a] bg-[#fdf6e7] px-2.5 py-1.5 text-[12.5px] leading-[1.45] text-[#8a5a00]"
+          >
+            <b className="font-[650]">{seatShortTitle(seatShort)}</b>
+            <br />
+            {seatShortHint(seatShort)}
+          </div>
+        ) : null}
         {row.shift !== META.bus_tour_shift ? (
           <div className="flex flex-wrap items-center gap-2 pt-[9px]">
             {orders ? (

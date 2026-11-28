@@ -887,7 +887,7 @@ async function run() {
   check("各步的编号：Assign 是 Step 1 / 2，Send 也是 Step 1 / 2", await evaluate("const n = (p) => [...document.getElementById(p).querySelectorAll('section[aria-label] span.font-mono')].map(s => s.textContent.trim()).join('|'); return n('panel-assign').startsWith('Step 1|Step 2') && n('panel-send') === 'Step 1|Step 2';"), await evaluate("return [...document.querySelectorAll('section[aria-label] span.font-mono')].map(s => s.textContent.trim()).join('|');"));
   check("步骤条每块两行：① Assign / ② Send（不再有 FIRST / THEN）、说明那句黄色；输入框点进去提示字消失（Annie 2026-10-15）", await evaluate("const a = document.getElementById('tab-assign'), b = document.getElementById('tab-send'); const p = [...document.querySelectorAll('main header p')].find(x => x.textContent.includes('Assign the buses')); const i = document.createElement('input'); i.placeholder = 'x'; document.body.appendChild(i); i.focus(); const ph = getComputedStyle(i, '::placeholder').color; i.remove(); return a.children.length === 3 && b.children.length === 3 && a.children[0].textContent === '①' && a.children[1].textContent.startsWith('Assign') && b.children[0].textContent === '②' && b.children[1].textContent.startsWith('Send') && !/first|then/i.test(a.textContent.slice(0, 12) + b.textContent.slice(0, 12)) && getComputedStyle(p).color === 'rgb(251, 191, 36)' && ph === 'rgba(0, 0, 0, 0)';"));
   check("Step 2 里有 Pull from Discord、自动保存的状态、排车的块和 Schedule check；页头只剩换日期", await evaluate("const s2 = document.getElementById('step2'); const h = document.querySelector('main header'); return !!$btn('Pull from Discord', s2) && !!s2.querySelector('[data-save-state]') && !!s2.querySelector('[data-sec]') && !!s2.querySelector('#schedule-check') && !$btn('Pull from Discord', h);"));
-  check("Step 2：Pull from Discord 旁边有 Import history 入口（Dispatch Imports 合进 Dispatch，已切换去 ops 路径）", await evaluate("const a = [...document.getElementById('step2').querySelectorAll('a')].find(a => a.textContent.includes('Import history')); return a?.getAttribute('href') === '/dispatch/imports';"));
+  check("Step 2：Pull from Discord 旁边有 Import history 入口（Dispatch Imports 合进 Dispatch，已切换去 ops 路径）", await evaluate("const a = [...document.getElementById('step2').querySelectorAll('a')].find(a => a.textContent.includes('Import history')); return /^\\/dispatch\\/imports\\?back=\\d{4}-\\d{2}-\\d{2}$/.test(a?.getAttribute('href') ?? '');"), await evaluate("return [...document.getElementById('step2').querySelectorAll('a')].find(a => a.textContent.includes('Import history'))?.getAttribute('href');"));
   check("每步各有 How to use（默认收起）", await evaluate("const want = ['Guest lists', 'Buses & drivers', 'Morning Relay', 'Send to drivers']; const ds = [...document.querySelectorAll('details')]; return want.every(w => ds.some(d => d.textContent.includes('How to use — ' + w) && !d.open));"));
   await evaluate("window.__scrolled = []; const orig = Element.prototype.scrollIntoView; Element.prototype.scrollIntoView = function (o) { window.__scrolled.push(this.id || this.getAttribute('data-sec') || this.tagName); return orig.call(this, o); };");
   // 没排车的卡叫 Assign Bus、排了车叫 Check the bus（Annie 2026-10-13），点哪个都一样跳 Step 2。
@@ -3033,6 +3033,7 @@ async function run() {
   }
 
   await cclRemovedRed();
+  await seatShort();
   await otherDay();
 
   // 401
@@ -3146,6 +3147,83 @@ async function cclRemovedRed() {
 
 // 日期大号红字；确认键 "Yes, I need to send for Mon, Oct 5"（不能写 Send anyway）；Cancel 什么都不发；Yes 才发、带 confirm_date。
 // 今天 = 不弹框、不带 confirm_date。三个接口（relay-send 各轮 / 团车、driver-notice/send、guide-notice/send）都核。
+// ── ⑦ Not enough seats（Annie 2026-11-27「QS1选A，动手」，preview J1z29Ssgx412iBfzsToeyC v3）──
+// Bus 车坐的客人比座位多 ⇒ 卡上琥珀色一条 + Schedule check 琥珀色一条（Fix › 到这张卡），只提示，不挡发送。
+// 座位 = 页面上现在选的车 + 当天调整（不用先存）；客人 = 存着的座位表。Relay、没填座位数的车不出。
+async function seatShort() {
+  promptAnswer = "";
+  await goto(`${APP}/dispatch?date=2026-11-06`);
+  promptAnswer = null;
+  await waitFor("document.querySelectorAll('.vrow').length === 5", 30000);
+  await helpers();
+  await waitFor("document.querySelector('[data-seat-short]')", 15000);
+  const card = (van) => `[...document.querySelectorAll('.vrow')].find((e) => e.querySelector('[data-f=vehicle]')?.selectedOptions[0]?.text.startsWith('${van}'))`;
+  const line = (van) => `(${card(van)}?.querySelector('[data-seat-short]')?.textContent ?? null)`;
+  const a = await evaluate(`return ${line("2077")};`);
+  check("⑦ 座位不够：Bus A（2077，14 座，17 位）卡上琥珀色一条「Not enough seats: 14 seats, 17 guests — 3 short.」", a?.startsWith("Not enough seats: 14 seats, 17 guests — 3 short."), String(a));
+  check("⑦ 座位不够：同团别的车有空位 ⇒ 建议挪到 Bus B（19 空位）", a?.includes("Move 3 guests to Bus B (19 seats free) in Arrange seats, or change to a vehicle with at least 17 seats."), String(a));
+  const h = await evaluate(`return ${line("2099")};`);
+  check("⑦ 座位不够：Hoover 一台车少 2 座、没别的车 ⇒「Change to a vehicle with at least 12 seats, or add a bus.」", h === "Not enough seats: 10 seats, 12 guests — 2 short.Change to a vehicle with at least 12 seats, or add a bus.", String(h));
+  check("⑦ 座位不够：座位够的（Bus B）、没填座位数的（Bus C，768）、Morning Relay（2010）都不出", await evaluate(`return ${line("2088")} === null && ${line("768")} === null && !document.querySelector('section[data-sec^=relay] [data-seat-short]') && document.querySelectorAll('[data-seat-short]').length === 2;`), await evaluate("return document.querySelectorAll('[data-seat-short]').length;"));
+  check("⑦ 座位不够：琥珀色（#8a5a00 字、#fdf6e7 底），不是红的", await evaluate(`const s = getComputedStyle(${card("2077")}.querySelector('[data-seat-short]')); return s.color === 'rgb(138, 90, 0)' && s.backgroundColor === 'rgb(253, 246, 231)';`));
+  // Schedule check
+  await evaluate("document.querySelector('[data-schedule-pill]')?.click();");
+  await waitFor("document.getElementById('schedule-check')");
+  const li = (t) => `[...document.querySelectorAll('#schedule-check [aria-label=Issues] > li')].find((l) => l.textContent.includes(${JSON.stringify(t)}))`;
+  const ia = await evaluate(`return ${li("Bus A is 3 seats short")}?.textContent ?? null;`);
+  check("⑦ Schedule check：「West Rim Bus Tour: Bus A is 3 seats short」+「17 guests, 14 seats. Move 3 guests to Bus B or change to a bigger vehicle.」", !!ia && ia.includes("West Rim Bus Tour: Bus A is 3 seats short") && ia.includes("17 guests, 14 seats. Move 3 guests to Bus B or change to a bigger vehicle."), String(ia));
+  const ih = await evaluate(`return ${li("seats short")} && [...document.querySelectorAll('#schedule-check [aria-label=Issues] > li')].filter((l) => l.textContent.includes('seats short')).map((l) => l.textContent).join(' | ');`);
+  check("⑦ Schedule check：Hoover 那条「Hoover Dam: Bus #2099 is 2 seats short」「12 guests, 10 seats. Change to a bigger vehicle or add a bus.」，一共两条", ih.includes("Hoover Dam: Bus #2099 is 2 seats short") && ih.includes("12 guests, 10 seats. Change to a bigger vehicle or add a bus.") && ih.split(" | ").length === 2, String(ih));
+  check("⑦ Schedule check：琥珀色的「!」（同缺导游那种），不是红的", await evaluate(`const m = ${li("Bus A is 3 seats short")}.firstElementChild; return m.textContent === '!' && getComputedStyle(m).color === 'rgb(251, 191, 36)' && !${li("Bus A is 3 seats short")}.hasAttribute('data-issue-bad');`));
+  await evaluate("window.scrollTo(0, 0);");
+  await sleep(200);
+  await evaluate(`${li("Hoover Dam: Bus #2099")}.querySelector('[data-issue-fix]').click();`);
+  await sleep(1200);
+  check("⑦ Schedule check 的 Fix ›：滚到那张卡（Hoover 2099）", await evaluate(`const r = ${card("2099")}.getBoundingClientRect(); return window.scrollY > 100 && r.top < innerHeight && r.bottom > 0;`));
+  // 发送不挡：Send to driver / Send to guide 的 Send 键照常能按（只提示）——看 Send 标签上没有挡的框
+  // 换车马上算：Bus A 换成 1960（59 座）⇒ 这一条和 Schedule check 那条都消失，不用存
+  const aSel = `${card("2077")}.querySelector('[data-f=vehicle]')`;
+  const aIdx = await evaluate(`return ${card("2077")}.dataset.idx;`);
+  await pick(aSel, "13");
+  await sleep(300);
+  check("⑦ 换车马上算：Bus A 换成 1960（59 座）⇒ 卡上那一条消失（没存）", await evaluate(`return !document.querySelector('.vrow[data-idx="${aIdx}"] [data-seat-short]');`));
+  check("⑦ 换车马上算：Schedule check 里 Bus A 那条也消失", await evaluate(`return !${li("Bus A is 3 seats short")};`));
+  // 换回一台小车（2010，5 座）⇒ 又出现，少 12 座
+  await pick(`document.querySelector('.vrow[data-idx="${aIdx}"] [data-f=vehicle]')`, "20");
+  await sleep(300);
+  const a2 = await evaluate(`return document.querySelector('.vrow[data-idx="${aIdx}"] [data-seat-short]')?.textContent ?? null;`);
+  check("⑦ 换车马上算：换成 2010（5 座）⇒「5 seats, 17 guests — 12 short」，B 只有 19 空位够挪 12 位 ⇒ 建议挪到 Bus B", !!a2 && a2.startsWith("Not enough seats: 5 seats, 17 guests — 12 short.") && a2.includes("Move 12 guests to Bus B (19 seats free)"), String(a2));
+  // 座位调整也马上算（小车只能减座）：2010 减 1 座（4 座）⇒ 少 13 座；B 19 空位还够 ⇒ 仍建议 Bus B
+  await evaluate(`document.querySelector('.vrow[data-idx="${aIdx}"] [data-seat-down]').click();`);
+  await sleep(300);
+  const a3 = await evaluate(`return document.querySelector('.vrow[data-idx="${aIdx}"] [data-seat-short]')?.textContent ?? null;`);
+  check("⑦ 座位调整马上算：2010 减 1 座 ⇒「4 seats, 17 guests — 13 short」（不用先存）", !!a3 && a3.startsWith("Not enough seats: 4 seats, 17 guests — 13 short."), String(a3));
+  // 别的车空位不够挪 ⇒ 不建议挪：Hoover 也是一样的建议（没别的车）；这里看 West Rim：B 减到 33 座（12 空位 < 13）⇒ 换成 Change… 那句
+  const bIdx = await evaluate(`return ${card("2088")}.dataset.idx;`);
+  for (let k = 0; k < 7; k++) {
+    await evaluate(`document.querySelector('.vrow[data-idx="${bIdx}"] [data-seat-down]').click();`);
+    await sleep(120);
+  }
+  await sleep(300);
+  const a4 = await evaluate(`return document.querySelector('.vrow[data-idx="${aIdx}"] [data-seat-short]')?.textContent ?? null;`);
+  check("⑦ 别的车空位不够挪（B 减到 33 座、12 空位 < 13）⇒ 建议换成「Change to a vehicle with at least 17 seats, or add a bus.」", !!a4 && a4.endsWith("Change to a vehicle with at least 17 seats, or add a bus."), String(a4) + " | B seats " + (await evaluate(`return document.querySelector('.vrow[data-idx="${bIdx}"] [data-seat-num]')?.textContent;`)));
+  // 只提示：Send 标签上的 driver / guide 发送不因座位挡（没有 CCL / 座位的挡框）
+  // 红卡（CCL removed）只出红的：Bus A 少 3 座但是红卡 ⇒ 卡上、Schedule check 都没有座位那条；Hoover 照旧有
+  await ctl({ seatRed: true });
+  promptAnswer = "";
+  await goto(`${APP}/dispatch?date=2026-11-06`);
+  promptAnswer = null;
+  await waitFor("document.querySelector('[data-ccl-removed]')", 30000);
+  await helpers();
+  await waitFor("document.querySelector('[data-seat-short]')", 15000);
+  await evaluate("document.querySelector('[data-schedule-pill]')?.click();");
+  await waitFor("document.getElementById('schedule-check')");
+  check("⑦ 红卡只出红的：Bus A（CCL removed）没有座位那条、Schedule check 没有「Bus A is 3 seats short」；Hoover 那条还在", await evaluate(`const red = document.querySelector('[data-ccl-removed]'); return red.textContent.includes('#2077') && !red.querySelector('[data-seat-short]') && !${li("Bus A is 3 seats short")} && !!${li("Hoover Dam: Bus #2099")} && document.querySelectorAll('[data-seat-short]').length === 1;`), await evaluate("return document.querySelectorAll('[data-seat-short]').length;"));
+  await ctl({ seatRed: false });
+  check("⑦ 只提示：页面上没有因为座位挡发送的字样", await evaluate("return !document.body.textContent.includes('Can’t send yet') && !document.body.textContent.includes('seats short. Send');"));
+  promptAnswer = "";
+}
+
 async function otherDay() {
   const rp = "document.querySelector('section[aria-label=\"Morning Relay — send to guests\"]')";
   const dp = "document.querySelector('section[aria-label=\"Send to drivers & guides\"]')";

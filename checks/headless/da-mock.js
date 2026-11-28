@@ -45,6 +45,7 @@ const row = (o) => ({ id: null, shift: "relay", driver_hr_id: null, vehicle_id: 
   driver_name: null, guide_name: null, driver_typed_name: null, guide_typed_name: null, custom_tour_name: null, location_ids: [], ...o });
 // G82（后端 draft，2026-10-16）：2026-10-23 有 3 张 Rezdy Private 订单、3 台 Private 车。ctl.noG82 = 后端没上线（不带订单字段）。
 const PRIVATE_DAY = "2026-10-23";
+const SEAT_DAY = "2026-11-06";
 const PRIVATE_SEATS = { 11: null, 14: 14, 15: 24, 16: 56 };
 const privateOrders = () => [
   { order_number: "CHDWNB38F", guest_name: "ZZ Test Guest", pax: 4, product: "Private Upper Antelope Canyon", pickup_time: "5:30 AM", pickup_location: "Sunset Station", notes: "Pickup Point: Sunset Station at 6:00AM / Main Valet. ZZ Test wheelchair guest." },
@@ -89,6 +90,14 @@ saved[PRIVATE_DAY] = [
   row({ id: 3001, shift: "private_tour", driver_hr_id: 5, vehicle_id: 14, custom_tour_name: "ZZ Test Charter", order_number: null, order_number_set_by_staff: false }),
   row({ id: 3002, shift: "private_tour", driver_hr_id: 4, vehicle_id: 16, order_number: null, order_number_set_by_staff: false }),
   row({ id: 3003, shift: "private_tour", driver_hr_id: 1, vehicle_id: 15, order_number: null, order_number_set_by_staff: false }),
+];
+// ⑦ Not enough seats：relay 一台（2010，5 座，不出这一条）；West Rim A 少 3 座、B 有 19 空位、C 没填座位数；Hoover 一台少 2 座。
+saved[SEAT_DAY] = [
+  row({ id: 4101, shift: "relay", driver_hr_id: 1, vehicle_id: 20, location_ids: [100] }),
+  row({ id: 4102, shift: "bus_tour", manifest_id: 3, driver_hr_id: 2, guide_hr_id: 2, vehicle_id: 17, bus_label: "A", location_ids: [102] }),
+  row({ id: 4103, shift: "bus_tour", manifest_id: 3, driver_hr_id: 4, guide_hr_id: 6, vehicle_id: 18, bus_label: "B", location_ids: [101] }),
+  row({ id: 4104, shift: "bus_tour", manifest_id: 3, driver_hr_id: 5, guide_hr_id: 6, vehicle_id: 10, bus_label: "C", location_ids: [101] }),
+  row({ id: 4105, shift: "bus_tour", manifest_id: 4, driver_hr_id: 3, guide_hr_id: 6, vehicle_id: 19, bus_label: null, location_ids: [100] }),
 ];
 // G71 编辑锁专用：10-20 两轮各一台；10-21 空、照抄 10-20；10-22 只有 1st Round（Copy 1st Round）。
 saved["2026-10-20"] = [
@@ -158,6 +167,16 @@ const pillOrders = [
   ["PD9", "ZZ Test Gray", 2, "Excalibur", null], ["PD10", "ZZ Test Hale", 1, "", null],
 ].map(([order_number, name, pax, hotel, bus], i) => ({ order_number, name, pax, guest_ids: Array.from({ length: pax }, (_, k) => 100 + i * 10 + k), pickup_time: "6:30 AM", pickup_location: hotel || null, auto: bus, bus_label: bus, staff: false, tour_types: [], tour_type: null }));
 function seating(date) {
+  // ⑦ Not enough seats（Annie 2026-11-27 QS1 A）：SEAT_DAY 的座位表。A 17 位（2077 = 14 座）、B 21 位（2088 = 40 座）、C 30 位（768 没填座位数）；Hoover 一台 12 位（2099 = 10 座）。
+  if (date === SEAT_DAY) {
+    const o = (n, label, pax) => ({ order_number: `SS${n}`, name: `ZZ Test Seat ${n}`, pax, guest_ids: [9000 + n], pickup_time: "6:30 AM", pickup_location: "TI", bus_label: label, staff: false, tour_types: [], tour_type: null });
+    const orders = [o(1, "A", 17), o(2, "B", 21), o(3, "C", 30)];
+    const bus = (label, van, seats) => ({ label, van, seats, capacity: seats ?? 54, pax: orders.filter((x) => x.bus_label === label).reduce((n, x) => n + x.pax, 0) });
+    return { run_date: date, tours: [
+      { manifest_id: 3, title: "West Rim Bus Tour", name: "West Rim", uploaded: true, mode: "lettered", guests_per_bus: 54, pax: 68, buses: [bus("A", "2077", 14), bus("B", "2088", 40), bus("C", "768", null)], orders },
+      { manifest_id: 4, title: "Hoover Dam", name: "Hoover Dam", uploaded: true, mode: "single", guests_per_bus: 54, pax: 12, buses: [{ label: null, van: "2099", seats: 10, capacity: 10, pax: 12 }], orders: [] },
+    ] };
+  }
   if (ctl.pillDemo && date === "2026-10-09") {
     const bus = (label, van) => ({ label, van, seats: 14, capacity: 14, pax: pillOrders.filter((o) => o.bus_label === label).reduce((n, o) => n + o.pax, 0) });
     return { run_date: date, tours: [{ manifest_id: 3, title: "West Rim Bus Tour", name: "West Rim", uploaded: true, mode: "lettered", guests_per_bus: 14, pax: 22, buses: [bus("A", "768"), bus("B", "1328")], orders: pillOrders.map(({ auto, ...o }) => o) }] };
@@ -218,6 +237,8 @@ function day(date) {
   const dayRows = (revAuto ? [...saved[date], row({ id: 902, shift: "bus_tour", manifest_id: 3, driver_hr_id: 4, vehicle_id: 12, bus_label: null, location_ids: [102] }),
     row({ id: 903, shift: "private_tour", driver_hr_id: 5, vehicle_id: 14, custom_tour_name: "ZZ Test Charter", order_number: null, order_number_set_by_staff: false })] : (saved[date] ?? [])).map((r) => {
     const c = { ...r };
+    // ⑦ + CCL 红卡：seatRed ⇒ SEAT_DAY 的 Bus A（少 3 座那台）是 CCL 去掉的红卡。
+    if (date === SEAT_DAY && ctl.seatRed && c.id === 4102) c.ccl_removed = true;
     if (date === PRIVATE_DAY && ctl.noG82) { delete c.order_number; delete c.order_number_set_by_staff; }
     return c;
   });
@@ -236,6 +257,7 @@ function day(date) {
     orphans: [], drivers,
     // seats：Settings → Vehicles 填的座位数（2026-10-16 紧急加的字段），没填是 null。1960（id 13）填了 59，专给开车窗那组检查用。
     vehicles: [{ id: 10, van_no: "768", has_tracking: true, seats: null }, { id: 11, van_no: "2056", has_tracking: false, seats: null }, { id: 12, van_no: "1328", has_tracking: true, seats: null }, { id: 13, van_no: "1960", has_tracking: true, seats: 59 },
+      ...(date === SEAT_DAY ? [{ id: 17, van_no: "2077", has_tracking: true, seats: 14 }, { id: 18, van_no: "2088", has_tracking: true, seats: 40 }, { id: 19, van_no: "2099", has_tracking: true, seats: 10 }, { id: 20, van_no: "2010", has_tracking: true, seats: 5 }] : []),
       ...(date === PRIVATE_DAY ? [{ id: 14, van_no: "612", has_tracking: true, seats: 14 }, { id: 15, van_no: "22", has_tracking: true, seats: 24 }, { id: 16, van_no: "41", has_tracking: true, seats: 56 }] : [])],
     // ctl.hotelGroups：后端 21 给每个点带 is_tour_bus / is_shuttle（Add hotel 分 Las Vegas / Shuttle pick up 两组）；默认不带 = 后端还没上。
     locations: ctl.hotelGroups ? [

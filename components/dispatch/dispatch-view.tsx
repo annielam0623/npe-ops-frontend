@@ -132,6 +132,7 @@ import {
   SingleBusGuests,
   TourSeatingNotes,
 } from "./seating";
+import { seatShortByIdx, seatShortIssues, type SeatShort } from "./seat-short";
 import { StepBox, useStepInfoHide } from "./step-box";
 import { PhoneMore, usePhoneInfo } from "@/components/ui/phone";
 import { lockedByText, useEditLock } from "./use-edit-lock";
@@ -661,6 +662,19 @@ export function DispatchView() {
     }
     return out;
   }, [day, farmOutVisible, seating, rows, base, seeMoney]);
+  /** ⑦ 座位不够（Annie 2026-11-27「QS1选A，动手」）：卡上琥珀色一条 + Schedule check 一条，只提示。 */
+  const seatShort = useMemo(
+    () =>
+      L ? seatShortByIdx(rows, base, seating, L) : new Map<number, SeatShort>(),
+    [rows, base, seating, L],
+  );
+  const railExtra = useMemo(
+    () =>
+      farmOutIssues === undefined || !L
+        ? farmOutIssues
+        : [...seatShortIssues(seatShort, rows, L), ...farmOutIssues],
+    [farmOutIssues, seatShort, rows, L],
+  );
   const analysis = useMemo(
     () =>
       L
@@ -672,10 +686,10 @@ export function DispatchView() {
               ? relayNoCar.byRound
               : undefined,
             needLook?.date === L.day.run_date ? needLook.n : undefined,
-            farmOutIssues,
+            railExtra,
           )
         : null,
-    [rows, L, shuttlePax, relayNoCar, needLook, farmOutIssues],
+    [rows, L, shuttlePax, relayNoCar, needLook, railExtra],
   );
   // Step 1 团卡片（ManifestsPanel，另读 /api/dispatch/manifests，没有 color 字段）要和这里的团色条
   // 用同一个颜色：从 day.sections（有 color，G142）按 manifest_id 做一张表传过去。
@@ -2399,7 +2413,11 @@ export function DispatchView() {
                       {/* Dispatch Imports 合进 Dispatch、侧栏不再单列（Annie 2026-10-11）：入口放在用得着它的地方——
                     拉 Discord 旁边，看拉过哪些、读没读懂。 */}
                       <PageLink
-                        href="/dispatch/imports"
+                        href={
+                          day
+                            ? `/dispatch/imports?back=${day.run_date}`
+                            : "/dispatch/imports"
+                        }
                         className={cn(
                           BTN_GHOST,
                           "inline-flex items-center no-underline",
@@ -2658,6 +2676,7 @@ export function DispatchView() {
                         orders: day.private_orders,
                         save: unitSaveState(unitOf(rows[i])),
                         shuttleAsk: analysis.shuttleAsk.get(i),
+                        seatShort: seatShort.get(i),
                       });
                       const renderSec = (s: Sec, cardIdx: number) => {
                         // G82：后端带了 Rezdy 订单 => Private Tour 按订单分卡（上面订单 / 团名，下面这张订单的车）。
