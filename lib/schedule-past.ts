@@ -25,3 +25,42 @@ export function notPastGaps<T extends ScheduleGap>(
 ): T[] {
   return gaps.filter((g) => g.date >= today);
 }
+
+/** 请假：date_to 早于今天才算过去（跨过今天的照旧列）。 */
+export function leaveNotPast<T extends { date_to: string }>(
+  requests: readonly T[],
+  today: string,
+): T[] {
+  return requests.filter((r) => r.date_to >= today);
+}
+
+/** 改班请求的日子：move / add 的 date，swap / move 的两张卡；取最晚那天。没有日期的照旧留。 */
+function requestLastDate(r: {
+  date: string | null;
+  my_slot?: { date: string } | null;
+  their_slot?: { date: string } | null;
+}): string | null {
+  const ds = [r.date, r.my_slot?.date, r.their_slot?.date].filter(
+    (d): d is string => !!d,
+  );
+  return ds.length ? ds.sort().at(-1)! : null;
+}
+
+/**
+ * 改班请求：日子全在今天以前的不列、不计数（Annie 2026-11-27「P1选A，动手」）。请求本身还在系统里。
+ * 只滤还在走的（pending / awaiting_peer）；已决定 / 已关的照旧（那是记录，不是提醒）。
+ */
+export function requestsNotPast<
+  T extends {
+    status: string;
+    date: string | null;
+    my_slot?: { date: string } | null;
+    their_slot?: { date: string } | null;
+  },
+>(requests: readonly T[], today: string): T[] {
+  return requests.filter((r) => {
+    if (r.status !== "pending" && r.status !== "awaiting_peer") return true;
+    const d = requestLastDate(r);
+    return !d || d >= today;
+  });
+}

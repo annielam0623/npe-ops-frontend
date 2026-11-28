@@ -63,6 +63,8 @@ function reset() {
   Object.assign(ctl, {
     extraViolations: [],
     extraGaps: [],
+    extraLeave: [],
+    extraChange: [],
     viewer: "editor",
     canPublish: true,
     canManageLeaveTypes: true,
@@ -330,8 +332,12 @@ function rangeBody(from, weeks) {
       .filter((r) => r.status === "pending")
       // 只能批假的人（approver）：只回自己能批的那条（Nadia 的）。can_decide 给页面判断按钮。
       .filter((r) => ctl.viewer !== "approver" || r.employee_id === EMP.N)
-      .map((r) => ({ ...r, kind_label: catLabel(r.kind), can_decide: ctl.viewer !== "hrview", shifts: shiftsOf(r), would_gap: r.start_time ? wouldGap(r, r.date_from, r.start_time, r.end_time) : null })),
-    change_requests: canEdit() ? changeRequestsOut(wkList) : [],
+      .map((r) => ({ ...r, kind_label: catLabel(r.kind), can_decide: ctl.viewer !== "hrview", shifts: shiftsOf(r), would_gap: r.start_time ? wouldGap(r, r.date_from, r.start_time, r.end_time) : null }))
+      // 过去的请求不列（2026-11-27 P1 A）：ctl.extraLeave / extraChange 原样加进去（模拟后端还没滤过去的）。
+      .concat((ctl.extraLeave || []).map((x) => leaveReq(...x))),
+    change_requests: canEdit()
+      ? changeRequestsOut(wkList).concat((ctl.extraChange || []).length ? [{ week_start: "2026-11-15", sent_at: null, deadline: null, past_deadline: false, empty_draft: false, people: [], requests: ctl.extraChange }] : [])
+      : [],
   };
 }
 
@@ -385,7 +391,7 @@ http
     if (p === "/__ctl" && method === "POST") {
       const b = (await readBody(req)) || {};
       if (b.reset) reset();
-      for (const k of ["viewer", "canPublish", "canManageLeaveTypes", "weekStatus", "fail", "today", "selfEmp", "extraViolations", "extraGaps"]) if (k in b) ctl[k] = b[k];
+      for (const k of ["viewer", "canPublish", "canManageLeaveTypes", "weekStatus", "fail", "today", "selfEmp", "extraViolations", "extraGaps", "extraLeave", "extraChange"]) if (k in b) ctl[k] = b[k];
       return send(res, 200, { ok: true, ctl });
     }
     if (p === "/__log") return send(res, 200, log);

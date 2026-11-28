@@ -23,7 +23,7 @@ import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
 import { describeError, isStatus } from "@/lib/api-errors";
-import { notPastGaps, notPastViolations } from "@/lib/schedule-past";
+import { leaveNotPast, notPastGaps, notPastViolations, requestsNotPast } from "@/lib/schedule-past";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import { laToday, weekStartYmd } from "@/lib/la-date";
 import { usePageVisibility } from "@/lib/page-visibility";
@@ -481,9 +481,9 @@ export function ScheduleOverview() {
   const shownViolations = notPastViolations(r.violations, today);
   const weeks = Array.from({ length: r.weeks }, (_, i) => addDaysYmd(r.from, i * 7));
   const end = addDaysYmd(r.from, r.weeks * 7 - 1);
-  const pending = r.leave_requests.filter((x) => x.status === "pending");
-  const changeRequests = r.change_requests
-    .flatMap((c) => c.requests ?? [])
+  // 过去的请求不列、不计数（Annie 2026-11-27「P1选A，动手」）：请假看 date_to，改班看它的日子。
+  const pending = leaveNotPast(r.leave_requests, today).filter((x) => x.status === "pending");
+  const changeRequests = requestsNotPast(r.change_requests.flatMap((c) => c.requests ?? []), today)
     .filter((x) => x.status === "pending" || x.status === "awaiting_peer");
   const shiftTypes = settings?.shift_types ?? [];
   const canPublish = r.can_publish;
