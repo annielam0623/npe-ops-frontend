@@ -7,12 +7,15 @@ import type { ScheduleGap, ScheduleViolation } from "@/types";
  * 这里是后端上线前的保险，口径一样，后端上线后照样无害。
  */
 
-/** 违规：有一天是今天或以后就留（跨天的「昨天 Close + 今天早班」要留）；没有日期的照旧留。 */
+/** 违规：按周的看整周过完没有；其余有一天是今天或以后就留（跨天的「昨天 Close + 今天早班」要留）；没有日期的照旧留。 */
 export function notPastViolations<T extends ScheduleViolation>(
   violations: readonly T[],
   today: string,
 ): T[] {
   return violations.filter((v) => {
+    // 按周算的（带 week：天数上下限、days_per_week、每周小时）：整周过完（周六早于今天）才去掉，同后端 86。
+    // 只有 dates = [那个周日] 的「不够天数」那种，按日期会把当前周的误藏。
+    if (v.week) return addDays(v.week, 6) >= today;
     const dates = v.dates ?? [];
     return dates.length === 0 || dates.some((d) => d >= today);
   });
@@ -63,4 +66,9 @@ export function requestsNotPast<
     const d = requestLastDate(r);
     return !d || d >= today;
   });
+}
+
+function addDays(ymd: string, n: number): string {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
 }

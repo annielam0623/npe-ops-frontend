@@ -421,6 +421,9 @@ async function run() {
         rest(yest, tod, "ZZ CROSS pair: yesterday Close then today early, 8 h rest (needs 12)."),
         { rule: "max_per_shift_day", rule_id: "zz-max", blocking: true, employee_id: null, employee_name: null, dates: [fut.date], slot_ids: [fut.id], message: "ZZ FUTURE: 3 people on Morning (max 2)." },
         { rule: "weekly_hours_alert", rule_id: "zz-hours", blocking: false, employee_id: past[0].employee_id, employee_name: "ZZ", dates: ["2026-11-16", "2026-11-17"], slot_ids: [], week: "2026-11-15", message: "ZZ PAST WEEK hours alert." },
+        // 86 细化（2026-11-27）：按周的看整周过完没有。当前周（11-22 那周）的「不够天数」dates = [那个周日] 也要留；上一周的藏。
+        { rule: "min_days_on_shift", rule_id: "zz-min", blocking: false, employee_id: past[0].employee_id, employee_name: "ZZ", dates: ["2026-11-22"], slot_ids: [], week: "2026-11-22", message: "ZZ CURRENT WEEK min days." },
+        { rule: "min_days_on_shift", rule_id: "zz-min", blocking: false, employee_id: past[0].employee_id, employee_name: "ZZ", dates: ["2026-11-15"], slot_ids: [], week: "2026-11-15", message: "ZZ LAST WEEK min days." },
       ],
       extraGaps: [
         { date: "2026-11-20", start_time: "03:00", end_time: "04:00", reason: { kind: "nobody" } },
@@ -430,7 +433,7 @@ async function run() {
     await openOverview();
     await sleep(300);
     const rulesText = await evaluate(`return document.querySelector('[data-ov-rules]')?.textContent ?? '';`);
-    check("过去的问题不提醒 · Rule problems：多了跨天的和以后的两条（+2），全在过去的那对、过去那周的 hours alert 不出", (await countOf("[data-ov-rules]")) === rules0 + 2 && rulesText.includes("ZZ CROSS pair") && rulesText.includes("ZZ FUTURE") && !rulesText.includes("ZZ PAST"), `${rules0} → ${await countOf("[data-ov-rules]")} · ${rulesText}`);
+    check("过去的问题不提醒 · Rule problems：多了跨天的、以后的、当前周 min days（dates = 周日）三条（+3）；全在过去的那对、上周的 hours alert 和 min days 不出", (await countOf("[data-ov-rules]")) === rules0 + 3 && rulesText.includes("ZZ CROSS pair") && rulesText.includes("ZZ FUTURE") && rulesText.includes("ZZ CURRENT WEEK min days") && !rulesText.includes("ZZ PAST") && !rulesText.includes("ZZ LAST WEEK"), `${rules0} → ${await countOf("[data-ov-rules]")} · ${rulesText}`);
     const bad = await evaluate(`return [...document.querySelectorAll('[data-ov-shift][data-ov-bad]')].map((e) => e.dataset.ovShift);`);
     check("过去的问题不提醒 · 卡片 ! 和橙框：过去那对的两张没有；跨天那对（昨天 + 今天）和以后那张有", !bad.includes(String(past[0].id)) && !bad.includes(String(past[1].id)) && bad.includes(String(yest.id)) && bad.includes(String(tod.id)) && bad.includes(String(fut.id)), JSON.stringify({ bad, past: past.map((s) => s.id), yest: yest.id, tod: tod.id, fut: fut.id }));
     const gapsText = await evaluate(`return document.querySelector('[data-ov-gaps]')?.textContent ?? '';`);
