@@ -3,6 +3,7 @@
 const { spawn } = require("child_process");
 const path = require("path");
 const { SELECT_HELPERS } = require("./select-menu-helper");
+const { CONTRAST_HELPERS } = require("./contrast-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -164,6 +165,20 @@ async function maybe(name, fn) {
 /** 只算写请求里跟编辑锁无关的（占锁 / 心跳 / 放锁不算「存」）。 */
 const writes = async (from = 0) =>
   (await mockLog()).slice(from).filter((l) => !/\/edit-lock/.test(l.path));
+/** Settings › Rules 弹窗用的几条规则（一条关着，看划掉的那行）。 */
+const RULES_FIXTURE = [
+  { id: "r1", type: "weekend_rotation", enabled: true, params: { slots: [{ day: 6, shift_type: "open" }, { day: 0, shift_type: "open" }], employee_ids: [1, 2], exclusive: true } },
+  { id: "r2", type: "cannot_work", enabled: true, params: { employee_id: 3, shift_type: "close", days: [1, 2] } },
+  { id: "r3", type: "fixed_shift", enabled: false, params: { employee_id: 4, shift_type: "mid", days: [3] } },
+];
+async function openRules() {
+  await evaluate("[...document.querySelectorAll('button[data-ov-edit]')].find((b) => b.textContent.trim() === 'Rules')?.click() ?? (() => { const more = [...document.querySelectorAll('button')].find((b) => /More|⋯/.test(b.textContent.trim())); more?.click(); })();");
+  if (!(await waitFor("document.querySelector('[data-rules-view] [data-rule-row]')", 3000))) {
+    await evaluate("[...document.querySelectorAll('button[data-ov-edit]')].find((b) => b.textContent.trim() === 'Rules')?.click();");
+    if (!(await waitFor("document.querySelector('[data-rules-view] [data-rule-row]')", 10000))) throw new Error("Rules dialog did not open");
+  }
+  await sleep(300);
+}
 async function openOverview() {
   await goto(PAGE);
   const ok = await waitFor(`document.querySelector('${SEL.root}') && document.querySelectorAll('${SEL.week}').length > 0`, 30000);
@@ -395,6 +410,31 @@ async function run() {
   await maybe("can_edit=false：没有任何编辑键、没有 Save、只有 Leave requests 能点、没有 Shift change requests 栏", async () => {
     const m = await evaluate(`return { edit: document.querySelectorAll('${SEL.editKey}').length, save: !!document.querySelector('${SEL.save}'), leave: !!document.querySelector('${SEL.leaveReqs}'), change: !!document.querySelector('${SEL.changeReqs}'), cells: document.querySelectorAll('${SEL.cell}').length, viewOnly: document.querySelector('[data-ov-view-only]')?.textContent ?? '' };`);
     check("can_edit=false：没有任何编辑键、没有 Save、只有 Leave requests 能点、没有 Shift change requests 栏", m.edit === 0 && !m.save && m.leave && !m.change && m.cells === 0 && /View only/.test(m.viewOnly), JSON.stringify(m));
+  });
+
+  // ── Settings › Rules 弹窗：浅色底板上的字看得清（Annie 2026-11-27「检查所有浅色底板，这个是staff schedule的rules」）──
+  // 以前弹窗是浅色 bg-paper、里面的 RulesView 是深色外框的白字 ⇒ 规则名、说明、Edit / Delete、标题都几乎看不见。
+  await ctl({ reset: true, viewer: "editor", canPublish: true, rules: RULES_FIXTURE });
+  for (const w of [1600, 390]) {
+    await maybe(`Rules 弹窗 ${w}：浅色底上的字对比度都 ≥ 4.5（标题、说明、规则名、说明行、Edit / Delete）`, async () => {
+      if (w === 390) await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+      if (!(await openOverview())) throw new Error("overview did not open");
+      await evaluate(CONTRAST_HELPERS);
+      await openRules();
+      const m = await evaluate(`const d = document.querySelector('[data-rules-view]').closest('[role=dialog]'); return { rows: document.querySelectorAll('[data-rule-row]').length, bad: $lowContrast(d), edit: [...d.querySelectorAll('button')].filter((b) => b.textContent.trim() === 'Edit').map((b) => $contrastOf(b).ratio), title: $contrastOf(d.querySelector('#ov-rules')).ratio, paper: getComputedStyle(d).backgroundColor };`);
+      check(`Rules 弹窗 ${w}：浅色底上的字对比度都 ≥ 4.5（标题、说明、规则名、说明行、Edit / Delete）`, m.rows === RULES_FIXTURE.length && m.bad.length === 0 && m.edit.length === RULES_FIXTURE.length && m.edit.every((r) => r >= 4.5) && m.title >= 4.5, JSON.stringify(m));
+      if (w === 390) await cdp("Emulation.clearDeviceMetricsOverride");
+    });
+  }
+  await maybe("Rules 弹窗 ?theme=night：照旧深色底、白字", async () => {
+    await goto(`${PAGE}&theme=night`);
+    await waitFor(`document.querySelector('${SEL.root}') && document.querySelectorAll('${SEL.week}').length > 0`, 30000);
+    await helpers();
+    await evaluate(CONTRAST_HELPERS);
+    await openRules();
+    const m = await evaluate(`const d = document.querySelector('[data-rules-view]').closest('[role=dialog]'); const name = d.querySelector('[data-rule-row] b'); return { theme: document.documentElement.dataset.theme, panel: $contrastOf(name).bg, light: $contrastOf(name).light, name: getComputedStyle(name).color, title: getComputedStyle(d.querySelector('#ov-rules')).color, ratio: $contrastOf(name).ratio };`);
+    check("Rules 弹窗 ?theme=night：照旧深色底、白字", m.theme === "night" && !m.light && m.name === "rgb(255, 255, 255)" && m.title === "rgb(255, 255, 255)" && m.ratio >= 4.5, JSON.stringify(m));
+    await goto(`${PAGE}&theme=day`);
   });
 
   // ── 手机 390 ──

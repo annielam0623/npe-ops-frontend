@@ -67,6 +67,7 @@ function reset() {
     weekStatus: {},
     fail: {},
     today: "2026-11-25",
+    rules: [],
   });
   const slots = [];
   const add = (date, type, emp, start, end, note = null) =>
@@ -382,7 +383,7 @@ http
     if (p === "/__ctl" && method === "POST") {
       const b = (await readBody(req)) || {};
       if (b.reset) reset();
-      for (const k of ["viewer", "canPublish", "canManageLeaveTypes", "weekStatus", "fail", "today", "selfEmp"]) if (k in b) ctl[k] = b[k];
+      for (const k of ["viewer", "canPublish", "canManageLeaveTypes", "weekStatus", "fail", "today", "selfEmp", "rules"]) if (k in b) ctl[k] = b[k];
       return send(res, 200, { ok: true, ctl });
     }
     if (p === "/__log") return send(res, 200, log);
@@ -698,7 +699,8 @@ http
     if (p === "/api/schedule/employees" && method === "GET") {
       return send(res, 200, { employees: Object.values(EMP).map((id, i) => ({ id, name: NAMES[id], email: `zztest${id}@example.com`, is_active: true, sort_order: i + 1 })) });
     }
-    if (p === "/api/schedule/rules" && method === "GET") return send(res, 200, { version: 1, rules: [] });
+    // ctl.rules：浅色底板字色检查（Annie 2026-11-27「检查所有浅色底板，这个是staff schedule的rules」）用几条规则。
+    if (p === "/api/schedule/rules" && method === "GET") return send(res, 200, { version: 1, rules: ctl.rules || [] });
     // 编辑占用（同 sch-mock 形状）：ctl.lockMode ""/"ok" = 占得到（token 按周），"busy" = 别人在改，"missing" = 接口没上线(404)。
     const lockM = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/edit-lock(\/heartbeat|\/release)?$/.exec(p);
     if (lockM && method === "POST") {
