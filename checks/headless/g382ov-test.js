@@ -542,6 +542,9 @@ async function run() {
         rest(yest, tod, "ZZ CROSS pair: yesterday Close then today early, 8 h rest (needs 12)."),
         { rule: "max_per_shift_day", rule_id: "zz-max", blocking: true, employee_id: null, employee_name: null, dates: [fut.date], slot_ids: [fut.id], message: "ZZ FUTURE: 3 people on Morning (max 2)." },
         { rule: "weekly_hours_alert", rule_id: "zz-hours", blocking: false, employee_id: past[0].employee_id, employee_name: "ZZ", dates: ["2026-11-16", "2026-11-17"], slot_ids: [], week: "2026-11-15", message: "ZZ PAST WEEK hours alert." },
+        // 86 细化（2026-11-27）：按周的看整周过完没有。当前周（11-22 那周）的「不够天数」dates = [那个周日] 也要留；上一周的藏。
+        { rule: "min_days_on_shift", rule_id: "zz-min", blocking: false, employee_id: past[0].employee_id, employee_name: "ZZ", dates: ["2026-11-22"], slot_ids: [], week: "2026-11-22", message: "ZZ CURRENT WEEK min days." },
+        { rule: "min_days_on_shift", rule_id: "zz-min", blocking: false, employee_id: past[0].employee_id, employee_name: "ZZ", dates: ["2026-11-15"], slot_ids: [], week: "2026-11-15", message: "ZZ LAST WEEK min days." },
       ],
       extraGaps: [
         { date: "2026-11-20", start_time: "03:00", end_time: "04:00", reason: { kind: "nobody" } },
@@ -551,7 +554,7 @@ async function run() {
     await openOverview();
     await sleep(300);
     const rulesText = await evaluate(`return document.querySelector('[data-ov-rules]')?.textContent ?? '';`);
-    check("过去的问题不提醒 · Rule problems：多了跨天的和以后的两条（+2），全在过去的那对、过去那周的 hours alert 不出", (await countOf("[data-ov-rules]")) === rules0 + 2 && rulesText.includes("ZZ CROSS pair") && rulesText.includes("ZZ FUTURE") && !rulesText.includes("ZZ PAST"), `${rules0} → ${await countOf("[data-ov-rules]")} · ${rulesText}`);
+    check("过去的问题不提醒 · Rule problems：多了跨天的、以后的、当前周 min days（dates = 周日）三条（+3）；全在过去的那对、上周的 hours alert 和 min days 不出", (await countOf("[data-ov-rules]")) === rules0 + 3 && rulesText.includes("ZZ CROSS pair") && rulesText.includes("ZZ FUTURE") && rulesText.includes("ZZ CURRENT WEEK min days") && !rulesText.includes("ZZ PAST") && !rulesText.includes("ZZ LAST WEEK"), `${rules0} → ${await countOf("[data-ov-rules]")} · ${rulesText}`);
     const bad = await evaluate(`return [...document.querySelectorAll('[data-ov-shift][data-ov-bad]')].map((e) => e.dataset.ovShift);`);
     check("过去的问题不提醒 · 卡片 ! 和橙框：过去那对的两张没有；跨天那对（昨天 + 今天）和以后那张有", !bad.includes(String(past[0].id)) && !bad.includes(String(past[1].id)) && bad.includes(String(yest.id)) && bad.includes(String(tod.id)) && bad.includes(String(fut.id)), JSON.stringify({ bad, past: past.map((s) => s.id), yest: yest.id, tod: tod.id, fut: fut.id }));
     const gapsText = await evaluate(`return document.querySelector('[data-ov-gaps]')?.textContent ?? '';`);
@@ -559,6 +562,36 @@ async function run() {
     const pastWeekGaps = await evaluate(`return document.querySelector('[data-ov-week="2026-11-15"]')?.textContent.includes('3:00') ?? null;`);
     check("过去的问题不提醒 · 过去那周的 Gaps 行没有 11/20 那个", pastWeekGaps === false, String(pastWeekGaps));
     await ctl({ extraViolations: [], extraGaps: [] });
+  });
+
+  // ── 过去的请求不列、不计数（Annie 2026-11-27「P1选A，动手」）：请假 date_to 早于今天（11-25）的不列；跨过今天的、以后的照旧。
+  //    改班请求看它的日子（取最晚那天）；页面上虚线的待批请假卡过去的日子也不出。
+  await ctl({ reset: true, viewer: "editor", canPublish: true });
+  if (!skipAll && !(await openOverview())) skipAll = true;
+  await maybe("过去的请求不列、不计数：只全在过去的藏，跨过今天的和以后的留", async () => {
+    const countOf = (sel) => evaluate(`const t = document.querySelector('${sel}')?.textContent ?? ''; const m = t.match(/· (\\d+)/); return m ? Number(m[1]) : 0;`);
+    const leave0 = await countOf("[data-ov-leave-requests]");
+    const change0 = await evaluate(`return document.querySelectorAll('[data-change-request]').length;`);
+    const changeN0 = await countOf("[data-change-requests-bar]");
+    await ctl({
+      extraLeave: [
+        [901, 5, "2026-11-18", "2026-11-20", "pto", null, null, "ZZ PAST leave"],
+        [902, 5, "2026-11-23", "2026-11-26", "pto", null, null, "ZZ SPANNING leave"],
+        [903, 2, "2026-11-30", "2026-11-30", "pto", null, null, "ZZ FUTURE leave"],
+      ],
+      extraChange: [
+        { id: 911, kind: "move", status: "pending", from: { employee_id: 2, name: "ZZ" }, my_slot: { date: "2026-11-18", shift_type: "morning" }, their_slot: null, peer: null, date: "2026-11-19", shift_type: "morning", peer_timed_out: false, created_at: "2026-11-17T18:00:00+00:00", decided_at: null },
+        { id: 912, kind: "swap", status: "awaiting_peer", from: { employee_id: 2, name: "ZZ" }, my_slot: { date: "2026-11-24", shift_type: "close" }, their_slot: { date: "2026-11-26", shift_type: "close" }, peer: { employee_id: 5, name: "ZZ Peer" }, date: null, shift_type: null, peer_timed_out: false, created_at: "2026-11-23T18:00:00+00:00", decided_at: null },
+      ],
+    });
+    await openOverview();
+    await sleep(300);
+    check("过去的请求 · Leave requests · N waiting：只多跨过今天的和以后的两条（+2），全在过去的不算", (await countOf("[data-ov-leave-requests]")) === leave0 + 2, `${leave0} → ${await countOf("[data-ov-leave-requests]")} · ${await evaluate("return document.querySelector('[data-ov-leave-requests]')?.textContent;")}`);
+    const cards = await evaluate(`return [...document.querySelectorAll('[data-ov-pending]')].map((e) => e.dataset.ovPending);`);
+    check("过去的请求 · 格子里虚线待批卡：过去那条（901）一张都没有；跨过今天的（902）和以后的（903）有", !cards.includes("901") && cards.includes("902") && cards.includes("903"), JSON.stringify(cards));
+    const ids = await evaluate(`return [...document.querySelectorAll('[data-change-request]')].map((e) => e.dataset.changeRequest);`);
+    check("过去的请求 · Shift change requests：过去那条（911，11/19）不列、不计数；跨过今天的换班（912，11/24 ↔ 11/26）留", !ids.includes("911") && ids.includes("912") && (await countOf("[data-change-requests-bar]")) === changeN0 + 1, JSON.stringify({ change0, ids, n0: changeN0, n: await countOf("[data-change-requests-bar]") }));
+    await ctl({ extraLeave: [], extraChange: [] });
   });
 
   // ── 手机 390 ──
