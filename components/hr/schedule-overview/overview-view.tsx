@@ -949,14 +949,15 @@ export function ScheduleOverview() {
         return fullEmployees && rules ? (
           <Modal titleId="ov-rules" night onDismiss={close} panelClassName="max-h-[92vh] w-full max-w-[980px] overflow-y-auto p-4">
             <div className="mb-3 flex items-center justify-between">
-              <h2 id="ov-rules" className="text-[15px] font-bold text-white">
+              <h2 id="ov-rules" className="text-[15px] font-bold text-[#1a1a1a] night:text-white">
                 Rules
               </h2>
-              <button type="button" aria-label="Close" className="cursor-pointer text-white/70" onClick={close}>
+              <button type="button" aria-label="Close" className="cursor-pointer text-[#475569] night:text-white/70" onClick={close}>
                 ✕
               </button>
             </div>
             <RulesView
+              onPaper
               rules={rules}
               ctx={{ employees: fullEmployees, shiftTypes }}
               canEdit={canEdit}

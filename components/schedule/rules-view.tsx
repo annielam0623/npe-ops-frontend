@@ -7,6 +7,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   DARK_PRIMARY_BUTTON_CLASS,
   DARK_SECONDARY_BUTTON_CLASS,
+  SECONDARY_BUTTON_CLASS,
 } from "@/components/ui/buttons";
 import { describeError } from "@/lib/api-errors";
 import type { Rule } from "@/lib/schedule-engine";
@@ -32,10 +33,63 @@ interface RulesViewProps {
   canEdit: boolean;
   /** 整份替换（返回保存后的规则）。 */
   onSave: (rules: Rule[]) => Promise<Rule[]>;
+  /**
+   * 放在浅色底板（Modal 的 bg-paper）里：Staff Schedule 总览 › Settings › Rules。
+   * 默认（不传）照旧是深色外框上的样子（Schedule 页的 Rules 标签）。
+   * Annie 2026-11-27「检查所有浅色底板，这个是staff schedule的rules」：以前在浅色弹窗里也用白字，几乎看不见。
+   * 浅色时照其他白卡片弹窗的字色（深字 #1a1a1a、次要灰 #475569、SECONDARY_BUTTON_CLASS），night: 照旧深色。
+   */
+  onPaper?: boolean;
 }
 
+/** 深色外框（默认）/ 浅色底板（onPaper）两套字色；浅色那套带 night:，全深色主题下跟深色一样。 */
+const TONE = {
+  dark: {
+    card: CARD,
+    header: CARD_HEADER,
+    title: "text-white",
+    muted: MUTED,
+    error: "text-red-300",
+    empty: "text-white/70",
+    row: "border-white/10",
+    off: "bg-white/20",
+    name: "text-white",
+    on: "text-white/85",
+    disabled: "text-white/45",
+    exceptions: "text-sky-200",
+    past: "text-white/40",
+    conflict: "text-[#fcd34d]",
+    button: DARK_SECONDARY_BUTTON_CLASS,
+  },
+  paper: {
+    card: "rounded-[14px] border border-black/[.08] night:border-white/10 night:bg-white/[.04]",
+    header:
+      "flex flex-wrap items-center justify-between gap-3 border-b border-black/[.08] px-4 py-3 night:border-white/10",
+    title: "text-[#1a1a1a] night:text-white",
+    muted: "text-[#475569] night:text-white/55",
+    error: "text-[#b91c1c] night:text-red-300",
+    empty: "text-[#475569] night:text-white/70",
+    row: "border-black/[.08] night:border-white/10",
+    off: "bg-[#cbd5e1] night:bg-white/20",
+    name: "text-[#1a1a1a] night:text-white",
+    on: "text-[#1a1a1a] night:text-white/85",
+    disabled: "text-[#475569] night:text-white/45",
+    exceptions: "text-[#1d4ed8] night:text-sky-200",
+    past: "text-[#475569] night:text-white/40",
+    conflict: "text-[#92400e] night:text-[#fcd34d]",
+    button: SECONDARY_BUTTON_CLASS,
+  },
+} as const;
+
 /** Rules 标签：规则清单（开关 / Edit / Delete / + Add rule）。规则只在前端解释（自动排班引擎），后端只存。 */
-export function RulesView({ rules, ctx, canEdit, onSave }: RulesViewProps) {
+export function RulesView({
+  rules,
+  ctx,
+  canEdit,
+  onSave,
+  onPaper,
+}: RulesViewProps) {
+  const t = TONE[onPaper ? "paper" : "dark"];
   const [editing, setEditing] = useState<Rule | "new" | null>(null);
   const [deleting, setDeleting] = useState<Rule | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -67,11 +121,11 @@ export function RulesView({ rules, ctx, canEdit, onSave }: RulesViewProps) {
   const today = laToday();
 
   return (
-    <section className={CARD} data-rules-view>
-      <div className={CARD_HEADER}>
+    <section className={t.card} data-rules-view>
+      <div className={t.header}>
         <div>
-          <h2 className="text-[14px] font-semibold text-white">Rules</h2>
-          <p className={cn(MUTED, "text-[12px]")}>
+          <h2 className={cn("text-[14px] font-semibold", t.title)}>Rules</h2>
+          <p className={cn(t.muted, "text-[12px]")}>
             Auto-fill follows these rules when it schedules a week.
             {canEdit ? "" : " Only supervisors and admins can change them."}
             {/* 置顶 85 Q5（Annie「全部同意推荐」；2c 定放这里，不另加 How to use 框）。 */}
@@ -94,13 +148,13 @@ export function RulesView({ rules, ctx, canEdit, onSave }: RulesViewProps) {
         ) : null}
       </div>
       {error ? (
-        <p role="alert" className="px-4 pt-3 text-[12.5px] text-red-300">
+        <p role="alert" className={cn("px-4 pt-3 text-[12.5px]", t.error)}>
           {error}
         </p>
       ) : null}
       <div className="flex flex-col px-4 py-2">
         {ordered.length === 0 ? (
-          <p className="py-6 text-center text-[13px] text-white/70">
+          <p className={cn("py-6 text-center text-[13px]", t.empty)}>
             No rules yet. {canEdit ? "Add the first rule to start." : ""}
           </p>
         ) : (
@@ -108,7 +162,10 @@ export function RulesView({ rules, ctx, canEdit, onSave }: RulesViewProps) {
             <div
               key={rule.id}
               data-rule-row={rule.id}
-              className="grid grid-cols-[44px_1fr_auto] items-center gap-3 border-t border-white/10 py-2.5 first:border-t-0 max-sm:grid-cols-[44px_1fr]"
+              className={cn(
+                "grid grid-cols-[44px_1fr_auto] items-center gap-3 border-t py-2.5 first:border-t-0 max-sm:grid-cols-[44px_1fr]",
+                t.row,
+              )}
             >
               <button
                 type="button"
@@ -119,7 +176,7 @@ export function RulesView({ rules, ctx, canEdit, onSave }: RulesViewProps) {
                 onClick={() => void toggle(rule)}
                 className={cn(
                   "relative h-5 w-9 rounded-full transition-colors",
-                  rule.enabled ? "bg-blue-500" : "bg-white/20",
+                  rule.enabled ? "bg-blue-500" : t.off,
                   canEdit ? "cursor-pointer" : "cursor-default opacity-80",
                 )}
               >
@@ -131,16 +188,14 @@ export function RulesView({ rules, ctx, canEdit, onSave }: RulesViewProps) {
                 />
               </button>
               <div className="min-w-0">
-                <b className="block text-[13.5px] text-white">
+                <b className={cn("block text-[13.5px]", t.name)}>
                   {RULE_TYPES.find((t) => t.type === rule.type)?.label ??
                     rule.type}
                 </b>
                 <span
                   className={cn(
                     "text-[12.5px]",
-                    rule.enabled
-                      ? "text-white/85"
-                      : "text-white/45 line-through",
+                    rule.enabled ? t.on : cn(t.disabled, "line-through"),
                   )}
                 >
                   {describeRule(rule, ctx)}
@@ -151,7 +206,7 @@ export function RulesView({ rules, ctx, canEdit, onSave }: RulesViewProps) {
                   // 置顶 110 续：例外另起一行；过期的灰掉写 (past)（题 5 A）。
                   <span
                     data-rule-exceptions={rule.id}
-                    className="block text-[12.5px] text-sky-200"
+                    className={cn("block text-[12.5px]", t.exceptions)}
                   >
                     Exceptions:{" "}
                     {describeExceptions(
@@ -162,7 +217,7 @@ export function RulesView({ rules, ctx, canEdit, onSave }: RulesViewProps) {
                       <span
                         key={i}
                         data-exception-past={x.past || undefined}
-                        className={x.past ? "text-white/40" : undefined}
+                        className={x.past ? t.past : undefined}
                       >
                         {i ? " · " : ""}
                         {x.text}
@@ -175,7 +230,7 @@ export function RulesView({ rules, ctx, canEdit, onSave }: RulesViewProps) {
                   <span
                     key={t}
                     data-rule-conflict={rule.id}
-                    className="block text-[12px] text-[#fcd34d]"
+                    className={cn("block text-[12px]", t.conflict)}
                   >
                     {t}
                   </span>
@@ -186,14 +241,14 @@ export function RulesView({ rules, ctx, canEdit, onSave }: RulesViewProps) {
                   <button
                     type="button"
                     onClick={() => setEditing(rule)}
-                    className={DARK_SECONDARY_BUTTON_CLASS}
+                    className={t.button}
                   >
                     Edit
                   </button>
                   <button
                     type="button"
                     onClick={() => setDeleting(rule)}
-                    className={DARK_SECONDARY_BUTTON_CLASS}
+                    className={t.button}
                   >
                     Delete
                   </button>
