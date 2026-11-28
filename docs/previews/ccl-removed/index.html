@@ -68,9 +68,9 @@ table.flow th{background:var(--paper)}
 
 <main>
 <header style="display:grid;gap:8px">
-  <p class="tag">Dispatch · CCL fill-and-replace · preview v1 · 给 Annie · 2026-11-27 · e2</p>
+  <p class="tag">Dispatch · CCL fill-and-replace · preview v2 · 给 Annie · 2026-11-27 · e2</p>
   <h1>CCL 去掉的车：不删，整张卡标红</h1>
-  <p>你的原话：「CCL的discord进来不要把整张bus card和relay card 冲掉，只做填充和替换可以么」「对，CCL去掉的车不要自动删」「对，CCL去掉的车整张卡标红」。左边是 ops 现在的样子（ops 真页面截图，模拟数据），右边是改后样稿。代码等后端 32 的契约和你说「动手」。</p>
+  <p>你的原话：「CCL的discord进来不要把整张bus card和relay card 冲掉，只做填充和替换可以么」「对，CCL去掉的车不要自动删」「对，CCL去掉的车整张卡标红」。左边是 ops 现在的样子（ops 真页面截图，模拟数据），右边是改后样稿。v2 照你 R1 的回答加了 Schedule check 那一条和 Send 的挡法，R2 拿掉。代码等后端 32 的契约和你说「动手」。</p>
 </header>
 
 <section>
@@ -155,21 +155,58 @@ table.flow th{background:var(--paper)}
 </section>
 
 <section>
-  <h2>④ 红卡之后：staff 删掉 / CCL 又加回来</h2>
+  <h2>④ Schedule check（Dispatch 右边的检查清单）：加一条「CCL removed …」</h2>
   <ul class="facts">
-    <li><b>staff 按 Remove</b>：跟现在 Edit ▸ Remove vehicle 一样（vehicle-row.tsx:826-832），卡从页面上拿掉，按 Save 才真删（照「先改后存」）。</li>
-    <li><b>staff 不删、照常 Save</b>：车存着，<b>重开页面还是红的</b>——要后端把「CCL 去掉了」记在这台车上（见「需要后端」）。红色一直在，直到 staff 删掉，或 CCL 又把它加回来。</li>
-    <li><b>CCL 下一条消息又把这台车加回来</b>：不再另加一张新卡（不然会两张一样的），而是这张红卡变回普通卡，横幅写 “Back  Morning Relay: GIA, vehicle 2056 (CCL added it back)”。要后端在对上这台车时发「改回来」而不是「新加」。</li>
-    <li>staff 在红卡上改了司机 / 车 / 酒店：照样能改，红的不消失（红只说「CCL 那边没有这台车了」）。</li>
+    <li>现在：Dispatch 的 check list 就是右边的 <b>Schedule check</b> 浮窗（components/dispatch/rail.tsx:38-60 说明，清单 :130-200）。每条一个黄色「!」、标题、一行说明、「Fix ›」带你到那台车（框闪黄 2 秒）。清单项由 components/dispatch/config.ts:374 <code>analyze()</code> 算，例如缺导游那条（:529-536）写 “West Rim Bus Tour: Bus A has no guide / Needs a guide.”。顶上写 “Nothing here stops you from saving.”（rail.tsx:126）。</li>
+    <li>改后：每台红卡在清单最上面一条，标题红字（Dispatch 深底红字 #fca5a5，legacy-styles.ts:46 <code>DARK_ERR</code>）。说明照你「提示staff把车删掉或改其它车」写：<br><b>“CCL removed Bus B (West Rim)” / “CCL no longer sends this vehicle. Remove it or change it to another vehicle.”</b><br>Morning Relay 的写 “CCL removed vehicle 2056 (Morning Relay)”。Fix › 带到那张红卡。</li>
+    <li>G368「没填完不能发」前端还没做（ops 里搜 DISPATCH_INCOMPLETE 没有），后端 75 是草稿。下面 Send 那一块的红框是新做的；G368 上线时两种共用一个框。</li>
   </ul>
+  <div class="pair">
+    <div class="col"><p class="tag">现在（ops 截图）</p><div class="shot" style="background:#0c1828;max-width:340px"><img src="shots/4_check_now.png" alt="Schedule check now"></div></div>
+    <div class="col"><p class="tag new">改后（样稿，最上面一条）</p>
+      <div class="dark" style="background:#0c1828;max-width:320px;color:#e2e8f0;font-size:12.5px;display:grid;gap:10px">
+        <div style="display:flex;justify-content:space-between"><b style="color:#fff">Schedule check</b><span style="border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:0 8px;font-size:11.5px;color:#cbd5e1">Collapse ▾</span></div>
+        <div style="color:#64748b;font-size:11.5px">Nothing here stops you from saving.</div>
+        <div style="display:flex;gap:10px"><span style="flex:none;width:17px;height:17px;border-radius:50%;background:rgba(248,113,113,.16);color:#fca5a5;font-size:10px;font-weight:700;display:grid;place-items:center">!</span>
+          <div style="flex:1"><div style="display:flex;justify-content:space-between;gap:8px"><b style="color:#fca5a5">CCL removed Bus B (West Rim)</b><span style="color:#93c5fd;font-weight:600">Fix ›</span></div>
+          <div style="color:#94a3b8;font-size:11.5px">CCL no longer sends this vehicle. Remove it or change it to another vehicle.</div></div></div>
+        <div style="display:flex;gap:10px"><span style="flex:none;width:17px;height:17px;border-radius:50%;background:rgba(251,191,36,.16);color:#fbbf24;font-size:10px;font-weight:700;display:grid;place-items:center">!</span>
+          <div style="flex:1"><div style="display:flex;justify-content:space-between;gap:8px"><b>West Rim Bus Tour: Bus A has no guide</b><span style="color:#93c5fd;font-weight:600">Fix ›</span></div>
+          <div style="color:#64748b;font-size:11.5px">Needs a guide.</div></div></div>
+        <div style="color:#64748b">… 其他照旧 …</div>
+      </div>
+    </div>
+  </div>
 </section>
 
 <section>
-  <h2>⑤ 发给司机 / 导游、司机页 / 导游页 / 打印：红卡算不算</h2>
+  <h2>⑤ Send to driver / Send to guide：还有红卡时（按 Q1 推荐 B）</h2>
   <ul class="facts">
-    <li>现在：Send to driver / Send to guide 的名单是后端按<b>存着的</b> Dispatch 车算的（后端 app/routers/relay_pull.py:538 <code>get_driver_notice</code> → driver_notice.recipients；导游 :624），司机页 / 导游页读的也是存着的车（后端 app/services/driver_day.py:109、134、272、311 都是 <code>FROM dispatch_assignment</code>）。红卡存着 = 现在全都照常算进去：会发短信、司机页上有、Bus Manifest 照常打。</li>
-    <li>G368（导游必填，后端 75 草稿）挡的是「缺司机 / 导游 / 车号」的车（400 DISPATCH_INCOMPLETE）。CCL 去掉的车一般这几样都有，<b>不会被 G368 挡</b>；如果真的缺，那是缺东西被挡，跟红不红无关。</li>
-    <li>推荐：红卡<b>不挡</b>发送、不当「没填完」——留不留是 staff 的判断；但在 Send to driver / Send to guide 的名单里，那个人那一行写一句红字 “CCL removed this car”，发之前看得到。司机页 / 导游页 / 打印照常（车还在，就照常）。看 Q1、Q2。</li>
+    <li>现在：Send 标签 Step 1 两块（components/dispatch/relay-panel.tsx:870 “Send to drivers &amp; guides”）。名单是后端按<b>存着的</b>车算的（后端 app/routers/relay_pull.py:538 / :624），红卡存着就照常进名单、照常能发。</li>
+    <li>改后（推荐 B）：这一天还有红卡时，两块顶上各出一个红框列出来，Send texts now 灰掉。红卡都删了或换了车号、Save 后按 Refresh，红框消失、键能按。后端也要挡（同 G368，绕不过去）。</li>
+  </ul>
+  <div class="pair">
+    <div class="col"><p class="tag">现在（ops 截图）</p><div class="shot" style="background:#0c1828"><img src="shots/5_send_now.png" alt="Send to drivers now"></div></div>
+    <div class="col"><p class="tag new">改后（样稿，Send to driver 那一块）</p>
+      <div class="mock" style="gap:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span><b style="font-size:15px">Send to driver</b> <span style="font-size:12.5px">1 driver selected. Not sent yet for this day.</span></span><span style="background:#3b82f6;color:#fff;border-radius:8px;padding:5px 12px;opacity:.5">Send texts now</span></div>
+        <div style="border:1px solid rgba(179,38,30,.25);background:#fdeceb;color:#b3261e;border-radius:12px;padding:10px 14px;font-size:13px">
+          <b>Can’t send yet: CCL removed 1 vehicle.</b> Remove it or change it to another vehicle on the Assign tab, Save, then Refresh.
+          <ul style="margin:.3em 0 0;padding-left:18px"><li>Bus B (West Rim) · GIA · 2056</li></ul>
+        </div>
+        <div style="font-size:12px;color:#6b7280">（名单表格照旧）</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>⑥ 红怎么消失</h2>
+  <ul class="facts">
+    <li>照你「把车删掉或改其它车」：<b>Remove</b>（红条上的 Remove，或 Edit ▸ Remove vehicle，vehicle-row.tsx:826-832），或在红卡上<b>换成别的车号</b>。红马上消失，Schedule check 那条、Send 的红框跟着没了（Save 以后才算数）。</li>
+    <li>只改司机、导游、酒店、Bus 字母：<b>还是红</b>（车号没变，CCL 还是没派这台车）。</li>
+    <li>CCL 下一条消息又把这台车加回来：红消失，变回普通卡（不另加一张）。</li>
+    <li>staff 换了车号又换回原来那台：红不再回来（staff 已经看过、自己定的）。</li>
   </ul>
 </section>
 
@@ -177,36 +214,25 @@ table.flow th{background:var(--paper)}
   <h2>数据从哪来、到哪去</h2>
   <div class="flowwrap"><table class="flow">
     <tr><th>数据</th><th>从哪来</th><th>到哪去</th></tr>
-    <tr><td>CCL 的改版消息</td><td>Discord → 后端 dispatch_import（读成 changes：changed / added / removed）</td><td>Dispatch 黄条（横幅）列出来，按 Apply changes 才改到页面</td></tr>
-    <tr><td>「CCL 去掉了这台车」</td><td>后端 32：removed 那一条带 <code>kept: true, reason: "ccl_removed"</code>（契约等 32 发）</td><td>Apply 后那张卡标红、不删；Save 时要存在这台车上（需要后端），重开还红</td></tr>
-    <tr><td>红卡的司机 / 导游 / 车 / 酒店</td><td>staff 原来排的（存着的 dispatch_assignment），Apply 不动</td><td>照常：Send to driver / guide 名单、司机页、导游页、Bus Manifest、Morning Relay 发送</td></tr>
-    <tr><td>Remove</td><td>staff 手动按</td><td>Save 后这台车从 dispatch_assignment 删掉，下游都不再有</td></tr>
-    <tr><td>CCL 又加回来</td><td>下一条 CCL 消息里又有这台车</td><td>后端发「改回来」（不是「新加」）⇒ 红卡变回普通卡</td></tr>
+    <tr><td>CCL 的改版消息</td><td>Discord → 后端 dispatch_import（读成 changes：changed / added / removed）</td><td>Dispatch 黄条列出来，按 Apply changes 才改到页面</td></tr>
+    <tr><td>「CCL 去掉了这台车」</td><td>后端 32：removed 带 <code>kept: true, reason: "ccl_removed"</code></td><td>Apply 后那张卡标红、不删；Save 时存在这台车上，重开还红；Schedule check 一条；Send to driver / guide 红框</td></tr>
+    <tr><td>红消失</td><td>staff 删车 / 换车号（Save）；或 CCL 又加回来</td><td>卡变回普通，清单那条和 Send 红框没了</td></tr>
+    <tr><td>Send to driver / guide 能不能发</td><td>后端按存着的车算名单（relay_pull.py:538 / :624），加一项「还有没有 CCL 去掉、没处理的车」</td><td>前端红框 + 键灰掉；后端 send 也拒（同 G368）</td></tr>
   </table></div>
-  <p><b>需要后端（32）：</b>① removed 带 <code>kept</code> / <code>reason</code>（已在做）；② Save 后这台车要记住「CCL 去掉了」，GET 的车行上带出来（例如 <code>ccl_removed: true</code>），重开页面才能照样红；③ CCL 又加回同一台车时发 changed（清掉标记），不发 added；④（Q1 选 B 时）driver-notice / guide-notice 的 people 里标出哪台车是 CCL 去掉的。</p>
+  <p><b>需要后端（32）：</b>① removed 带 <code>kept</code> / <code>reason</code>（已在做）；② Save 后车行记住「CCL 去掉了」，GET 的车行带 <code>ccl_removed: true</code>，重开照样红；车号换掉或车删掉时清掉；③ CCL 又加回同一台车时发 changed（清掉标记），不发 added；④（Q1 选 B）driver-notice / guide-notice 回包带一张「CCL 去掉、还没处理的车」清单（同 G368 的 incomplete[]：shift / tour / bus_label / van），send 时有就 400（code 例如 <code>CCL_REMOVED</code>，英文原话），跟 G368 的 DISPATCH_INCOMPLETE 一起挡。</p>
 </section>
 
 <section>
   <h2>📌 要 Annie 定的</h2>
+  <p class="mute">已答：R1 你说「Q1 在check list就要提示staff把车删掉或改其它车，因为CCL已经没有派这台车了」⇒ ④ Schedule check 那一条、⑥ 删车或换车号就不红，照这句做。R2（司机页 / 导游页 / 打印）你说「第一个问题解决了第二个问题就不存在了」⇒ 拿掉。</p>
   <div class="q">
-    <h3>Q1　Dispatch 上 CCL 去掉、但 staff 留着的红卡：发给司机 / 导游时怎么算？</h3>
-    <p><b>现在：</b>CCL 去掉的车一按 Apply 就删了，不会发。改成「留着、标红」以后，这台车存着就会照常进 Send to driver / Send to guide 的名单（后端 relay_pull.py:538 / :624 按存着的车算），司机会收到短信。G368 只挡缺司机 / 导游 / 车号的车，红卡一般不缺，不会被挡。</p>
+    <h3>Q1　Dispatch 上 CCL 去掉、还没处理的红卡：只提示，还是不处理就不能 Send to driver / Send to guide？</h3>
+    <p><b>现在：</b>还没有红卡（CCL 去掉的车按 Apply 就删了）。改成留着、标红以后，Schedule check 会出一条 “CCL removed Bus B (West Rim) — Remove it or change it to another vehicle.”；但 Schedule check 本身不挡任何东西（rail.tsx:126 “Nothing here stops you from saving.”），红卡存着就会照常进 Send to driver / guide 的名单（后端 relay_pull.py:538 / :624），司机会收到短信、司机页上有这台车。</p>
     <ol>
-      <li><b>A 照常发，不提示</b>：留着就是 staff 认为还要跑；名单里看不出它被 CCL 去掉过。</li>
-      <li><b>B 照常发，但名单里提示</b>（推荐）：Send to driver / Send to guide 名单上，这个人那一行写红字 “CCL removed this car”，能勾、能发，发之前看得到。要后端在名单里标出来。</li>
-      <li><b>C 自动不发</b>：红卡的人默认不勾 / 不进名单，staff 要发得先把红去掉（但现在没有「去掉红」的键，只能删车或等 CCL 加回来）。</li>
+      <li><b>A 只提示</b>：Schedule check 有那一条，Send 照常能按；staff 没处理也能发出去，这台车的司机会收到。</li>
+      <li><b>B 不处理就不能发</b>（推荐）：这一天还有红卡时，Send to driver、Send to guide 两块顶上红框 “Can’t send yet: CCL removed 1 vehicle. Remove it or change it to another vehicle on the Assign tab, Save, then Refresh.” 列出是哪台，Send texts now 灰掉；处理完（删掉或换车号、Save）就能发。后端也挡，绕不过去；跟 G368「没填完不能发」同一个做法。</li>
     </ol>
-    <p class="rec">推荐 B：不挡（留不留是 staff 的判断），但发之前提醒一眼。</p>
+    <p class="rec">推荐 B：CCL 已经没派这台车，发出去司机会去跑一台不存在的车；处理一下只要删掉或换车号。</p>
   </div>
-  <div class="q">
-    <h3>Q2　红卡在司机页 / 导游页 / Bus Manifest 打印上出不出？</h3>
-    <p><b>现在：</b>司机页、导游页、Bus Manifest 都读存着的车（后端 driver_day.py:109 等），红卡存着就照常出现，不会自动排除。</p>
-    <ol>
-      <li><b>A 照常出</b>（推荐）：车还在 Dispatch 上，就跟别的车一样；不要的 staff 会删。纸上、司机页上不标红（红只给 staff 看）。</li>
-      <li><b>B 不出</b>：红卡当作「CCL 说没有」，司机页 / 导游页 / 打印都排除；staff 要它出就得删掉重加。</li>
-    </ol>
-    <p class="rec">推荐 A：「不自动删」的意思就是车还算数，由 staff 决定删不删。</p>
-  </div>
-  <p class="mute">横幅写法、红的颜色和位置、Remove、CCL 加回来变回普通卡，照你「不要冲掉」「不要自动删」「整张卡标红」三句做，不另出题；有不同意见直接说。</p>
 </section>
 </main>
