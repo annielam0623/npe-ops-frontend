@@ -12,7 +12,7 @@ import {
 import { BTN_BLUE, BTN_PLAIN, LeaveDialogShell } from "@/components/hr/schedule-leave/ui";
 import { ShiftChangeRequestDialog } from "@/components/hr/schedule-requests";
 import { HR_BTN_CLASS, HR_CARD_CLASS } from "@/components/hr/legacy-ui";
-import { AutoFillDialog } from "@/components/schedule/auto-fill-dialog";
+import { AutoFillDialog, type AutoFillWeekSave } from "@/components/schedule/auto-fill-dialog";
 import { EmployeesDialog } from "@/components/schedule/employees-dialog";
 import { type PublishNotice, publishNotice } from "@/components/schedule/publish-notice";
 import { RulesView } from "@/components/schedule/rules-view";
@@ -22,7 +22,14 @@ import { SharePeriodDialog } from "@/components/schedule/share-period-dialog";
 import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
-import { describeError, isStatus } from "@/lib/api-errors";
+import { TakeOverDialog } from "@/components/ui/take-over-dialog";
+import { describeError, errorCode, isStatus } from "@/lib/api-errors";
+import {
+  fetchScheduleLockStatus,
+  LOCK_TAKEN_OVER,
+  takeOverScheduleLock,
+  type EditLockHolder,
+} from "@/lib/edit-lock-takeover";
 import { leaveNotPast, notPastGaps, notPastViolations, requestsNotPast } from "@/lib/schedule-past";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import { laToday, weekStartYmd } from "@/lib/la-date";
@@ -61,7 +68,7 @@ import type {
   ScheduleWeek,
 } from "@/types";
 import { ApiError } from "@/types";
-import type { ScheduleRange } from "@/types/schedule-overview";
+import type { RangeOp, ScheduleRange } from "@/types/schedule-overview";
 
 import { AlertBars } from "./alert-bars";
 import {
@@ -78,7 +85,7 @@ import {
   setOff,
   weeksOfSlotChange,
 } from "./draft";
-import { HOW_TO_USE, HOW_TO_USE_APPROVER } from "./how-to";
+import { HOW_TO_USE, HOW_TO_USE_APPROVER, HOW_TO_USE_TAKE_OVER } from "./how-to";
 import { ShiftDialog } from "./shift-dialog";
 import { useRangeLocks } from "./use-range-locks";
 import { addDaysYmd, md, WeekBlock } from "./week-block";
@@ -173,6 +180,14 @@ export function ScheduleOverview() {
   const [notice, setNotice] = useState<PublishNotice | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  /**
+   * Super Admin 接手（preview v3 第 3 节，K1 A）：动手改时别人占着那一周 ⇒ 红框里多一个白键 Take over（后端 can_take_over 说了算）。
+   * lost = 自己的编辑被接手 / 存之前核对时已结束（SA-3）：红框写后端原话 + Reload，整页只能看。
+   */
+  const [takeOverOf, setTakeOverOf] = useState<{ week: string; holder: EditLockHolder } | null>(null);
+  const [takingOver, setTakingOver] = useState<{ week: string; holder: EditLockHolder } | null>(null);
+  const [lost, setLost] = useState<string | null>(null);
   const [rules, setRules] = useState<Rule[] | null>(null);
   const [fullEmployees, setFullEmployees] = useState<ScheduleEmployee[] | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -182,7 +197,7 @@ export function ScheduleOverview() {
     if (typeof window !== "undefined")
       window.location.href = buildLegacyLoginRedirectUrl(window.location.href);
   }, []);
-  const locks = useRangeLocks(redirectToLogin);
+  const locks = useRangeLocks(redirectToLogin, (detail) => setLost(detail));
 
   // ---- 读数据 ----
   useEffect(() => {
@@ -213,13 +228,18 @@ export function ScheduleOverview() {
       .then((c) => c.length && setCategories(c))
       .catch(() => {});
     fetchCurrentUser(ac.signal)
-      .then((me) => setIsAdmin(me.is_admin === true || me.is_superadmin === true))
+      .then((me) => {
+        setIsAdmin(me.is_admin === true || me.is_superadmin === true);
+        setIsSuperAdmin(me.is_superadmin === true);
+      })
       .catch(() => {});
     return () => ac.abort();
   }, []);
 
   const range = load.kind === "ready" ? load.range : null;
   const canEdit = !!range?.can_edit;
+  /** 编辑被接手 / 已结束：格子拖不动、点不开，Save / Discard 灰掉，直到 Reload。 */
+  const editable = canEdit && !lost;
   const diff = useMemo(() => diffDraft(base, draft), [base, draft]);
   const dirty = diff.ops.length > 0;
   const changedKeys = useMemo(() => {
@@ -319,13 +339,19 @@ export function ScheduleOverview() {
     change: (d: Draft) => Draft,
     opts?: { leaveOnly?: boolean },
   ) => {
+    if (lost) return;
     setEditError(null);
+    setTakeOverOf(null);
     if (!opts?.leaveOnly) {
       const err = await buildWeeks(weeks);
       if (err) return setEditError(err);
     }
     const r = await locks.ensure(weeks);
-    if (!r.ok) return setEditError(r.detail);
+    if (!r.ok) {
+      setEditError(r.detail);
+      if (r.busy && r.week) void offerTakeOver(r.week);
+      return;
+    }
     setDraft((d) => change(d));
     if (save.kind !== "saving") setSave({ kind: "idle" });
   };
@@ -346,25 +372,146 @@ export function ScheduleOverview() {
     weekStatusOf,
   });
 
+  /** 别人占着这一周：问后端能不能接手（只有 Super Admin 是 true），能就在红框里出 Take over。 */
+  const offerTakeOver = async (week: string) => {
+    try {
+      const s = await fetchScheduleLockStatus(week);
+      if (s.can_take_over && s.edit_lock && !s.edit_lock.by_me) setTakeOverOf({ week, holder: s.edit_lock });
+    } catch (error) {
+      if (isStatus(error, 401)) redirectToLogin();
+      // 别的错：不出 Take over，红框照旧。
+    }
+  };
+
+  /** 不知道是哪一周被占（range/changes 回 409 locked）：一周一周问，第一个别人占着的出 Take over。 */
+  const offerTakeOverAny = async (weeks: string[]) => {
+    for (const w of weeks) {
+      try {
+        const s = await fetchScheduleLockStatus(w);
+        if (s.edit_lock && !s.edit_lock.by_me) {
+          if (s.can_take_over) setTakeOverOf({ week: w, holder: s.edit_lock });
+          return;
+        }
+      } catch (error) {
+        if (isStatus(error, 401)) return redirectToLogin();
+      }
+    }
+  };
+
+  /** 被接手 / 已结束：只能看。 */
+  const loseEditing = (detail: string) => {
+    setLost(detail);
+    setTakeOverOf(null);
+    setEditError(null);
+    setSave({ kind: "idle" });
+  };
+
+  /** Reload：作废的 token 只忘掉，丢掉没存的改动，重读。 */
+  const reloadAfterLost = () => {
+    locks.forgetAll();
+    setLost(null);
+    setDraft(base);
+    setSave({ kind: "idle" });
+    setEditError(null);
+    reloadRange();
+  };
+
+  /**
+   * Auto-fill 排出来的周（Take over 那次改的）：跟手动改一样先占每一周的锁，再经 range/changes 一次存（带 token），
+   * 不再直接调 slots/bulk / PUT time-off。Replace = 删掉这一周现在的全部班（照原来 bulk 的 replace）。失败抛英文原话。
+   */
+  const saveAutoFill = async (items: AutoFillWeekSave[]): Promise<void> => {
+    if (lost) throw new Error(lost);
+    const weeks = [...new Set(items.map((i) => i.weekStart))].sort();
+    const v = await locks.verify();
+    if (!v.ok) {
+      loseEditing(v.detail);
+      throw new Error(v.detail);
+    }
+    const r = await locks.ensure(weeks);
+    if (!r.ok) {
+      if (r.busy && r.week) {
+        setEditError(r.detail);
+        void offerTakeOver(r.week);
+      }
+      throw new Error(r.detail);
+    }
+    try {
+      const fresh = new Map<string, { version: string | null; slotIds: number[] }>();
+      for (const w of weeks) {
+        const wk = await fetchScheduleWeek(w);
+        fresh.set(w, { version: wk.version ?? null, slotIds: wk.slots.map((s) => s.id) });
+      }
+      const ops: RangeOp[] = [];
+      items.forEach((it, n) => {
+        if (it.replace) for (const id of fresh.get(it.weekStart)?.slotIds ?? []) ops.push({ op: "delete", slot: id });
+        it.create.forEach((s, i) =>
+          ops.push({
+            op: "create",
+            ref: `af${n}-${i}`,
+            date: s.date,
+            shift_type: s.type,
+            start_time: s.start,
+            end_time: s.end,
+            employee_id: s.employeeId,
+            note: null,
+          }),
+        );
+      });
+      // Leave 放在班的后面（同一人同一天不能既有班又有休假：先删旧班）。
+      for (const it of items)
+        for (const [id, dates] of Object.entries(it.leave))
+          for (const date of [...dates].sort())
+            ops.push({ op: "time_off_set", employee_id: Number(id), date, kind: "pto", start_time: null, end_time: null, note: null });
+      if (!ops.length) return;
+      await saveScheduleRange({
+        weeks: weeks.map((w) => ({ week_start: w, lock_token: locks.token(w), base_version: fresh.get(w)?.version ?? null })),
+        ops,
+      });
+      locks.releaseAll();
+    } catch (error) {
+      if (isStatus(error, 401)) {
+        redirectToLogin();
+        throw new Error("Please sign in again.");
+      }
+      if (errorCode(error) === LOCK_TAKEN_OVER) loseEditing(describeError(error));
+      throw new Error(leaveErrorText(error, describeError(error)));
+    }
+  };
+
   // ---- Save ----
   const doSave = async (): Promise<boolean> => {
     if (!range || !dirty) return true;
+    if (lost) return false;
     setSave({ kind: "saving" });
-    const r = await locks.ensure([...diff.slotWeeks]);
+    // SA-3：先给每个占着的周心跳一次、等回来；被接手 / 已结束 ⇒ 不存（电脑睡了很久醒来马上 Save，后端认不出来）。
+    const v = await locks.verify();
+    if (!v.ok) {
+      loseEditing(v.detail);
+      return false;
+    }
+    // 周锁加固（后端 week-lock-hardening 2026-11-27）：range/changes 要列出的每一周都占着，只改假的周也一样 ⇒ 每周都先占、都带 token。
+    const listed = [...diff.weeks].sort();
+    const r = await locks.ensure(listed);
     if (!r.ok) {
       setSave({ kind: "error", text: r.detail });
+      if (r.busy && r.week) {
+        setEditError(r.detail);
+        void offerTakeOver(r.week);
+      }
       return false;
     }
     try {
       const res = await saveScheduleRange({
-        weeks: [...diff.weeks].sort().map((w) => ({
+        weeks: listed.map((w) => ({
           week_start: w,
-          lock_token: diff.slotWeeks.has(w) ? locks.token(w) : null,
+          lock_token: locks.token(w),
           base_version: weekInfo(w)?.version ?? null,
         })),
         ops: diff.ops,
       });
       for (const [w, out] of Object.entries(res.weeks ?? {})) locks.adopt(w, out.lock_token);
+      for (const [w, t] of Object.entries(res.lock_tokens ?? {})) locks.adopt(w, t);
       locks.releaseAll();
       setSave({ kind: "saved" });
       reloadRange();
@@ -372,6 +519,18 @@ export function ScheduleOverview() {
     } catch (error) {
       if (isStatus(error, 401)) {
         redirectToLogin();
+        return false;
+      }
+      if (errorCode(error) === LOCK_TAKEN_OVER) {
+        loseEditing(describeError(error));
+        return false;
+      }
+      if (errorCode(error) === "locked") {
+        // 别人占着其中一周：同动手改时的红框 + Take over（Super Admin）。
+        const text = describeError(error);
+        setSave({ kind: "error", text });
+        setEditError(text);
+        void offerTakeOverAny(listed);
         return false;
       }
       const e = leaveErrorOf(error, describeError(error));
@@ -597,6 +756,7 @@ export function ScheduleOverview() {
                 data-ov-edit
                 data-ov-autofill
                 className={cn(HR_BTN_CLASS, BTN_SM)}
+                disabled={!!lost}
                 onClick={() => (dirty ? setEditError("Save or discard your changes first, then use Auto-fill.") : void openWith("auto-fill"))}
               >
                 Auto-fill
@@ -645,10 +805,48 @@ export function ScheduleOverview() {
           onChangeRequest={(request) => afterSave(() => setDialog({ kind: "change-request", request }))}
         />
 
-        {editError ? (
-          <div role="alert" data-ov-edit-error className="mx-3.5 mb-2 rounded-[7px] border border-[#f87171] bg-[#fef2f2] px-2.5 py-[7px] text-[12.5px] text-[#991b1b]">
-            {editError}
+        {lost ? (
+          <div role="alert" data-ov-lost className="mx-3.5 mb-2 flex flex-wrap items-center gap-2.5 rounded-[7px] border border-[#f87171] bg-[#fef2f2] px-2.5 py-[7px] text-[12.5px] text-[#991b1b]">
+            <span className="min-w-0 flex-[1_1_240px]">{lost}</span>
+            <button type="button" className={BTN_PLAIN} onClick={reloadAfterLost} data-ov-lost-reload>
+              Reload
+            </button>
           </div>
+        ) : editError ? (
+          <div role="alert" data-ov-edit-error className="mx-3.5 mb-2 flex flex-wrap items-center gap-2.5 rounded-[7px] border border-[#f87171] bg-[#fef2f2] px-2.5 py-[7px] text-[12.5px] text-[#991b1b]">
+            <span className="min-w-0 flex-[1_1_240px]">{editError}</span>
+            {/* K2 A：红框里的 Take over 是白键（只打开确认框）。 */}
+            {takeOverOf ? (
+              <button type="button" className={BTN_PLAIN} onClick={() => setTakingOver(takeOverOf)} data-ov-take-over>
+                Take over
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+        {takingOver ? (
+          <TakeOverDialog
+            scope="week"
+            holder={takingOver.holder}
+            take={async (holderSince) => {
+              const r = await takeOverScheduleLock(takingOver.week, holderSince);
+              locks.take(takingOver.week, r.token);
+            }}
+            reread={() => fetchScheduleLockStatus(takingOver.week)}
+            onTaken={() => {
+              setTakingOver(null);
+              setTakeOverOf(null);
+              setEditError(null);
+              // 对方存过的要看到；有自己没存的改动时不重读（存的时候版本不对会照常提示）。
+              if (!dirty) reloadRange();
+            }}
+            onFree={() => {
+              setTakingOver(null);
+              setTakeOverOf(null);
+              setEditError(null);
+            }}
+            onClose={() => setTakingOver(null)}
+            onUnauthorized={redirectToLogin}
+          />
         ) : null}
 
         <div className="grid gap-3 px-3.5 pb-3 max-sm:px-2">
@@ -669,7 +867,7 @@ export function ScheduleOverview() {
                 pending={pending}
                 shiftTypes={shiftTypes}
                 categories={categories}
-                canEdit={canEdit}
+                canEdit={editable}
                 changedKeys={changedKeys}
                 actions={
                   canEdit ? (
@@ -731,13 +929,13 @@ export function ScheduleOverview() {
                 Not saved yet · {unsavedN} {unsavedN === 1 ? "change" : "changes"}
               </span>
             ) : null}
-            <button type="button" className={cn(HR_BTN_CLASS, BTN_SM)} disabled={!dirty || save.kind === "saving"} onClick={discard} data-ov-discard>
+            <button type="button" className={cn(HR_BTN_CLASS, BTN_SM)} disabled={!dirty || save.kind === "saving" || !!lost} onClick={discard} data-ov-discard>
               Discard
             </button>
             <button
               type="button"
               className={cn(BTN_BLUE, BTN_SM)}
-              disabled={!dirty || save.kind === "saving"}
+              disabled={!dirty || save.kind === "saving" || !!lost}
               onClick={() => void doSave()}
               data-ov-save
             >
@@ -750,7 +948,7 @@ export function ScheduleOverview() {
       <details className={HR_CARD_CLASS} data-how-to-use>
         <summary className="cursor-pointer px-3.5 py-2.5 text-[13px] font-semibold">How to use</summary>
         <ul className="list-disc px-8 pb-3 text-[12.5px]">
-          {(canEdit ? HOW_TO_USE : HOW_TO_USE_APPROVER).map((t) => (
+          {[...(canEdit ? HOW_TO_USE : HOW_TO_USE_APPROVER), ...(canEdit && isSuperAdmin ? HOW_TO_USE_TAKE_OVER : [])].map((t) => (
             <li key={t}>{t}</li>
           ))}
         </ul>
@@ -944,6 +1142,7 @@ export function ScheduleOverview() {
               ctx: { employees: fullEmployees, shiftTypes },
             }}
             onClose={close}
+            saveWeeks={saveAutoFill}
             onDone={(message) => {
               close();
               setBanner({ tone: "ok", text: message });

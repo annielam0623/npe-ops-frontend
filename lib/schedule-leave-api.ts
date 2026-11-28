@@ -4,8 +4,6 @@ import { clockRange, dayLabel } from "@/lib/schedule-leave";
 import { ApiError } from "@/types";
 import type {
   ScheduleGap,
-  ScheduleTimeOff,
-  ScheduleTimeOffInput,
   ScheduleViolation,
 } from "@/types";
 
@@ -75,39 +73,6 @@ export async function updateLeaveCategory(
     { method: "PUT", body: input },
   );
   return res.category;
-}
-
-/** 主管直接录假（现有 PUT /api/schedule/time-off，G382 多收 start_time / end_time，有的话只能一天）。 */
-export function addTimeOff(
-  input: ScheduleTimeOffInput,
-): Promise<{ time_off: ScheduleTimeOff[] }> {
-  return apiFetch<{ time_off: ScheduleTimeOff[] }>("/api/schedule/time-off", {
-    method: "PUT",
-    body: input,
-  });
-}
-
-/** 改一条已有的假（interface.md 2.4；日期不改）。改成整天 = 两个时间都 null。 */
-export async function updateTimeOff(
-  id: number,
-  input: {
-    kind?: string;
-    start_time?: string | null;
-    end_time?: string | null;
-    note?: string | null;
-  },
-): Promise<ScheduleTimeOff> {
-  const res = await apiFetch<{ time_off: ScheduleTimeOff }>(
-    `/api/schedule/time-off/${id}`,
-    { method: "PUT", body: input },
-  );
-  return res.time_off;
-}
-
-export function deleteTimeOff(id: number): Promise<unknown> {
-  return apiFetch<unknown>(`/api/schedule/time-off/${id}`, {
-    method: "DELETE",
-  });
 }
 
 /** 批复人看到的一条（GET /api/schedule/leave-requests、range.leave_requests）；G382 多三个字段 + would_gap。 */

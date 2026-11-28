@@ -8,8 +8,8 @@ import {
 } from "@/components/ui/buttons";
 import { describeError } from "@/lib/api-errors";
 import { laToday, shiftYmd, weekStartYmd } from "@/lib/la-date";
-import { fetchScheduleWeek, setScheduleTimeOff } from "@/lib/schedule-api";
-import { bulkCreateSlots } from "@/lib/schedule-rules-api";
+import { fetchScheduleWeek } from "@/lib/schedule-api";
+import { ApiError } from "@/types";
 import {
   generateWeek,
   runReportFlags,
@@ -105,6 +105,19 @@ type Step =
   | { kind: "creating" }
   | { kind: "error"; message: string };
 
+/**
+ * 一周要存的东西（交给页面存）：页面先占这一周的编辑锁，再经 POST /api/schedule/range/changes 一次存（带 lock token），
+ * 不再直接调 slots/bulk、PUT time-off（Take over 那次改的，后端要所有改班 / 改假的接口都带 token）。
+ */
+export interface AutoFillWeekSave {
+  weekStart: string;
+  /** 先删掉这一周原来的全部班。 */
+  replace: boolean;
+  create: Proposal["create"];
+  /** 这一周要存的 Leave（员工 id → 日期），记成 PTO、整天。 */
+  leave: Record<number, string[]>;
+}
+
 interface AutoFillDialogProps {
   /** 排班页现在看的这一周（周日），从这一周开始排。 */
   weekStart: string;
@@ -114,6 +127,8 @@ interface AutoFillDialogProps {
   onClose: () => void;
   /** 建好草稿：回到排班页刷新 + 提示。 */
   onDone: (message: string) => void;
+  /** 存排出来的周（一个事务：全成或全不成）；失败就抛，message 照原话显示。 */
+  saveWeeks: (items: AutoFillWeekSave[]) => Promise<void>;
   /**
    * 当前这一周（排班页正在看的那一周）填出来的班交给页面暂存、等整周 Save（Annie 2026-10-29 B9 Q6）；
    * 后面几周照旧直接建草稿。没传 = 照旧全部直接建。replace = 这一周原来的班要删掉。
@@ -163,6 +178,7 @@ export function AutoFillDialog({
   settings,
   onClose,
   onDone,
+  saveWeeks,
   onDraftThisWeek,
   period,
 }: AutoFillDialogProps) {
@@ -183,7 +199,7 @@ export function AutoFillDialog({
   const active = employees.filter((e) => e.is_active);
   /**
    * 置顶 117（Annie「让我选择autofill的时候可以先跳出一个窗口，点击哪些天是已经申请的Leave」）：这次新点的 Leave，
-   * 员工 id → 日期。先暂存在弹窗里，排班结果确认（Create draft）时才存进系统（PUT /api/schedule/time-off，记成 PTO）。
+   * 员工 id → 日期。先暂存在弹窗里，排班结果确认（Create draft）时才存进系统（交给页面经 range/changes 存，记成 PTO）。
    */
   const [newLeave, setNewLeave] = useState<Record<number, string[]>>({});
   const dayIn = (weekStart: string, date: string) =>
@@ -531,18 +547,11 @@ export function AutoFillDialog({
         }
       return out;
     };
-    const putLeave = async (rec: Record<number, string[]>) => {
-      for (const [id, dates] of Object.entries(rec)) {
-        if (!dates.length) continue;
-        await setScheduleTimeOff({
-          employee_id: Number(id),
-          dates: [...dates].sort(),
-          kind: "pto",
-          note: null,
-        });
+    const listLeave = (rec: Record<number, string[]>) => {
+      for (const [id, dates] of Object.entries(rec))
         for (const d of dates) leaveSaved.push(`${nameOf(Number(id))} ${d}`);
-      }
     };
+    const items: AutoFillWeekSave[] = [];
     // 当前这一周：放到页面上等整周 Save（B9 Q6），不直接建。
     let onPage = 0;
     try {
@@ -568,7 +577,9 @@ export function AutoFillDialog({
         };
         if (onDraftThisWeek && p.weekStart === weekStart) {
           const { now, later } = split(true);
-          await putLeave(now);
+          if (Object.keys(now).length)
+            items.push({ weekStart: p.weekStart, replace: false, create: [], leave: now });
+          listLeave(now);
           onDraftThisWeek(p.create, replace, later);
           for (const [id, dates] of Object.entries(later))
             for (const d of dates)
@@ -578,25 +589,18 @@ export function AutoFillDialog({
           onPage = p.create.length;
           continue;
         }
-        await bulkCreateSlots(p.weekStart, {
-          replace,
-          slots: p.create.map((s) => ({
-            date: s.date,
-            shift_type: s.type,
-            start_time: s.start,
-            end_time: s.end,
-            employee_id: s.employeeId,
-          })),
-        });
+        // 同一个事务里先删旧班（Replace）、再建班、最后存这一周的 Leave（同一人同一天不能既有班又有休假）。
+        const leave = split(false).now;
+        items.push({ weekStart: p.weekStart, replace, create: p.create, leave });
+        listLeave(leave);
         made += p.create.length;
         weeksMade++;
-        // 班建好了（Replace 已经删掉旧班），再存这一周的 Leave。
-        await putLeave(split(false).now);
       }
+      if (items.length) await saveWeeks(items);
     } catch (error) {
       setStep({
         kind: "error",
-        message: `${describeError(error)}${weeksMade ? ` (${weeksMade} week(s) were already created as drafts before this.)` : " Nothing was created."}${leaveSaved.length ? ` Leave already saved: ${leaveSaved.join(", ")}.` : ""}`,
+        message: `${error instanceof ApiError || !(error instanceof Error) || error instanceof TypeError ? describeError(error) : error.message} Nothing was created.`,
       });
       return;
     }

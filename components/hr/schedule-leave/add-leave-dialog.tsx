@@ -36,11 +36,11 @@ interface AddLeaveDialogProps {
   data: LeaveDialogData;
   employeeId: number;
   date: string;
-  /** 有 = 改这条已有的假（设计 2.3「调整请假」，PUT /api/schedule/time-off/{id}）；日期不改。 */
+  /** 有 = 改这条已有的假（设计 2.3「调整请假」，经 range/changes 的 time_off op 存）；日期不改。 */
   existing?: ScheduleTimeOff | null;
   /**
    * stage = 先放到页面草稿上，页底 Save 才存（preview v2 灰绿 Add）；
-   * direct = 点了就存（蓝键，现在的 PUT /api/schedule/time-off）。等 7d 定合同（range/changes 有没有 time_off op）。
+   * direct = 点了就存（蓝键）。
    */
   mode?: "stage" | "direct";
   /** 返回 null = 成功（框关）；返回 / 抛出 = 报错，框不关、红框显示后端原话。 */

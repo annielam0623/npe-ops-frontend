@@ -9,6 +9,9 @@ export function describeError(error: unknown): string {
     if (body && typeof body.detail === "string" && body.detail.trim()) {
       return body.detail;
     }
+    // 套两层的 409（{detail: {detail, code}}：lock_taken_over / holder_changed / locked / stale…）：照里面那句原话。
+    const inner = (body?.detail as { detail?: unknown } | null | undefined)?.detail;
+    if (typeof inner === "string" && inner.trim()) return inner;
     const status = `${error.status}${error.statusText ? ` ${error.statusText}` : ""}`;
     // FastAPI 请求校验（422）的 detail 是数组 [{loc, msg}]：拼成一句写出来，不只剩「Request failed (422).」
     // （Annie 2026-11-25 Reporting lines Save 只看到「Request failed (422).」，查不出是哪一格）。
@@ -43,6 +46,14 @@ function validationIssues(detail: unknown): string | null {
 
 export function isStatus(error: unknown, status: number): boolean {
   return error instanceof ApiError && error.status === status;
+}
+
+/** 套两层的出错回包里的 code（{detail: {detail, code}}）；没有 ⇒ null。 */
+export function errorCode(error: unknown): string | null {
+  if (!(error instanceof ApiError)) return null;
+  const d = (error.body as { detail?: unknown } | null)?.detail;
+  const code = d && typeof d === "object" ? (d as { code?: unknown }).code : null;
+  return typeof code === "string" ? code : null;
 }
 
 /**
