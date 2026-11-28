@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-unused-expressions -- preview 截图用的 node 小脚本（同 checks/**），不进 app。 */
 // G333 preview 截图：node shots.js <outDir>；起 next dev 3292（API_PROXY_TARGET=8962）+ proxy.js 后跑。每段换一个模拟后端到 8961。
 const { spawn } = require("child_process");
 const puppeteer = require("C:/Code/npe-ops-e2-hover/node_modules/puppeteer-core");
