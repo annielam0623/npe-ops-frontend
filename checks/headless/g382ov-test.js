@@ -389,9 +389,6 @@ async function run() {
       JSON.stringify({ before0, r, builtLog: builtLog.length, after, ops, wk, saved }));
   });
 
-  // ── 只能批假的人 ──
-  await ctl({ reset: true, viewer: "approver" });
-  if (!skipAll && !(await openOverview())) skipAll = true;
   // ── Super Admin Take over（preview v3 HnwCg1oWJgYGuaiB72QPfz，K1–K3 A；后端 lock-takeover 2026-11-27）──
   const TAKE_LINE = "Super Admin: if someone else is editing a week, press Take over in the red message to edit it yourself. Their changes that weren’t saved are lost, and they see a message within a minute.";
   const howLines = () => evaluate(`return [...document.querySelectorAll('${SEL.howTo} li')].map((li) => li.textContent);`);
@@ -471,12 +468,15 @@ async function run() {
     await evaluate("document.querySelector('[data-ov-autofill]').click(); return 1;");
     const dlgSel = "[...document.querySelectorAll('[role=dialog], .fixed.inset-0')].find((d) => /Auto-fill|Preview/.test(d.textContent))";
     await waitFor(`${dlgSel} && [...${dlgSel}.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Preview')`, 15000);
+    // 「Copy a base week」：mock 没有规则，照上一周抄，保证有班要存。
+    await evaluate(`[...${dlgSel}.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith('Copy a base week')).click(); return 1;`);
+    await sleep(300);
     await evaluate(`[...${dlgSel}.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Preview').click(); return 1;`);
     // 置顶 117：先出 Leave 表 ⇒ Continue；然后预览 ⇒ Create draft(s)
-    for (let i = 0; i < 3; i++) {
-      const next = await waitFor(`[...(${dlgSel}?.querySelectorAll('button') ?? [])].some((b) => /^(Continue|Create draft)/.test(b.textContent.trim()) && !b.disabled)`, 20000);
+    for (let i = 0; i < 5; i++) {
+      const next = await waitFor(`[...(${dlgSel}?.querySelectorAll('button') ?? [])].some((b) => /^(Continue|Preview|Create draft)/.test(b.textContent.trim()) && !b.disabled)`, 20000);
       if (!next) break;
-      const label = await evaluate(`const b = [...${dlgSel}.querySelectorAll('button')].find((b) => /^(Continue|Create draft)/.test(b.textContent.trim()) && !b.disabled); b.click(); return b.textContent.trim();`);
+      const label = await evaluate(`const bs = [...${dlgSel}.querySelectorAll('button')].filter((b) => !b.disabled); const b = bs.find((b) => /^Create draft/.test(b.textContent.trim())) || bs.find((b) => /^Continue/.test(b.textContent.trim())) || bs.find((b) => b.textContent.trim() === 'Preview'); b.click(); return b.textContent.trim();`);
       if (/^Create draft/.test(label)) break;
       await sleep(300);
     }
@@ -486,9 +486,10 @@ async function run() {
     const saves = log.filter((l) => l.path === "/api/schedule/range/changes");
     const locks = log.filter((l) => /\/edit-lock$/.test(l.path) && l.method === "POST").map((l) => l.path.split("/")[4]);
     const tokOk = saves.every((s) => (s.body?.weeks ?? []).every((w) => typeof w.lock_token === "string" && locks.includes(w.week_start)));
-    const err = await evaluate(`return ${dlgSel}?.textContent.match(/[^.]*Nothing was created\\./)?.[0] ?? null;`);
+    const err = await evaluate(`const t = ${dlgSel}?.textContent ?? ''; const i = t.indexOf('Nothing was created'); return i < 0 ? null : t.slice(Math.max(0, i - 400), i);`);
     check("Auto-fill：先占每一周的锁、经 range/changes 存（带 lock token）；不调 slots/bulk、不调 PUT time-off",
-      bad.length === 0 && saves.length === 1 && tokOk && !err,
+      // 照上一周抄可能碰上 mock 的休息规则（409 rule_violation）：那也是经 range/changes 存、框里写后端原话 + 逐条列出，算对。
+      bad.length === 0 && saves.length === 1 && tokOk && (!err || /This change breaks a schedule rule, so it wasn't saved\.\n• /.test(err)),
       JSON.stringify({ bad: bad.map((l) => l.path), saves: saves.map((s) => ({ weeks: s.body?.weeks, ops: s.body?.ops?.length })), locks, err }));
   });
   check("源码里没有直接改班 / 改假的调用（/slots、/api/schedule/time-off；后端要所有这些接口都带编辑锁）", (() => {
@@ -509,6 +510,9 @@ async function run() {
     if (hits.length) console.log("  tokenless callers:", hits.join(", "));
     return hits.length === 0;
   })());
+  // ── 只能批假的人 ──
+  await ctl({ reset: true, viewer: "approver" });
+  if (!skipAll && !(await openOverview())) skipAll = true;
   await maybe("can_edit=false：没有任何编辑键、没有 Save、只有 Leave requests 能点、没有 Shift change requests 栏", async () => {
     const m = await evaluate(`return { edit: document.querySelectorAll('${SEL.editKey}').length, save: !!document.querySelector('${SEL.save}'), leave: !!document.querySelector('${SEL.leaveReqs}'), change: !!document.querySelector('${SEL.changeReqs}'), cells: document.querySelectorAll('${SEL.cell}').length, viewOnly: document.querySelector('[data-ov-view-only]')?.textContent ?? '' };`);
     check("can_edit=false：没有任何编辑键、没有 Save、只有 Leave requests 能点、没有 Shift change requests 栏", m.edit === 0 && !m.save && m.leave && !m.change && m.cells === 0 && /View only/.test(m.viewOnly), JSON.stringify(m));

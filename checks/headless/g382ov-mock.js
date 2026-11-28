@@ -701,6 +701,9 @@ http
         shift_types: Object.entries(TYPES).map(([key, t], i) => ({ key, label: t.label, sort_order: i + 1, is_active: true, default_start_time: t.start, default_end_time: t.end, color: key })),
       });
     }
+    // Auto-fill 要的设置（GET /api/settings/schedule）：工作时段 + 三种班。
+    if (p === "/api/settings/schedule" && method === "GET")
+      return send(res, 200, { work_window: WINDOW, shift_types: Object.entries(TYPES).map(([key, t], i) => ({ key, label: t.label, sort_order: i + 1, is_active: true, default_start_time: t.start, default_end_time: t.end, color: key })) });
     if (p === "/api/schedule/employees" && method === "GET") {
       return send(res, 200, { employees: Object.values(EMP).map((id, i) => ({ id, name: NAMES[id], email: `zztest${id}@example.com`, is_active: true, sort_order: i + 1 })) });
     }
