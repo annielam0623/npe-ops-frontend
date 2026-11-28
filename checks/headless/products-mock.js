@@ -77,6 +77,7 @@ const setup = {
 setup.groups.push({ id: 7, display_name: "Private", is_active: true, manifest_color: null, manifest_lunch_note: null,
   guests_per_bus: 54, forecast_split_sections: [], section_order: [], relay_round: "",
   counters: [], extras: [], products: [] });
+const tourLunch = { 1: null, 7: null };
 const entries = [
   { id: 1, entity_id: "10", label: "UAC01", action: "update", before: { internal_name: "", manifest_id: 3, booking_type: null }, after: { internal_name: "UA Bus", manifest_id: 1, booking_type: "bus_tour" }, actor: "annie", actor_name: "Annie Z", created_at: "2026-10-02T16:00:00+00:00" },
 ];
@@ -303,6 +304,20 @@ http.createServer(async (req, res) => {
     shortNames.sections[body.section] = body.short_name;
     return send(res, 200, { ok: true, section: body.section, short_name: body.short_name });
   }
+  // G333（后端 82f9fec8）：ctl.g333 ⇒ groups[] 带 includes_lunch（tourLunch 存着；null = 没设过）；PUT …/includes-lunch。ctl.tourLunchFail：400 原话。
+  m = p.match(/^\/api\/settings\/manifest-setup\/groups\/(\d+)\/includes-lunch$/);
+  if (m) {
+    const body = await readBody(req);
+    entry.body = body;
+    if (typeof body.includes_lunch !== "boolean") return send(res, 400, { detail: "Tick or untick Includes lunch, then try again." });
+    if (ctl.tourLunchFail) return send(res, 400, { detail: ctl.tourLunchFail });
+    const id = Number(m[1]);
+    if (body.includes_lunch) for (const k of Object.keys(tourLunch)) if (tourLunch[k] === null) tourLunch[k] = false;
+    if (body.includes_lunch || tourLunch[id] !== null) tourLunch[id] = body.includes_lunch;
+    return send(res, 200, { ok: true, includes_lunch: body.includes_lunch });
+  }
+  if (p === S && ctl.g333)
+    return send(res, 200, { ...setup, groups: setup.groups.map((g) => ({ ...g, includes_lunch: tourLunch[g.id] ?? null })) });
   if (p === S) {
     // G198（后端 8a bbf3d08）：groups[] 带 cfm_sections；第一组多几个有名字的节（LOWER / Canyon X 是 tour，PAGE 是班车）。
     if (ctl.g198) {

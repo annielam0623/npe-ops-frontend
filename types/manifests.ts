@@ -111,6 +111,9 @@ export interface ManifestRow {
   guest_lunch?: LunchCounts | null;
   manifest_lunch?: LunchCounts | null;
   guest_lunch_differs?: boolean;
+  /** G333（后端 82f9fec8）：这一单不带餐却写了三明治 ⇒ 整行淡红 + lunch_note 原因。合作方看不到这两个键。 */
+  lunch_no_booked?: boolean;
+  lunch_note?: string | null;
   reason?: string | null;
   /** 不能发的原因，例如 "Admin fee - not sent, not dispatched"。 */
   reason_label?: string | null;

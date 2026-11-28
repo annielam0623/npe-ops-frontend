@@ -42,7 +42,7 @@ const bmvGuest = (g0) => {
   const g = ctl.bmv ? { ...g0, pickup_time_short: g0.pickup_time.replace(/\s*[AP]M$/i, ""), ...(BMV[g0.order_number] || {}) } : g0;
   return ctl.g364 ? { ...g, ...g364Of(g.order_number) } : g;
 };
-const mismatchOrders = (gs, label) => ctl.bmvClean ? [] : gs.filter((g) => BMV[g.order_number]?.lunch_mismatch).map((g) => ({ order_number: g.order_number, guest: g.name, pax: g.pax, lunch_text: BMV[g.order_number].lunch_slots ? BMV[g.order_number].lunch_slots.filter(Boolean).join(" ") : "-", bus_label: label, tour: "Antelope Canyon" }));
+const mismatchOrders = (gs, label) => ctl.bmvClean ? [] : gs.filter((g) => BMV[g.order_number]?.lunch_mismatch).map((g) => ({ order_number: g.order_number, guest: g.name, pax: g.pax, lunch_text: BMV[g.order_number].lunch_slots ? BMV[g.order_number].lunch_slots.filter(Boolean).join(" ") : "-", bus_label: label, tour: "Antelope Canyon", ...(g.lunch_note ? { reason: g.lunch_note } : {}) }));
 // 二期（Special Requirements 可编辑）：后端上线后客人才带 notes_edited / rezdy_notes。
 const pub = (g0) => { const g = bmvGuest(g0); return ctl.notesEdit && g._rezdy !== undefined ? { ...g, notes_edited: !!g._edited, rezdy_notes: g._rezdy } : ctl.notesEdit ? { ...g, notes_edited: false, rezdy_notes: g.notes } : g; };
 // canyon: true ⇒ Antelope 三个 canyon（置顶 41 Canyon order）：tour 带 canyon_sections / canyon_pages，两台车按存好的顺序排节；

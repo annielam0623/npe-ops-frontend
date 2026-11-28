@@ -30,6 +30,7 @@ import {
   takeOverScheduleLock,
   type EditLockHolder,
 } from "@/lib/edit-lock-takeover";
+import { notPastGaps, notPastViolations } from "@/lib/schedule-past";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import { laToday, weekStartYmd } from "@/lib/la-date";
 import { usePageVisibility } from "@/lib/page-visibility";
@@ -508,7 +509,7 @@ export function ScheduleOverview() {
         setDialog({
           kind: "rule-box",
           blocking: e.violations ?? [],
-          other: (range.violations ?? []).filter((v) => !isBlocking(v)),
+          other: notPastViolations(range.violations ?? [], today).filter((v) => !isBlocking(v)),
         });
       } else {
         setSave({
@@ -604,6 +605,9 @@ export function ScheduleOverview() {
     );
 
   const r = load.range;
+  // 过去的问题不提醒（Annie 2026-11-27「动手」）：只滤显示，保存 / 发布照旧（lib/schedule-past.ts）。
+  const shownGaps = notPastGaps(r.gaps, today);
+  const shownViolations = notPastViolations(r.violations, today);
   const weeks = Array.from({ length: r.weeks }, (_, i) => addDaysYmd(r.from, i * 7));
   const end = addDaysYmd(r.from, r.weeks * 7 - 1);
   const pending = r.leave_requests.filter((x) => x.status === "pending");
@@ -756,8 +760,8 @@ export function ScheduleOverview() {
         <AlertBars
           canEdit={canEdit}
           leaveRequests={pending}
-          gaps={r.gaps}
-          violations={r.violations}
+          gaps={shownGaps}
+          violations={shownViolations}
           changeRequests={changeRequests}
           shiftTypes={shiftTypes}
           isDraftWeek={(d) => weekStatusOf(d) !== "published"}
@@ -828,8 +832,8 @@ export function ScheduleOverview() {
                 employees={r.employees}
                 slots={draft.slots}
                 timeOff={draft.timeOff}
-                gaps={r.gaps}
-                violations={r.violations.filter(isBlocking)}
+                gaps={shownGaps}
+                violations={shownViolations.filter(isBlocking)}
                 pending={pending}
                 shiftTypes={shiftTypes}
                 categories={categories}
@@ -1061,20 +1065,22 @@ export function ScheduleOverview() {
       case "publish": {
         const published = weekInfo(dialog.week)?.status === "published";
         const weekGaps = range.gaps.filter((g) => weekStartYmd(g.date) === dialog.week);
+        // 列出来的只留今天以后的；发不发 allowGaps 照旧按全部（不改发布行为）。
+        const shownWeekGaps = notPastGaps(weekGaps, today);
         return (
           <ConfirmDialog
             title={`${published ? "Publish again" : "Publish"} the week of ${md(dialog.week)}?`}
-            confirmLabel={`${published ? "Publish again" : "Publish"}${weekGaps.length && isAdmin ? " anyway" : ""}`}
+            confirmLabel={`${published ? "Publish again" : "Publish"}${shownWeekGaps.length && isAdmin ? " anyway" : ""}`}
             busyLabel="Publishing…"
             submit
             onClose={close}
             onConfirm={() => doPublish(dialog.week, weekGaps.length > 0 && isAdmin)}
           >
-            {weekGaps.length ? (
+            {shownWeekGaps.length ? (
               <div data-publish-gaps>
                 <p>Nobody is scheduled on this part of the week:</p>
                 <ul className="mt-1 list-disc pl-5 text-red-300">
-                  {weekGaps.map((g, i) => (
+                  {shownWeekGaps.map((g, i) => (
                     <li key={i}>
                       <b>{dayLabel(g.date)}</b> · {clockRange(g.start_time, g.end_time)}
                     </li>

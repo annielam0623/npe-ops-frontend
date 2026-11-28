@@ -61,6 +61,8 @@ const ctl = {};
 function reset() {
   nextId = 500;
   Object.assign(ctl, {
+    extraViolations: [],
+    extraGaps: [],
     viewer: "editor",
     canPublish: true,
     canManageLeaveTypes: true,
@@ -324,8 +326,9 @@ function rangeBody(from, weeks) {
     employees: Object.values(EMP).map((id, i) => ({ id, name: NAMES[id], is_active: true })),
     slots: state.slots.filter((s) => inRange(s.date)),
     time_off: state.time_off.filter((t) => inRange(t.date)).map(timeOffOut),
-    gaps: gapsFor(state.slots, state.time_off, dates),
-    violations: violationsFor(state.slots.filter((s) => around(s.date)), state.time_off).filter((v) => v.dates.some(inRange)),
+    // 过去的问题不提醒（2026-11-27）：ctl.extraViolations / extraGaps 原样加进去（模拟后端还没滤过去的时候）。
+    gaps: [...gapsFor(state.slots, state.time_off, dates), ...(ctl.extraGaps || [])],
+    violations: [...violationsFor(state.slots.filter((s) => around(s.date)), state.time_off).filter((v) => v.dates.some(inRange)), ...(ctl.extraViolations || [])],
     leave_requests: state.leave_requests
       .filter((r) => r.status === "pending")
       // 只能批假的人（approver）：只回自己能批的那条（Nadia 的）。can_decide 给页面判断按钮。
@@ -385,7 +388,7 @@ http
     if (p === "/__ctl" && method === "POST") {
       const b = (await readBody(req)) || {};
       if (b.reset) reset();
-      for (const k of ["viewer", "canPublish", "canManageLeaveTypes", "weekStatus", "fail", "today", "selfEmp", "lockMode", "superAdmin", "takenWeeks"]) if (k in b) ctl[k] = b[k];
+      for (const k of ["viewer", "canPublish", "canManageLeaveTypes", "weekStatus", "fail", "today", "selfEmp", "extraViolations", "extraGaps", "lockMode", "superAdmin", "takenWeeks"]) if (k in b) ctl[k] = b[k];
       return send(res, 200, { ok: true, ctl });
     }
     if (p === "/__log") return send(res, 200, log);

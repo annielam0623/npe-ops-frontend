@@ -22,22 +22,27 @@ import type { DraftOff, DraftSlot, Key } from "./draft";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
-/** 白卡片上的班次颜色（同 schedule-example 的 Open / Mid / Close，其余照 Staff Schedule 的色名）。 */
+/**
+ * 白卡片上的班次颜色：莫兰蒂色板（Annie 2026-11-27「颜色选莫兰蒂。其他同意推荐，动手」，preview LSBzjLDAiXpcYKEjryb2Ax 色板 B）。
+ * 同 Dashboard 每个班的色调，调灰、调淡给白底用；底 / 边框 / 字照 preview 色值表，字对底都 ≥ 4.5:1。
+ * 只改这一页（C3 A）：Dashboard、My schedule、旧周表（components/schedule/config.ts）不动。
+ */
 const CARD: Record<ShiftColor, string> = {
-  open: "border-emerald-600/40 bg-emerald-50 text-emerald-900",
-  mid: "border-sky-600/40 bg-sky-50 text-sky-900",
-  close: "border-purple-600/40 bg-purple-50 text-purple-900",
-  amber: "border-amber-600/40 bg-amber-50 text-amber-900",
-  rose: "border-rose-600/40 bg-rose-50 text-rose-900",
-  teal: "border-teal-600/40 bg-teal-50 text-teal-900",
-  orange: "border-orange-600/40 bg-orange-50 text-orange-900",
-  grey: "border-slate-400/50 bg-slate-50 text-slate-800",
+  open: "border-[#8fa894] bg-[#d5e0d6] text-[#2f4634]",
+  mid: "border-[#8aa0b4] bg-[#d3dde6] text-[#2b3e50]",
+  close: "border-[#a08fb0] bg-[#ddd5e3] text-[#43345a]",
+  amber: "border-[#b9a26a] bg-[#ebe0c4] text-[#5a4718]",
+  rose: "border-[#b48a8c] bg-[#ead3d3] text-[#5c2f33]",
+  teal: "border-[#82a8a0] bg-[#cfe0dc] text-[#284844]",
+  orange: "border-[#b8916f] bg-[#ead8c8] text-[#5a3a1f]",
+  grey: "border-[#a3a39c] bg-[#e1e1de] text-[#3a3a36]",
 };
 
+/* Off / 整天请假 / 按小时请假：同一种莫兰蒂黄（preview 色板 B）；等批的虚线框、违规橙框、空档红字照旧。 */
 const OFF_CLS =
-  "flex flex-1 items-center rounded-[6px] border border-yellow-600/40 bg-yellow-100 px-2 py-1 text-[12.5px] leading-tight font-bold text-yellow-900";
+  "flex flex-1 items-center rounded-[6px] border border-[#bfae6a] bg-[#ece6c6] px-2 py-1 text-[12.5px] leading-tight font-bold text-[#4f4416]";
 const LEAVE_CLS =
-  "flex flex-1 flex-col justify-center rounded-[6px] border border-yellow-600/60 bg-amber-200 px-2 py-1 text-[12.5px] leading-tight font-extrabold text-yellow-900";
+  "flex flex-1 flex-col justify-center rounded-[6px] border border-[#a89550] bg-[#e3d7a4] px-2 py-1 text-[12.5px] leading-tight font-extrabold text-[#4a3d0f]";
 const PEND_CLS =
   "flex flex-1 flex-col justify-center rounded-[6px] border-[1.5px] border-dashed border-amber-600 bg-amber-50 px-2 py-1 text-[11px] leading-tight font-bold text-amber-800";
 
@@ -203,7 +208,7 @@ export function WeekBlock(p: WeekBlockProps) {
               if (p.canEdit) p.onLeave(off);
             }}
             className={cn(
-              "truncate rounded-[4px] bg-amber-200 px-1 text-left text-[9.5px] font-bold text-yellow-900",
+              "truncate rounded-[4px] bg-[#e3d7a4] px-1 text-left text-[9.5px] font-bold text-[#4a3d0f]",
               p.changedKeys.has(off.key) && "outline-1 outline-dashed outline-amber-700",
             )}
           >
