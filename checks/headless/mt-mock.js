@@ -431,6 +431,9 @@ http
       const allowed = body.col === "relay" ? ["picked_up", "no_show"] : ["boarded", "no_show"];
       if (body.value !== null && body.value !== "" && !allowed.includes(body.value))
         return send(res, 400, { detail: body.col === "relay" ? "The Relay column can only be set to Picked up or No show, or cleared." : "The Bus column can only be set to Boarded or No show, or cleared." });
+      // G372：note 只能跟 No show 一起（后端原话）。
+      if (body.note !== undefined && body.value !== "no_show") return send(res, 400, { detail: "A note can only be saved together with No show." });
+      if (typeof body.note === "string" && body.note.length > 2000) return send(res, 400, { detail: "The note is too long." });
       if (body.col === "relay" && r.order_number === "A1004") // 同 GET：A1004 是 TI 客人，relay_applicable false
         return send(res, 400, { detail: "This guest is not on a relay van that day, so there is no Relay mark to change." });
       const k = body.order_number + ":" + body.col;
@@ -441,7 +444,12 @@ http
       const changed = before !== value;
       if (changed) r.action_taken_by = "ZZ Staff";
       const rk = r.order_number + ":relay", bk = r.order_number + ":bus";
+      // G361 N1 / N2：存 No show ⇒ 建 / 挂登记（ctl.nsNoteError = 备注那部分失败）；从 No show 清掉 ⇒ 关掉（ctl.nsKeepOpen = 有人在跟、留着）。
+      let nsr;
+      if (value === "no_show") nsr = { report_id: 412, created: before !== "no_show", note_id: body.note ? 77 : null, ...(ctl.nsNoteError ? { note_error: "Could not save the note." } : {}) };
+      else if (before === "no_show") nsr = { report_id: 412, closed: !ctl.nsKeepOpen };
       return send(res, 200, {
+        ...(nsr ? { no_show_report: nsr } : {}),
         relay_mark: OVERRIDES[rk] ?? r.relay_original ?? null, relay_original: r.relay_original ?? null,
         bus_mark: OVERRIDES[bk] ?? r.bus_original ?? null, bus_original: r.bus_original ?? null,
         relay_applicable: r.order_number !== "A1004", changed,

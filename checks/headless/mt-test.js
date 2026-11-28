@@ -1460,55 +1460,72 @@ async function run() {
     check("N1 ①：Relay 列只看——Relay 格里没有按钮（只有 ⚠️ Take action）、A1002 的 Relay 胶囊不是按钮", await evaluate("return ![...document.querySelectorAll('[data-mark-cell=relay] button')].some((b) => !b.hasAttribute('data-ns-take-action')) && $cell('A1002', 'relay').querySelector('[data-mark-pill]').tagName === 'SPAN';"));
     check("没标的 Bus（A1002）：只有一个淡灰虚线「No show」（同原来 Not marked 的颜色），没有下拉", await evaluate(`const b = $cell('A1002', 'bus').querySelector('[data-ns-button=off]'); const cs = b && getComputedStyle(b); return !!b && b.textContent === 'No show' && cs.color === '${FAINT}' && cs.textDecorationStyle === 'dotted' && !document.querySelector('main tbody :is(select,[data-select-menu])');`), await evaluate("return $cell('A1002', 'bus')?.outerHTML;"));
     check("N1 ②：导游标了 Boarded（A1003）⇒ 绿胶囊照旧，旁边仍有淡灰 No show", await evaluate("const c = $cell('A1003', 'bus'); return c.querySelector('[data-mark-pill]').textContent.includes('✓ Boarded 7:02 AM') && !!c.querySelector('[data-ns-button=off]');"));
-    // 点一下 ⇒ 红字（只暂存）
+    // G372（Annie 2026-11-27「T1 A」「动手」，preview UAhRhQfyGQYt2D8hWjHqZz ⑤）：点淡灰 No show ⇒ 弹窗写备注（选填）；
+    // Cancel 什么都不改、不发请求；弹窗 Save 一步存（标记 + 备注 + No show 登记）。撤回照旧两步（点红字 + 格子旁 Save）。
     let from = (await mockLog()).length;
     await evaluate("$cell('A1002', 'bus').querySelector('[data-ns-button=off]').click();");
-    check("点淡灰 No show：变红字「✗ No show」（#e74c3c、11px 半粗、没有底色）+ 蓝 Save + 灰字「Not saved yet」；没有 PUT",
-      (await waitFor("!!$cell('A1002', 'bus').querySelector('[data-ns-button=on]')")) && (await evaluate(`const c = $cell('A1002', 'bus'); const r = c.querySelector('[data-ns-button=on]'); const cs = getComputedStyle(r); const s = c.querySelector('[data-mark-save]'); return r.textContent === '✗ No show' && cs.color === '${RED}' && cs.fontSize === '11px' && cs.fontWeight === '600' && cs.backgroundColor === 'rgba(0, 0, 0, 0)' && getComputedStyle(s).backgroundColor === 'rgb(59, 130, 246)' && c.querySelector('[data-mark-unsaved]').textContent === 'Not saved yet';`)) && !(await mockLog()).slice(from).some((e) => e.method === "PUT"),
-      await evaluate("return $cell('A1002', 'bus')?.outerHTML;"));
-    await evaluate("$cell('A1002', 'bus').querySelector('[data-ns-button=on]').click();");
-    check("没存前再点红字：变回淡灰、Save 没了（撤掉暂存）", await waitFor("!!$cell('A1002', 'bus').querySelector('[data-ns-button=off]') && !$cell('A1002', 'bus').querySelector('[data-mark-save]')"));
+    check("G372 点淡灰 No show：弹出 Mark No show（A1002 · Bus、Notes (optional)、蓝 Save、Cancel）；格子不变、没有 PUT",
+      (await waitFor("!!document.querySelector('[data-ns-note-dialog]')")) && (await evaluate("const d = document.querySelector('[role=dialog]'); const t = d.textContent; return t.includes('Mark No show') && t.includes('A1002') && t.includes('Bus') && t.includes('Notes (optional)') && t.includes('Saving also logs a No show report in Daily Operation Report, or adds to the open one for this order and day.') && getComputedStyle(d.querySelector('[data-ns-note-save]')).backgroundColor === 'rgb(59, 130, 246)' && !!$cell('A1002', 'bus').querySelector('[data-ns-button=off]') && !$cell('A1002', 'bus').querySelector('[data-mark-save]');")) && !(await mockLog()).slice(from).some((e) => e.method === "PUT"),
+      await evaluate("return document.querySelector('[role=dialog]')?.textContent;"));
+    await evaluate("$setValue(document.querySelector('[data-ns-note]'), 'ZZ typed then cancelled'); document.querySelector('[data-ns-note-cancel]').click();");
+    check("G372 Cancel：弹窗关、格子还是淡灰 No show、没有 Save / Not saved yet、没有 PUT",
+      (await waitFor("!document.querySelector('[data-ns-note-dialog]')")) && (await evaluate("const c = $cell('A1002', 'bus'); return !!c.querySelector('[data-ns-button=off]') && !c.querySelector('[data-mark-save]') && !c.querySelector('[data-mark-unsaved]');")) && !(await mockLog()).slice(from).some((e) => e.method === "PUT"));
+    // 弹窗 Save（带备注）
+    from = (await mockLog()).length;
     await evaluate("$cell('A1002', 'bus').querySelector('[data-ns-button=off]').click();");
-    await waitFor("!!$cell('A1002', 'bus').querySelector('[data-mark-save]')");
+    await waitFor("!!document.querySelector('[data-ns-note]')");
+    check("G372 再开弹窗：备注框是空的（上次 Cancel 的不留）", await evaluate("return document.querySelector('[data-ns-note]').value === '';"));
+    await evaluate("$setValue(document.querySelector('[data-ns-note]'), '  ZZ Waited 10 min at the hotel.  '); document.querySelector('[data-ns-note-save]').click();");
+    const saved = await waitFor("!!$cell('A1002', 'bus')?.querySelector('[data-mark-saved]') && !document.querySelector('[data-ns-note-dialog]')");
+    const puts = (await mockLog()).slice(from).filter((e) => e.method === "PUT");
+    check("G372 弹窗 Save 一步存：PUT /tracking/mark {booking_id 2, order_number A1002, leg '', col bus, value no_show, note 去掉首尾空格}", saved && puts.length === 1 && puts.some((e) => e.path === "/api/notifications/morning-pickup/tracking/mark" && e.body && e.body.booking_id === 2 && e.body.order_number === "A1002" && e.body.leg === "" && e.body.col === "bus" && e.body.value === "no_show" && e.body.note === "ZZ Waited 10 min at the hotel."), JSON.stringify(puts));
+    check("存好：红字「✗ No show 9:15 AM」+ 黄字「✎ Edited by ZZ Staff 9:15 AM」+ 绿字 Saved；这行记成已处理、不再置顶",
+      await evaluate(`const c = $cell('A1002', 'bus'); const r = c.querySelector('[data-ns-button=on]'); return r.textContent === '✗ No show 9:15 AM' && getComputedStyle(r).color === '${RED}' && getComputedStyle(r).backgroundColor === 'rgba(0, 0, 0, 0)' && c.querySelector('[data-mark-edited]').textContent === '✎ Edited by ZZ Staff 9:15 AM' && getComputedStyle(c.querySelector('[data-mark-saved]')).color === 'rgb(46, 204, 113)' && !document.querySelector('[data-ns-row]');`),
+      await evaluate("return $cell('A1002', 'bus').textContent;"));
+    check("G361 N1：存好后格子下面「No show report #412 →」链到 /daily-report?id=412", await evaluate("const a = $cell('A1002', 'bus').querySelector('[data-ns-report-link]'); return !!a && a.textContent === 'No show report #412 →' && a.getAttribute('href') === '/daily-report?id=412';"), await evaluate("return $cell('A1002', 'bus')?.innerHTML;"));
+    const hover = await evaluate("return $cell('A1002', 'bus').querySelector('[data-ns-button=on]').title;");
+    check("存好后鼠标移上去两行：No show · changed by ZZ Staff (staff) · 9:15 AM / Original: not marked", hover === "No show · changed by ZZ Staff (staff) · 9:15 AM\nOriginal: not marked", hover);
+    // N1 ③：取消 staff 自己标的 ⇒ 暂存 null（照旧两步）
+    await evaluate("$cell('A1002', 'bus').querySelector('[data-ns-button=on]').click();");
+    check("点存好的红字：变回淡灰 + Save + Not saved yet（还没存，Edited 不显示），不弹窗", (await waitFor("!!$cell('A1002', 'bus').querySelector('[data-ns-button=off]') && !!$cell('A1002', 'bus').querySelector('[data-mark-save]') && !!$cell('A1002', 'bus').querySelector('[data-mark-unsaved]') && !$cell('A1002', 'bus').querySelector('[data-mark-edited]')")) && !(await evaluate("return !!document.querySelector('[data-ns-note-dialog]');")));
     // 有没存的：换日期 / 换页签先问
     await evaluate("window.__asked = 0; window.__askMsg = ''; window.confirm = (m) => { window.__asked++; window.__askMsg = m; return false; };");
     const before = await evaluate("return document.querySelector('input[aria-label=\"Date\"]').value;");
     await evaluate("document.querySelector('button[aria-label=\"Previous day\"]').click();");
     await sleep(300);
-    check("有没存的 No show 点前一天：先问「You have No show marks you haven't saved. Leave without saving them?」，选留下 ⇒ 日期不变、暂存还在", (await evaluate("return window.__asked;")) === 1 && (await evaluate("return window.__askMsg;")) === "You have No show marks you haven't saved. Leave without saving them?" && (await evaluate("return document.querySelector('input[aria-label=\"Date\"]').value;")) === before && (await evaluate("return !!$cell('A1002', 'bus').querySelector('[data-mark-save]');")), await evaluate("return window.__askMsg;"));
+    check("有没存的撤回点前一天：先问「You have No show marks you haven't saved. Leave without saving them?」，选留下 ⇒ 日期不变、暂存还在", (await evaluate("return window.__asked;")) === 1 && (await evaluate("return window.__askMsg;")) === "You have No show marks you haven't saved. Leave without saving them?" && (await evaluate("return document.querySelector('input[aria-label=\"Date\"]').value;")) === before && (await evaluate("return !!$cell('A1002', 'bus').querySelector('[data-mark-save]');")), await evaluate("return window.__askMsg;"));
     await evaluate("document.querySelector('[data-mt-tab=\"live\"]').click();");
     await sleep(300);
-    check("有没存的 No show 点 Live drivers：先问，选留下 ⇒ 还在 Tracking", (await evaluate("return window.__asked;")) === 2 && (await evaluate("return document.querySelector('[data-mt-tab=\"tracking\"]').getAttribute('aria-selected') === 'true';")));
+    check("有没存的撤回点 Live drivers：先问，选留下 ⇒ 还在 Tracking", (await evaluate("return window.__asked;")) === 2 && (await evaluate("return document.querySelector('[data-mt-tab=\"tracking\"]').getAttribute('aria-selected') === 'true';")));
     await evaluate("$btn('↻ Refresh').click();");
     await sleep(1200);
-    check("↻ Refresh 不冲掉没存的 No show", await evaluate("return !!$cell('A1002', 'bus').querySelector('[data-ns-button=on]') && !!$cell('A1002', 'bus').querySelector('[data-mark-save]');"));
-    // Save
+    check("↻ Refresh 不冲掉没存的撤回", await evaluate("return !!$cell('A1002', 'bus').querySelector('[data-ns-button=off]') && !!$cell('A1002', 'bus').querySelector('[data-mark-save]');"));
     from = (await mockLog()).length;
     await evaluate("$cell('A1002', 'bus').querySelector('[data-mark-save]').click();");
-    const saved = await waitFor("!!$cell('A1002', 'bus')?.querySelector('[data-mark-saved]')");
-    const puts = (await mockLog()).slice(from).filter((e) => e.method === "PUT");
-    check("按 Save：PUT /tracking/mark {booking_id 2, order_number A1002, leg '', col bus, value no_show}", saved && puts.some((e) => e.path === "/api/notifications/morning-pickup/tracking/mark" && e.body && e.body.booking_id === 2 && e.body.order_number === "A1002" && e.body.leg === "" && e.body.col === "bus" && e.body.value === "no_show"), JSON.stringify(puts));
-    check("存好：红字「✗ No show 9:15 AM」+ 黄字「✎ Edited by ZZ Staff 9:15 AM」+ 绿字 Saved；这行记成已处理、不再置顶",
-      await evaluate(`const c = $cell('A1002', 'bus'); const r = c.querySelector('[data-ns-button=on]'); return r.textContent === '✗ No show 9:15 AM' && getComputedStyle(r).color === '${RED}' && getComputedStyle(r).backgroundColor === 'rgba(0, 0, 0, 0)' && c.querySelector('[data-mark-edited]').textContent === '✎ Edited by ZZ Staff 9:15 AM' && getComputedStyle(c.querySelector('[data-mark-saved]')).color === 'rgb(46, 204, 113)' && !document.querySelector('[data-ns-row]');`),
-      await evaluate("return $cell('A1002', 'bus').textContent;"));
-    const hover = await evaluate("return $cell('A1002', 'bus').querySelector('[data-ns-button=on]').title;");
-    check("存好后鼠标移上去两行：No show · changed by ZZ Staff (staff) · 9:15 AM / Original: not marked", hover === "No show · changed by ZZ Staff (staff) · 9:15 AM\nOriginal: not marked", hover);
-    // N1 ③：取消 staff 自己标的 ⇒ 存 null，回到导游原来的（没标）
-    await evaluate("$cell('A1002', 'bus').querySelector('[data-ns-button=on]').click();");
-    check("点存好的红字：变回淡灰 + Save + Not saved yet（还没存，Edited 不显示）", await waitFor("!!$cell('A1002', 'bus').querySelector('[data-ns-button=off]') && !!$cell('A1002', 'bus').querySelector('[data-mark-save]') && !!$cell('A1002', 'bus').querySelector('[data-mark-unsaved]') && !$cell('A1002', 'bus').querySelector('[data-mark-edited]')"));
-    from = (await mockLog()).length;
-    await evaluate("$cell('A1002', 'bus').querySelector('[data-mark-save]').click();");
-    check("取消 staff 标的 No show 按 Save：PUT value null；回到淡灰 No show，没有 Edited", (await waitFor("!!$cell('A1002', 'bus')?.querySelector('[data-mark-saved]') && !!$cell('A1002', 'bus').querySelector('[data-ns-button=off]') && !$cell('A1002', 'bus').querySelector('[data-mark-edited]')")) && (await mockLog()).slice(from).some((e) => e.method === "PUT" && e.body && e.body.value === null && e.body.col === "bus" && e.body.order_number === "A1002"));
-    // 失败：红字照后端原话，暂存留着（A1003 导游 Boarded 旁点 No show）
+    check("取消 staff 标的 No show 按 Save：PUT value null、不带 note；回到淡灰 No show，没有 Edited", (await waitFor("!!$cell('A1002', 'bus')?.querySelector('[data-mark-saved]') && !!$cell('A1002', 'bus').querySelector('[data-ns-button=off]') && !$cell('A1002', 'bus').querySelector('[data-mark-edited]')")) && (await mockLog()).slice(from).some((e) => e.method === "PUT" && e.body && e.body.value === null && !("note" in e.body) && e.body.col === "bus" && e.body.order_number === "A1002"));
+    check("G361 N2：撤回后写「No show report #412 closed.」（绿）", await evaluate("const t = $cell('A1002', 'bus').querySelector('[data-ns-report]')?.textContent; return t === 'No show report #412 closed.';"), await evaluate("return $cell('A1002', 'bus')?.textContent;"));
+    // 存失败：弹窗留着、红字照后端原话；Cancel ⇒ 格子回原样（A1003 导游 Boarded 旁点 No show）
     await ctl({ markFail: true });
     await evaluate("$cell('A1003', 'bus').querySelector('[data-ns-button=off]').click();");
-    check("N1 ②：A1003 Boarded 旁点 No show ⇒ Boarded 胶囊还在、后面红字 + Save", await waitFor("$cell('A1003', 'bus').querySelector('[data-mark-pill]')?.textContent.includes('✓ Boarded 7:02 AM') && !!$cell('A1003', 'bus').querySelector('[data-ns-button=on]') && !!$cell('A1003', 'bus').querySelector('[data-mark-save]')"));
-    await evaluate("$cell('A1003', 'bus').querySelector('[data-mark-save]').click();");
-    check("存失败：红字「Not saved: This row changed since the page loaded. Refresh and try again.」，红 No show 和 Save 还在", (await waitFor("!!$cell('A1003', 'bus').querySelector('[data-mark-error]')")) && (await evaluate("const e = $cell('A1003', 'bus').querySelector('[data-mark-error]'); return e.textContent === 'Not saved: This row changed since the page loaded. Refresh and try again.' && getComputedStyle(e).color === 'rgb(248, 113, 113)' && !!$cell('A1003', 'bus').querySelector('[data-mark-save]') && !!$cell('A1003', 'bus').querySelector('[data-ns-button=on]');")), await evaluate("return $cell('A1003', 'bus').textContent;"));
+    await waitFor("!!document.querySelector('[data-ns-note-save]')");
+    await evaluate("document.querySelector('[data-ns-note-save]').click();");
+    check("G372 存失败：弹窗留着、红字「Not saved: This row changed since the page loaded. Refresh and try again.」", await waitFor("!!document.querySelector('[data-ns-note-dialog]') && document.querySelector('[role=dialog] [role=alert]')?.textContent === 'Not saved: This row changed since the page loaded. Refresh and try again.'"), await evaluate("return document.querySelector('[role=dialog]')?.textContent;"));
+    await evaluate("document.querySelector('[data-ns-note-cancel]').click();");
+    check("存失败后 Cancel：回到「✓ Boarded 7:02 AM」+ 淡灰 No show，没有 Save", await waitFor("!document.querySelector('[data-ns-note-dialog]') && !$cell('A1003', 'bus').querySelector('[data-mark-save]') && !!$cell('A1003', 'bus').querySelector('[data-ns-button=off]') && $cell('A1003', 'bus').textContent.includes('✓ Boarded 7:02 AM')"));
+    // 备注那部分没存上：标记已存，红字照原话；空备注不带 note 键
+    await ctl({ markFail: false, nsNoteError: true });
+    from = (await mockLog()).length;
+    await evaluate("$cell('A1003', 'bus').querySelector('[data-ns-button=off]').click();");
+    await waitFor("!!document.querySelector('[data-ns-note-save]')");
+    await evaluate("document.querySelector('[data-ns-note-save]').click();");
+    check("G372 空备注 Save：PUT 不带 note；note_error ⇒ 标记照存、红字「Note not saved: Could not save the note.」", (await waitFor("!!$cell('A1003', 'bus')?.querySelector('[data-ns-report-error]')")) && (await mockLog()).slice(from).some((e) => e.method === "PUT" && e.body && e.body.value === "no_show" && !("note" in e.body)) && (await evaluate("return $cell('A1003', 'bus').querySelector('[data-ns-report-error]').textContent === 'Note not saved: Could not save the note.' && !!$cell('A1003', 'bus').querySelector('[data-ns-button=on]');")), await evaluate("return $cell('A1003', 'bus')?.textContent;"));
+    await ctl({ nsNoteError: false, nsKeepOpen: true });
     await evaluate("$cell('A1003', 'bus').querySelector('[data-ns-button=on]').click();");
-    check("再点红字撤掉：回到「✓ Boarded 7:02 AM」+ 淡灰 No show，没有 Save", await waitFor("!$cell('A1003', 'bus').querySelector('[data-mark-save]') && !!$cell('A1003', 'bus').querySelector('[data-ns-button=off]') && $cell('A1003', 'bus').textContent.includes('✓ Boarded 7:02 AM')"));
-    await ctl({ markFail: false });
-    check("How to use：第 3 版原文（Bus 列点 No show、点红字取消），没有旧的下拉 / Reset 说法", await evaluate("const t = document.body.textContent; return t.includes('The Bus mark is the final word on a No show.') && t.includes(\"If a guest did not show up, click No show in the Bus column so it turns red, then click Save next to it. To take it back, click the red No show and click Save. Your change shows on Main manifest, the Bus Manifest page and the order page. The guide's own mark is kept: hover over the mark to see it.\") && !t.includes('Reset to driver/guide mark') && t.includes('Only guests who were sent the morning pickup text are listed here.') && t.includes('Marking No show in the Bus column and saving also counts as dealt with.') && !t.includes(\"Changing that row's Relay or Bus mark\") && !t.includes('Take action under Driver mark');"));
+    await waitFor("!!$cell('A1003', 'bus').querySelector('[data-mark-save]')");
+    await evaluate("$cell('A1003', 'bus').querySelector('[data-mark-save]').click();");
+    check("G361 N2：有人在跟的登记撤回后写「No show report #412 stays open: someone is already working on it.」", await waitFor("$cell('A1003', 'bus')?.querySelector('[data-ns-report]')?.textContent === 'No show report #412 stays open: someone is already working on it.'"), await evaluate("return $cell('A1003', 'bus')?.textContent;"));
+    await ctl({ nsKeepOpen: false });
+    check("How to use：G372 新原文（弹窗写备注、Cancel 不改、建登记、★ Notes；撤回关登记），没有旧的「so it turns red」", await evaluate("const t = document.body.textContent; return t.includes('The Bus mark is the final word on a No show.') && t.includes(\"If a guest did not show up, click No show in the Bus column. Write a note if you want (optional) and click Save; Cancel changes nothing. Saving also logs a No show report in Daily Operation Report, or adds to the open one for this order and day. Your note is kept in the order's ★ Notes.\") && t.includes('To take it back, click the red No show and click Save. If nobody has worked on the No show report yet, it is closed; otherwise it stays open with a line saying the No show was cleared.') && t.includes(\"Your change shows on Main manifest, the Bus Manifest page and the order page. The guide's own mark is kept: hover over the mark to see it.\") && !t.includes('so it turns red, then click Save next to it') && !t.includes('Reset to driver/guide mark') && t.includes('Only guests who were sent the morning pickup text are listed here.') && t.includes('Marking No show in the Bus column and saving also counts as dealt with.');"));
     // N1 ③：导游自己标的 No show（A1004，N2 A 红胶囊）⇒ 点了 + Save 存成 staff 标的 Boarded
     await fetch(`${MOCK}/api/bookings/4/take-action?want=off`, { method: "PUT" });
     await ctl({ addNoShow: "A1004" });
