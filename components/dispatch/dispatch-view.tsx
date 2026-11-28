@@ -131,6 +131,7 @@ import {
   SingleBusGuests,
   TourSeatingNotes,
 } from "./seating";
+import { seatShortByIdx, seatShortIssues, type SeatShort } from "./seat-short";
 import { StepBox, useStepInfoHide } from "./step-box";
 import { PhoneMore, usePhoneInfo } from "@/components/ui/phone";
 import { lockedByText, useEditLock } from "./use-edit-lock";
@@ -660,6 +661,19 @@ export function DispatchView() {
     }
     return out;
   }, [day, farmOutVisible, seating, rows, base, seeMoney]);
+  /** ⑦ 座位不够（Annie 2026-11-27「QS1选A，动手」）：卡上琥珀色一条 + Schedule check 一条，只提示。 */
+  const seatShort = useMemo(
+    () =>
+      L ? seatShortByIdx(rows, base, seating, L) : new Map<number, SeatShort>(),
+    [rows, base, seating, L],
+  );
+  const railExtra = useMemo(
+    () =>
+      farmOutIssues === undefined || !L
+        ? farmOutIssues
+        : [...seatShortIssues(seatShort, rows, L), ...farmOutIssues],
+    [farmOutIssues, seatShort, rows, L],
+  );
   const analysis = useMemo(
     () =>
       L
@@ -671,10 +685,10 @@ export function DispatchView() {
               ? relayNoCar.byRound
               : undefined,
             needLook?.date === L.day.run_date ? needLook.n : undefined,
-            farmOutIssues,
+            railExtra,
           )
         : null,
-    [rows, L, shuttlePax, relayNoCar, needLook, farmOutIssues],
+    [rows, L, shuttlePax, relayNoCar, needLook, railExtra],
   );
   // Step 1 团卡片（ManifestsPanel，另读 /api/dispatch/manifests，没有 color 字段）要和这里的团色条
   // 用同一个颜色：从 day.sections（有 color，G142）按 manifest_id 做一张表传过去。
@@ -738,7 +752,9 @@ export function DispatchView() {
    * Super Admin 接手（preview v3 第 2 节）：别人在改时问后端 GET edit-lock，can_take_over 是 true（只有 Super Admin）
    * 而且不是自己 ⇒ 琥珀条上多一个白键 Take over。别人看到的照旧。
    */
-  const [takeOverHolder, setTakeOverHolder] = useState<EditLockHolder | null>(null);
+  const [takeOverHolder, setTakeOverHolder] = useState<EditLockHolder | null>(
+    null,
+  );
   const [takingOver, setTakingOver] = useState<EditLockHolder | null>(null);
   const lockDate = day?.run_date ?? null;
   useEffect(() => {
@@ -2273,7 +2289,8 @@ export function DispatchView() {
                     setBlockedBy(null);
                     // 对方刚才存过的也要看到：重读这一天（锁已经是自己的，读回来 by_me）。
                     void (async () => {
-                      if (await load(day.run_date)) await maybePrefill(day.run_date);
+                      if (await load(day.run_date))
+                        await maybePrefill(day.run_date);
                     })();
                   }}
                   onFree={() => {
@@ -2628,6 +2645,7 @@ export function DispatchView() {
                         orders: day.private_orders,
                         save: unitSaveState(unitOf(rows[i])),
                         shuttleAsk: analysis.shuttleAsk.get(i),
+                        seatShort: seatShort.get(i),
                       });
                       const renderSec = (s: Sec, cardIdx: number) => {
                         // G82：后端带了 Rezdy 订单 => Private Tour 按订单分卡（上面订单 / 团名，下面这张订单的车）。
@@ -3256,8 +3274,8 @@ export function DispatchView() {
                   >
                     <span className="mr-auto">
                       ⚠ {plural(needLook.n, "order")} in Need a look — these
-                      guests will not get the morning reminder until each one
-                      is sorted out.
+                      guests will not get the morning reminder until each one is
+                      sorted out.
                     </span>
                     <button
                       type="button"
@@ -3625,10 +3643,10 @@ function HowToUse({
           published Staff Schedule, Dispatch opens on today each time you open
           it between <span data-howto-window>{winStart}</span> and{" "}
           <span data-howto-window-end>{winEnd}</span> (Las Vegas time; Super
-          Admin can change these times). Everyone else: if you signed in between 12:00 AM
-          and 8:30 AM (Las Vegas time), Dispatch opens on today until you sign
-          in again; otherwise it opens on tomorrow. Change the day any time
-          &mdash; the page stays on the day you picked.
+          Admin can change these times). Everyone else: if you signed in between
+          12:00 AM and 8:30 AM (Las Vegas time), Dispatch opens on today until
+          you sign in again; otherwise it opens on tomorrow. Change the day any
+          time &mdash; the page stays on the day you picked.
         </li>
         <li>
           CCL&rsquo;s schedule fills in the buses and drivers. Orange text means
