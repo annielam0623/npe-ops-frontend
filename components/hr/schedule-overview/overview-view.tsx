@@ -905,7 +905,7 @@ export function ScheduleOverview() {
             {weekGaps.length ? (
               <div data-publish-gaps>
                 <p>Nobody is scheduled on this part of the week:</p>
-                <ul className="mt-1 list-disc pl-5 text-red-300">
+                <ul className="mt-1 list-disc pl-5 text-[#b91c1c] night:text-red-300">
                   {weekGaps.map((g, i) => (
                     <li key={i}>
                       <b>{dayLabel(g.date)}</b> · {clockRange(g.start_time, g.end_time)}

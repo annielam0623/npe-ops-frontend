@@ -46,7 +46,7 @@ export function OverridesSection({
   const [rows, setRows] = useState<SendOverride[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   // 手机上标题后的说明收进「i」（Annie 2026-11-01 手机版规则）。
-  const info = usePhoneInfo("About overrides");
+  const info = usePhoneInfo("About overrides", { onPaper: true });
 
   useEffect(() => {
     const controller = new AbortController();
