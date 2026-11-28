@@ -25,7 +25,8 @@ const CONTRAST_HELPERS = `
     cx.fillStyle = c;
     cx.fillRect(0, 0, 1, 1);
     const d = cx.getImageData(0, 0, 1, 1).data;
-    return d[3] ? [(d[0] * 255) / d[3], (d[1] * 255) / d[3], (d[2] * 255) / d[3], al] : null;
+    // getImageData 给的是没预乘的 RGB，直接用。
+    return d[3] ? [d[0], d[1], d[2], al] : null;
   };
   const over = (t, b) => [0, 1, 2].map((i) => t[i] * t[3] + b[i] * (1 - t[3])).concat(1);
   const lum = (c) => {
