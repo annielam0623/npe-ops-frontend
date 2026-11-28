@@ -148,6 +148,19 @@ export function useEditLock({
   /** 存好 / 复制好：服务器已经放开了，这边只忘掉。 */
   const forget = clear;
 
+  /** Super Admin 接手成功（POST edit-lock/take-over）：用新 token 接着占，照常心跳 / 存 / 放开。 */
+  const adopt = useCallback(
+    (token: string) => {
+      if (!date) return;
+      tokenRef.current = { date, token };
+      lastEditRef.current = Date.now();
+      editedRef.current = false;
+      setEnded(null);
+      setHolding(true);
+    },
+    [date],
+  );
+
   const token = useCallback(
     () => (tokenRef.current?.date === date ? tokenRef.current.token : null),
     [date],
@@ -210,6 +223,7 @@ export function useEditLock({
     markEdited,
     release,
     forget,
+    adopt,
     token,
     holding,
     acquiring,

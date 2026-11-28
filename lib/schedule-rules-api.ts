@@ -1,6 +1,5 @@
 import { apiFetch } from "@/lib/api-client";
 import type { Rule } from "@/lib/schedule-engine";
-import type { ScheduleSlot } from "@/types";
 
 /** GET / PUT /api/schedule/rules 的文档（后端只存、只校验、不执行；排班引擎在前端：lib/schedule-engine.ts）。 */
 export interface ScheduleRulesDoc {
@@ -28,33 +27,4 @@ export function saveScheduleRules(rules: Rule[]): Promise<ScheduleRulesDoc> {
     method: "PUT",
     body: { version: 1, rules },
   });
-}
-
-export interface BulkSlotInput {
-  date: string;
-  shift_type: string;
-  start_time: string;
-  end_time: string;
-  employee_id: number | null;
-}
-
-export interface BulkSlotsResult {
-  week_start: string;
-  status: "draft" | "published";
-  deleted: number;
-  slots: ScheduleSlot[];
-}
-
-/**
- * 整周一次建（一个事务：要么全建要么全不建；只许 draft 周；单次最多 300 个）。
- * replace=true 先删掉这一周现有的全部时段；bulk 不复制上一周。
- */
-export function bulkCreateSlots(
-  weekStart: string,
-  input: { replace: boolean; slots: BulkSlotInput[] },
-): Promise<BulkSlotsResult> {
-  return apiFetch<BulkSlotsResult>(
-    `/api/schedule/weeks/${weekStart}/slots/bulk`,
-    { method: "POST", body: input },
-  );
 }

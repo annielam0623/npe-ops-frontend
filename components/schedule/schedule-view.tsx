@@ -25,14 +25,12 @@ import {
 import {
   addScheduleEmployee,
   changesErrorOf,
-  deleteScheduleTimeOff,
   fetchScheduleEmployees,
   saveScheduleEmployeeOrder,
   fetchScheduleSettings,
   fetchScheduleWeek,
   publishScheduleWeek,
   saveScheduleWeekChanges,
-  setScheduleTimeOff,
   updateScheduleEmployee,
 } from "@/lib/schedule-api";
 import { replaceUrl, useLeaveGuard } from "@/lib/use-leave-guard";
@@ -176,6 +174,12 @@ function weekRangeLabel(weekStart: string): string {
  * 必须跟总览同一次上线（中间不能两边都没有管理键）。
  */
 const MANAGE_IN_OVERVIEW = true;
+
+/** 这页已经不能改（MANAGE_IN_OVERVIEW）：万一走到改假 / Auto-fill 存的地方，照这句挡下，不直接调改班 / 改假的接口。 */
+const EDIT_IN_OVERVIEW = "Edit the schedule in Human Resource › Schedule.";
+async function refuseAutoFillSave(): Promise<void> {
+  throw new Error(EDIT_IN_OVERVIEW);
+}
 /** 总览页（请假通知给批复人的链接也指向这里，后端 interface.md 第 3 节）。 */
 const OVERVIEW_HREF = "/settings/hr?tab=schedule";
 
@@ -605,26 +609,6 @@ export function ScheduleView() {
   }
 
   /**
-   * 改排班的统一出口：后端的改动接口只返回那一个时段（gaps 要整周重算），所以每次做完都静默重新拉一次
-   * 这一周，页面和空档提示始终跟服务端一致；出错一样重拉，不维护本地乐观状态。
-   */
-  async function runSlotAction(action: () => Promise<unknown>) {
-    setActionError(null);
-    if (!(await guardEdit())) return;
-    try {
-      await action();
-      markEdited();
-    } catch (error) {
-      if (isStatus(error, 401)) {
-        redirectToLogin();
-        return;
-      }
-      setActionError(describeError(error));
-    }
-    await loadWeek(undefined, true);
-  }
-
-  /**
    * 整周一个 Save：拖班 / 加删 / 改时间 / 备注都只改页面上的暂存（不发请求、不重读整周）。
    * 第一次动手照旧先占住这一周（别人占着就弹「谁在编辑」，这一下不做）。存的时候不能再改。
    */
@@ -704,24 +688,9 @@ export function ScheduleView() {
   async function savePendingLeave(): Promise<string | null> {
     const todo = Object.entries(pendingLeave).filter(([, d]) => d.length);
     if (!todo.length) return null;
-    try {
-      for (const [id, dates] of todo)
-        await setScheduleTimeOff({
-          employee_id: Number(id),
-          dates: [...dates].sort(),
-          kind: "pto",
-          note: null,
-        });
-      setPendingLeave({});
-      await loadWeek(undefined, true);
-      return null;
-    } catch (error) {
-      if (isStatus(error, 401)) {
-        redirectToLogin();
-        return "Please sign in again.";
-      }
-      return `The shifts are saved, but the leave could not be saved: ${describeError(error)}`;
-    }
+    // G382：改排班搬到 HR 总览（MANAGE_IN_OVERVIEW），这页不再直接存假（后端要所有改假的接口都带编辑锁）。
+    setPendingLeave({});
+    return `The shifts are saved, but the leave was not: ${EDIT_IN_OVERVIEW}`;
   }
 
   /** 放弃全部没存的改动，回到已存的样子，放开锁。 */
@@ -800,27 +769,14 @@ export function ScheduleView() {
     const lock = await editLock.ensure();
     if (lock.kind === "busy")
       return `${lock.by ?? "Someone"} is editing this schedule. Please try again later.`;
-    try {
-      await setScheduleTimeOff({
-        employee_id: employeeId,
-        dates: input.dates,
-        kind: input.kind,
-        note: input.note,
-      });
-      markEdited();
-    } catch (error) {
-      if (isStatus(error, 401)) {
-        redirectToLogin();
-        return null;
-      }
-      return describeError(error);
-    }
-    await loadWeek(undefined, true);
-    return null;
+    void employeeId;
+    void input;
+    return EDIT_IN_OVERVIEW;
   }
 
   function handleDeleteTimeOff(id: number) {
-    void runSlotAction(() => deleteScheduleTimeOff(id));
+    void id;
+    setActionError(EDIT_IN_OVERVIEW);
   }
 
   function handleDeleteSlot(slotId: number) {
@@ -1535,6 +1491,7 @@ export function ScheduleView() {
           employees={employees}
           settings={settings}
           onClose={() => setAutoFilling(false)}
+          saveWeeks={refuseAutoFillSave}
           onDraftThisWeek={canEdit ? handleAutoFillThisWeek : undefined}
           onDone={(message) => {
             setAutoFilling(false);
@@ -1568,6 +1525,7 @@ export function ScheduleView() {
             ctx: { employees, shiftTypes: settings.shift_types },
           }}
           onClose={() => setPeriodAutoFilling(false)}
+          saveWeeks={refuseAutoFillSave}
           onDone={(message) => {
             setPeriodAutoFilling(false);
             setAutoFillBanner(message);

@@ -67,6 +67,9 @@ function reset() {
     weekStatus: {},
     fail: {},
     today: "2026-11-25",
+    lockMode: "",
+    superAdmin: false,
+    takenWeeks: [],
   });
   const slots = [];
   const add = (date, type, emp, start, end, note = null) =>
@@ -382,7 +385,7 @@ http
     if (p === "/__ctl" && method === "POST") {
       const b = (await readBody(req)) || {};
       if (b.reset) reset();
-      for (const k of ["viewer", "canPublish", "canManageLeaveTypes", "weekStatus", "fail", "today", "selfEmp"]) if (k in b) ctl[k] = b[k];
+      for (const k of ["viewer", "canPublish", "canManageLeaveTypes", "weekStatus", "fail", "today", "selfEmp", "lockMode", "superAdmin", "takenWeeks"]) if (k in b) ctl[k] = b[k];
       return send(res, 200, { ok: true, ctl });
     }
     if (p === "/__log") return send(res, 200, log);
@@ -412,6 +415,9 @@ http
       const ops = body.ops;
       if (!Array.isArray(weeks) || !weeks.length || weeks.length > 8) return send(res, 400, { detail: "weeks must list 1 to 8 weeks." });
       if (!Array.isArray(ops) || !ops.length) return send(res, 400, { detail: "ops must be a non-empty list." });
+      // 被 Super Admin 接手的周：旧 token 整批都不存（后端 lock-takeover §3）。
+      if (weeks.some((w) => (ctl.takenWeeks || []).includes(w.week_start) && w.lock_token === `lock-${w.week_start}`))
+        return conflict(res, "Annie took over editing at 3:30 PM. Your changes that weren't saved were not kept.", "lock_taken_over");
       const wkSet = new Set(weeks.map((w) => w.week_start));
       const work = state.slots.map((s) => ({ ...s }));
       const off = state.time_off.map((t) => ({ ...t }));
@@ -674,7 +680,7 @@ http
     //         approver = Team lead（只有 schedule.view，没有 settings.hr.view）；hrview = 只有 settings.hr.view；none = 都没有。
     if (p === "/api/me" && method === "GET") {
       const ed = ctl.viewer === "editor";
-      return send(res, 200, { id: 1, username: "zztest", display_name: ctl.viewer === "approver" ? "ZZ Test Mia" : "ZZ Test", initials: "ZT", role: ed ? "supervisor" : "staff", is_admin: false, is_superadmin: false, is_supervisor: ed });
+      return send(res, 200, { id: 1, username: "zztest", display_name: ctl.viewer === "approver" ? "ZZ Test Mia" : "ZZ Test", initials: "ZT", role: ed ? "supervisor" : "staff", is_admin: false, is_superadmin: !!ctl.superAdmin, is_supervisor: ed });
     }
     if (p === "/api/me/permissions" && method === "GET") {
       const codes = {
@@ -700,14 +706,31 @@ http
     }
     if (p === "/api/schedule/rules" && method === "GET") return send(res, 200, { version: 1, rules: [] });
     // 编辑占用（同 sch-mock 形状）：ctl.lockMode ""/"ok" = 占得到（token 按周），"busy" = 别人在改，"missing" = 接口没上线(404)。
-    const lockM = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/edit-lock(\/heartbeat|\/release)?$/.exec(p);
+    // Take over（lock-takeover 2026-11-27）：GET edit-lock 回 {edit_lock, can_take_over}（superAdmin 才 true）；POST take-over 换成 taken-<w>；
+    // ctl.takenWeeks 里的周：旧 token（lock-<w>）的心跳 / range/changes 一律 409 {detail: {detail, code: "lock_taken_over"}}。
+    const TAKEN_TEXT = "Annie took over editing at 3:30 PM. Your changes that weren't saved were not kept.";
+    const SAM = { by: "ZZ Test Sam", since: "2026-11-25T23:05:00Z", last_edit: null, by_me: false };
+    const lockM = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/edit-lock(\/heartbeat|\/release|\/take-over)?$/.exec(p);
+    if (lockM && method === "GET" && !lockM[2]) {
+      return send(res, 200, { edit_lock: ctl.lockMode === "busy" ? SAM : null, can_take_over: !!ctl.superAdmin });
+    }
     if (lockM && method === "POST") {
       if (ctl.lockMode === "missing") return send(res, 404, { detail: "Not Found" });
+      if (lockM[2] === "/take-over") {
+        if (!ctl.superAdmin) return send(res, 403, { detail: "Only a Super Admin can take over editing." });
+        if (ctl.lockMode === "busy" && body?.holder_since !== SAM.since)
+          return conflict(res, "ZZ Test Sam is editing this week now. Look again before taking over.", "holder_changed");
+        ctl.lockMode = "ok";
+        return send(res, 200, { token: `taken-${lockM[1]}`, remind_after_s: 600, auto_save_after_s: 300, heartbeat_every_s: 60, took_over_from: { by: SAM.by, since: SAM.since, last_edit: null } });
+      }
       if (!lockM[2]) {
         if (ctl.lockMode === "busy") return send(res, 409, { detail: "ZZ Test Sam is editing this schedule (since 3:05 PM). Please try again later." });
         return send(res, 200, { token: `lock-${lockM[1]}`, heartbeat_every_s: 60 });
       }
-      if (lockM[2] === "/heartbeat") return send(res, 200, { ok: true });
+      if (lockM[2] === "/heartbeat") {
+        if ((ctl.takenWeeks || []).includes(lockM[1]) && body?.token === `lock-${lockM[1]}`) return conflict(res, TAKEN_TEXT, "lock_taken_over");
+        return send(res, 200, { ok: true });
+      }
       return send(res, 200, { released: true });
     }
     // GET weeks/{w}（后端 schedule.py:641-685 _get_or_create_week / get_week 880）：有 schedule.edit 的人第一次打开没建的周 →

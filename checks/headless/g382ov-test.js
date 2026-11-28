@@ -392,6 +392,123 @@ async function run() {
   // ── 只能批假的人 ──
   await ctl({ reset: true, viewer: "approver" });
   if (!skipAll && !(await openOverview())) skipAll = true;
+  // ── Super Admin Take over（preview v3 HnwCg1oWJgYGuaiB72QPfz，K1–K3 A；后端 lock-takeover 2026-11-27）──
+  const TAKE_LINE = "Super Admin: if someone else is editing a week, press Take over in the red message to edit it yourself. Their changes that weren’t saved are lost, and they see a message within a minute.";
+  const howLines = () => evaluate(`return [...document.querySelectorAll('${SEL.howTo} li')].map((li) => li.textContent);`);
+  await maybe("Take over：不是 Super Admin ⇒ 动手改时红框照旧，没有 Take over；How to use 没有那一行", async () => {
+    await ctl({ reset: true, viewer: "editor", lockMode: "busy", superAdmin: false });
+    if (!(await openOverview())) throw new Error("overview did not open");
+    const mv = await pickDraftMove();
+    await drag(`[data-ov-shift="${mv.key}"]`, `[data-ov-cell="null|${mv.date}"]`);
+    await waitFor("document.querySelector('[data-ov-edit-error]')", 8000);
+    await sleep(600);
+    const m = await evaluate("return { box: document.querySelector('[data-ov-edit-error]')?.textContent, take: !!document.querySelector('[data-ov-take-over]'), unsaved: !!document.querySelector('" + SEL.unsaved + "') };");
+    const lines = await howLines();
+    check("Take over：不是 Super Admin ⇒ 动手改时红框照旧，没有 Take over；How to use 没有那一行",
+      /ZZ Test Sam is editing/.test(m.box || "") && !m.take && !m.unsaved && !lines.includes(TAKE_LINE), JSON.stringify({ m, lines }));
+  });
+  await maybe("Take over：Super Admin ⇒ 红框里白键 Take over → 确认框原文 + 红色实心键 → 接手（带 holder_since）→ 再改一次照常，Save 用新 token", async () => {
+    await ctl({ reset: true, viewer: "editor", lockMode: "busy", superAdmin: true });
+    if (!(await openOverview())) throw new Error("overview did not open");
+    const lines = await howLines();
+    const mv = await pickDraftMove();
+    const week = await evaluate(`return document.querySelector('[data-ov-shift="${mv.key}"]').closest('${SEL.week}').dataset.ovWeek;`);
+    await drag(`[data-ov-shift="${mv.key}"]`, `[data-ov-cell="null|${mv.date}"]`);
+    const shown = await waitFor("document.querySelector('[data-ov-take-over]')", 8000);
+    const white = await evaluate("const b = document.querySelector('[data-ov-take-over]'); return !!b && document.querySelector('[data-ov-edit-error]').contains(b) && getComputedStyle(b).backgroundColor === 'rgb(255, 255, 255)';");
+    await evaluate("document.querySelector('[data-ov-take-over]').click(); return 1;");
+    await waitFor("document.querySelector('[data-take-over-text]')", 5000);
+    const dlg = await evaluate("const ok = [...document.querySelectorAll('[role=dialog] button')].find((x) => x.textContent.trim() === 'Take over'); return { text: document.querySelector('[data-take-over-text]').textContent, red: !!ok && getComputedStyle(ok).backgroundColor === 'rgb(163, 45, 45)' };");
+    const before = (await mockLog()).length;
+    await evaluate("[...document.querySelectorAll('[role=dialog] button')].find((x) => x.textContent.trim() === 'Take over').click(); return 1;");
+    await waitFor("!document.querySelector('[data-take-over-text]') && !document.querySelector('[data-ov-edit-error]')", 6000);
+    const takes = (await mockLog()).slice(before).filter((l) => /\/edit-lock\/take-over$/.test(l.path));
+    // 再改一次：照常进草稿、不再去占这一周
+    await sleep(400);
+    const mv2 = await pickDraftMove();
+    const b2 = (await mockLog()).length;
+    await drag(`[data-ov-shift="${mv2.key}"]`, `[data-ov-cell="null|${mv2.date}"]`);
+    await waitFor(`document.querySelector('${SEL.unsaved}')`, 8000);
+    await evaluate(`document.querySelector('${SEL.save}').click(); return 1;`);
+    await waitFor(`document.querySelector('${SEL.saved}') || document.querySelector('[data-ov-save-error]')`, 10000);
+    const save = (await mockLog()).slice(b2).find((l) => l.path === "/api/schedule/range/changes");
+    const tok = save?.body?.weeks?.find((w) => w.week_start === week)?.lock_token;
+    check("Take over：Super Admin ⇒ 红框里白键 Take over → 确认框原文 + 红色实心键 → 接手（带 holder_since）→ 再改一次照常，Save 用新 token",
+      shown && white && dlg.red &&
+      dlg.text === "ZZ Test Sam is editing this week (since 3:05 PM). If you take over, changes they haven't saved will be lost. Take over?" &&
+      takes.length === 1 && takes[0].path === `/api/schedule/weeks/${week}/edit-lock/take-over` && takes[0].body?.holder_since === "2026-11-25T23:05:00Z" &&
+      tok === `taken-${week}` && lines.includes(TAKE_LINE),
+      JSON.stringify({ shown, white, dlg, takes, tok, week, hasLine: lines.includes(TAKE_LINE) }));
+  });
+  await maybe("SA-3：占着的周被接手 → Save 先心跳、等回来 → 409 ⇒ 不调 range/changes，红框写原话 + Reload，整页只能看", async () => {
+    await ctl({ reset: true, viewer: "editor" });
+    if (!(await openOverview())) throw new Error("overview did not open");
+    const mv = await pickDraftMove();
+    const week = await evaluate(`return document.querySelector('[data-ov-shift="${mv.key}"]').closest('${SEL.week}').dataset.ovWeek;`);
+    await drag(`[data-ov-shift="${mv.key}"]`, `[data-ov-cell="null|${mv.date}"]`);
+    await waitFor(`document.querySelector('${SEL.unsaved}')`, 8000);
+    await ctl({ takenWeeks: [week] });
+    const before = (await mockLog()).length;
+    await evaluate(`document.querySelector('${SEL.save}').click(); return 1;`);
+    await waitFor("document.querySelector('[data-ov-lost]')", 8000);
+    const log = (await mockLog()).slice(before);
+    const hb = log.filter((l) => l.path === `/api/schedule/weeks/${week}/edit-lock/heartbeat`);
+    const saves = log.filter((l) => l.path === "/api/schedule/range/changes");
+    const m = await evaluate(`return { text: document.querySelector('[data-ov-lost]').textContent, reload: !!document.querySelector('[data-ov-lost-reload]'), saveOff: document.querySelector('${SEL.save}').disabled, drag: !!document.querySelector('${SEL.shift}[draggable=true]'), autofill: !!document.querySelector('[data-ov-autofill]')?.disabled };`);
+    check("SA-3：占着的周被接手 → Save 先心跳、等回来 → 409 ⇒ 不调 range/changes，红框写原话 + Reload，整页只能看",
+      hb.length === 1 && hb[0].body?.token === `lock-${week}` && saves.length === 0 &&
+      m.text.includes("Annie took over editing at 3:30 PM. Your changes that weren't saved were not kept.") && m.reload && m.saveOff && !m.drag && m.autofill,
+      JSON.stringify({ hb: hb.length, saves: saves.length, m }));
+    await ctl({ takenWeeks: [] });
+    await evaluate("document.querySelector('[data-ov-lost-reload]').click(); return 1;");
+    const back = await waitFor(`!document.querySelector('[data-ov-lost]') && !document.querySelector('${SEL.unsaved}') && !!document.querySelector('${SEL.shift}[draggable=true]')`, 8000);
+    check("SA-3：Reload ⇒ 红框没了、没存的改动丢掉、又能改", back);
+  });
+  await maybe("Auto-fill：先占每一周的锁、经 range/changes 存（带 lock token）；不调 slots/bulk、不调 PUT time-off", async () => {
+    await ctl({ reset: true, viewer: "editor" });
+    if (!(await openOverview())) throw new Error("overview did not open");
+    const before = (await mockLog()).length;
+    await evaluate("document.querySelector('[data-ov-autofill]').click(); return 1;");
+    const dlgSel = "[...document.querySelectorAll('[role=dialog], .fixed.inset-0')].find((d) => /Auto-fill|Preview/.test(d.textContent))";
+    await waitFor(`${dlgSel} && [...${dlgSel}.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Preview')`, 15000);
+    await evaluate(`[...${dlgSel}.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Preview').click(); return 1;`);
+    // 置顶 117：先出 Leave 表 ⇒ Continue；然后预览 ⇒ Create draft(s)
+    for (let i = 0; i < 3; i++) {
+      const next = await waitFor(`[...(${dlgSel}?.querySelectorAll('button') ?? [])].some((b) => /^(Continue|Create draft)/.test(b.textContent.trim()) && !b.disabled)`, 20000);
+      if (!next) break;
+      const label = await evaluate(`const b = [...${dlgSel}.querySelectorAll('button')].find((b) => /^(Continue|Create draft)/.test(b.textContent.trim()) && !b.disabled); b.click(); return b.textContent.trim();`);
+      if (/^Create draft/.test(label)) break;
+      await sleep(300);
+    }
+    await waitFor(`!(${dlgSel}) || /Nothing was created/.test(${dlgSel}?.textContent || '')`, 20000);
+    const log = (await mockLog()).slice(before);
+    const bad = log.filter((l) => /\/slots(\/|$)|\/api\/schedule\/time-off/.test(l.path));
+    const saves = log.filter((l) => l.path === "/api/schedule/range/changes");
+    const locks = log.filter((l) => /\/edit-lock$/.test(l.path) && l.method === "POST").map((l) => l.path.split("/")[4]);
+    const tokOk = saves.every((s) => (s.body?.weeks ?? []).every((w) => typeof w.lock_token === "string" && locks.includes(w.week_start)));
+    const err = await evaluate(`return ${dlgSel}?.textContent.match(/[^.]*Nothing was created\\./)?.[0] ?? null;`);
+    check("Auto-fill：先占每一周的锁、经 range/changes 存（带 lock token）；不调 slots/bulk、不调 PUT time-off",
+      bad.length === 0 && saves.length === 1 && tokOk && !err,
+      JSON.stringify({ bad: bad.map((l) => l.path), saves: saves.map((s) => ({ weeks: s.body?.weeks, ops: s.body?.ops?.length })), locks, err }));
+  });
+  check("源码里没有直接改班 / 改假的调用（/slots、/api/schedule/time-off；后端要所有这些接口都带编辑锁）", (() => {
+    const fs = require("fs"), path = require("path");
+    const root = path.resolve(__dirname, "../..");
+    const hits = [];
+    const walk = (d) => {
+      for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+        const f = path.join(d, e.name);
+        if (e.isDirectory()) walk(f);
+        else if (/\.(ts|tsx)$/.test(e.name)) {
+          const code = fs.readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+          if (/\/api\/schedule\/weeks\/[^`'"]*\/slots|\/slots\/bulk|\/api\/schedule\/time-off/.test(code)) hits.push(path.relative(root, f));
+        }
+      }
+    };
+    for (const d of ["app", "components", "lib"]) walk(path.join(root, d));
+    if (hits.length) console.log("  tokenless callers:", hits.join(", "));
+    return hits.length === 0;
+  })());
   await maybe("can_edit=false：没有任何编辑键、没有 Save、只有 Leave requests 能点、没有 Shift change requests 栏", async () => {
     const m = await evaluate(`return { edit: document.querySelectorAll('${SEL.editKey}').length, save: !!document.querySelector('${SEL.save}'), leave: !!document.querySelector('${SEL.leaveReqs}'), change: !!document.querySelector('${SEL.changeReqs}'), cells: document.querySelectorAll('${SEL.cell}').length, viewOnly: document.querySelector('[data-ov-view-only]')?.textContent ?? '' };`);
     check("can_edit=false：没有任何编辑键、没有 Save、只有 Leave requests 能点、没有 Shift change requests 栏", m.edit === 0 && !m.save && m.leave && !m.change && m.cells === 0 && /View only/.test(m.viewOnly), JSON.stringify(m));

@@ -1706,7 +1706,8 @@ async function run() {
   // 用 10-20（两轮各一台）、10-21（空、照抄 10-20）、10-22（只有 1st Round）。离开页面时一律答应（有改动也走）。
   {
     promptAnswer = "";
-    const LK = (sub) => (e) => e.path === `/api/dispatch/edit-lock${sub}`;
+    // GET edit-lock（Take over 问谁在编辑）不算「占」。
+    const LK = (sub) => (e) => e.path === `/api/dispatch/edit-lock${sub}` && e.method === "POST";
     const ACQ = LK(""), HB = LK("/heartbeat"), REL = LK("/release");
     const isGetDay = (e) => e.path === "/api/dispatch/day" && e.method === "GET";
     const D = "2026-10-20";
@@ -1721,7 +1722,7 @@ async function run() {
     const editOff = `${relay1}.querySelector('.vrow').disabled && ${veh(0)}.matches(':disabled') && $btn('+ Add vehicle', ${relay1}).disabled`;
     const navOn = `!document.querySelector('button[aria-label="Next day"]').disabled && !document.querySelector('button[aria-label="Previous day"]').disabled && !document.querySelector('input[aria-label=Day]').disabled && !document.getElementById('tab-send').disabled`;
     const FAST = { remind_after_s: 600, auto_save_after_s: 300, heartbeat_every_s: 1 };
-    const RESET = { lockOther: null, lock409: false, acquireErr: "", acquireDelay: 0, hb409: false, save409: false, copy409: false, timing: null };
+    const RESET = { lockOther: null, lock409: false, acquireErr: "", acquireDelay: 0, hb409: false, save409: false, copy409: false, timing: null, superAdmin: false, takeOverChanged: null, hbTaken: false };
     const open = async (date, c = {}, needRow = true) => {
       await ctl({ ...RESET, ...c });
       await goto(`${APP}/dispatch?date=${date}`);
@@ -1892,6 +1893,53 @@ async function run() {
     // by_me（自己别的标签页）：没有条
     await open(D, { lockOther: { by: "annie", since: SINCE, by_me: true } });
     check("G71 edit_lock 是自己（by_me）：没有琥珀条、能改", await evaluate(`return !${lockedBar} && !${veh(0)}.matches(':disabled') && !$btn('+ Add vehicle', ${relay1}).disabled;`));
+
+    // ── Super Admin Take over（preview v3 HnwCg1oWJgYGuaiB72QPfz，K1–K3 A；后端 lock-takeover 2026-11-27）──
+    {
+      const TAKE = (e) => e.path === "/api/dispatch/edit-lock/take-over";
+      const takeBtn = "document.querySelector('[data-take-over]')";
+      const howLine = "document.querySelector('[data-howto-take-over]')";
+      const dlgText = "document.querySelector('[data-take-over-text]')";
+      const dlgBtn = "[...document.querySelectorAll('[role=dialog] button')].find((x) => x.textContent.trim() === 'Take over')";
+      const twoMinAgo = new Date(Date.now() - 2 * 60000 - 5000).toISOString();
+      await open(D, { lockOther: { by: "veronica", since: SINCE, last_edit: twoMinAgo } });
+      await sleep(700);
+      check("Take over：不是 Super Admin ⇒ 琥珀条照旧，没有 Take over；How to use 没有那一行", await evaluate(`return !!${lockedBar} && !!$btn('Check again', ${lockedBar}) && !${takeBtn} && !${howLine};`));
+      await open(D, { lockOther: { by: "veronica", since: SINCE, last_edit: twoMinAgo }, superAdmin: true });
+      await waitFor(takeBtn, 5000);
+      check("Take over：Super Admin ⇒ 琥珀条上 Check again 旁边一个白键 Take over（不是蓝色）", await evaluate(`const b = ${takeBtn}; return !!b && b.textContent.trim() === 'Take over' && ${lockedBar}.contains(b) && getComputedStyle(b).backgroundColor === 'rgb(255, 255, 255)';`));
+      check("Take over：How to use 多一行（只给 Super Admin）", await evaluate(`return ${howLine}?.textContent.replace(/\\s+/g, ' ').trim() === 'Super Admin: if someone else is editing this day, press Take over on the yellow bar to edit it yourself. Their changes that weren’t saved are lost, and they see a message within a minute.';`), await evaluate(`return ${howLine}?.textContent;`));
+      await evaluate(`${takeBtn}.click();`);
+      await waitFor(dlgText);
+      check("Take over 确认框：原文（since + last change）+ 红色实心 Take over", await evaluate(`const t = ${dlgText}.textContent; const ok = ${dlgBtn}; return t === "veronica is editing this day (since 10:05 AM, last change 2 min ago). If you take over, changes they haven't saved will be lost. Take over?" && !!ok && getComputedStyle(ok).backgroundColor === 'rgb(163, 45, 45)';`), await evaluate(`return ${dlgText}?.textContent;`));
+      // 编辑的人变了 ⇒ 409 holder_changed：重读、换成新的人再问一次
+      const SINCE2 = "2026-10-15T18:10:00Z"; // 11:10 AM
+      await ctl({ takeOverChanged: { by: "maria", since: SINCE2 } });
+      let tb = (await mockLog()).length;
+      await evaluate(`${dlgBtn}.click();`);
+      await waitFor(`${dlgText}?.textContent.startsWith('maria is editing this day (since 11:10 AM)') && document.querySelector('[role=dialog] [role=alert]')`, 5000);
+      let posts = await since(tb, TAKE);
+      check("Take over：409 holder_changed ⇒ 框没关，换成 maria 再问一次，红字写后端原话；第一次带的 holder_since 是框里那个 since", posts.length === 1 && posts[0].body.holder_since === SINCE && posts[0].body.date === D && typeof posts[0].body.version === "string" && (await evaluate("return document.querySelector('[role=dialog] [role=alert]').textContent.includes('maria is editing this day now. Look again before taking over.');")), JSON.stringify(posts.map((p) => p.body)));
+      tb = (await mockLog()).length;
+      await evaluate(`${dlgBtn}.click();`);
+      await waitFor(`!${dlgText} && !${lockedBar} && !${veh(0)}.matches(':disabled')`, 6000);
+      posts = await since(tb, TAKE);
+      check("Take over 成功：第二次带新的 holder_since，框关掉、琥珀条没了、重读这一天、能改", posts.length === 1 && posts[0].body.holder_since === SINCE2 && !!posts[0].resp?.token && (await since(tb, isGetDay)).length >= 1, JSON.stringify(posts.map((p) => p.body)));
+      tb = (await mockLog()).length;
+      await pick(veh(0), "11");
+      await waitFor(unsaved);
+      check("Take over 以后改：不再去占（用接手拿到的 token）", (await since(tb, ACQ)).length === 0);
+      await discardNow();
+      // 被接手的人：心跳回 409 lock_taken_over ⇒ 红条写原话 + Reload，只能看
+      await open(D, { timing: FAST });
+      await pick(veh(0), "11");
+      await waitFor(unsaved);
+      await ctl({ hbTaken: true });
+      await waitFor(endedBar, 5000);
+      check("被接手的人：下一次心跳红条写「Annie took over editing at 3:30 PM. Your changes that weren't saved were not kept.」+ Reload，只能看", await evaluate(`return ${endedBar}.textContent.includes("Annie took over editing at 3:30 PM. Your changes that weren't saved were not kept.") && !!$btn('Reload', ${endedBar}) && ${editOff};`), await evaluate(`return ${endedBar}?.textContent;`));
+      await ctl({ hbTaken: false });
+      await discardNow();
+    }
 
     // 占的时候 409（GET 时还没人）⇒ 这一下不改、琥珀条写原话
     await open(D, { lock409: true });
