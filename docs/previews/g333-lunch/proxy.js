@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-unused-expressions -- preview 截图用的 node 小脚本（同 checks/**），不进 app。 */
+/* eslint-disable @typescript-eslint/no-require-imports -- preview 截图用的 node 小脚本（同 checks/**），不进 app。 */
 // G333 preview 用：8962 → 模拟后端 8961；Bus Manifest 回包里把 CHD2 改成「不带餐却写了三明治」（同后端 82f9fec8 的字段）。
 const http = require("http");
 const NOTE = "Booked without lunch, but Special requirements ask for 2 T. Check the order.";
