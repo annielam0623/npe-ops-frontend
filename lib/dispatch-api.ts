@@ -1,5 +1,6 @@
 import type { DriverFollowed } from "@/lib/driver-follow";
 import { apiFetch } from "@/lib/api-client";
+import { cclRemovedPayload, type CclRemovedCar } from "@/lib/ccl-removed";
 import { ApiError } from "@/types";
 import type {
   DispatchCopyResult,
@@ -66,6 +67,8 @@ function postRows(rows: DispatchRow[]) {
     order_number_set_by_staff: r.order_number_set_by_staff,
     // 临时调座位数：同上，undefined 不送；有了必须原样送回，漏送 = 调整被静默清零。
     seat_adjustment: r.seat_adjustment,
+    // CCL 去掉的车（后端 32）：undefined 不送；有了原样送回，漏送 = 重开不红。
+    ...cclRemovedPayload(r),
   }));
 }
 
@@ -516,6 +519,8 @@ export interface DriverNotice {
   /** 发给司机的那句短信（只有链接）。 */
   text: string;
   last_sent: { at: string; by: string; label: string } | null;
+  /** CCL 去掉、还没处理的车（后端 32）：有 ⇒ Send texts now 灰掉、出红框，后端 send 回 400 CCL_REMOVED。旧后端不带。 */
+  ccl_removed?: CclRemovedCar[];
   people: {
     /** 这一行的稳定 id（`hr:<id>` 或 `typed:<名字>`）：挑着发给谁靠它，不靠数组下标（后端 2026-10-10 `8cdacda`）。 */
     key: string;
@@ -578,6 +583,8 @@ export interface GuideNotice {
   /** staff 在链接后面最多能加几个字（凑满一条短信）；没带 = 后端还不收 extra，不出输入框。 */
   extra_max?: number;
   last_sent: { at: string; by: string; label: string } | null;
+  /** 同 DriverNotice.ccl_removed。 */
+  ccl_removed?: CclRemovedCar[];
   people: {
     key: string;
     name: string;

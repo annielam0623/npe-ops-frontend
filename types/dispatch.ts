@@ -61,6 +61,11 @@ export interface DispatchRow {
    * 不改 `vehicles.seats`，只影响这一天；保存是整天覆盖，必须原样送回。后端没上线时是 undefined（保存时不送）。
    */
   seat_adjustment?: number;
+  /**
+   * CCL 去掉了这台车、staff 还没删 / 换车号（后端 32，Annie 2026-11-27「Q1选B，Q2选A，动手」）：整张卡标红，
+   * Send to driver / guide 不能发。后端没上线时是 undefined（保存时不送）。字段名见 lib/ccl-removed.ts。
+   */
+  ccl_removed?: boolean;
 }
 
 /** 当天已同步的一张 Rezdy Private 订单（G82）。 */
@@ -242,6 +247,9 @@ export type DispatchChange =
       row_id: number;
       /** G300：CCL 去掉的这台车有 staff 写的备注 ⇒ Apply 不删（Annie：备注除非手动删，一律不被 CCL 覆盖）。 */
       kept_for_note?: boolean;
+      /** 后端 32：CCL 去掉的车一律留着（Apply 不删、整张卡标红）。没带（旧后端）= 照旧删。见 lib/ccl-removed.ts。 */
+      kept?: boolean;
+      reason?: string | null;
     };
 
 export interface DispatchPrefill {

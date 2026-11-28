@@ -35,6 +35,7 @@ import {
   saveDispatchDay,
   saveDispatchSection,
 } from "@/lib/dispatch-api";
+import { clearOnVehicleChange, keepsRemovedRed } from "@/lib/ccl-removed";
 import { fetchManifest, syncManifests } from "@/lib/dispatch-manifest-api";
 import {
   type DriverFollowResult,
@@ -738,7 +739,9 @@ export function DispatchView() {
    * Super Admin 接手（preview v3 第 2 节）：别人在改时问后端 GET edit-lock，can_take_over 是 true（只有 Super Admin）
    * 而且不是自己 ⇒ 琥珀条上多一个白键 Take over。别人看到的照旧。
    */
-  const [takeOverHolder, setTakeOverHolder] = useState<EditLockHolder | null>(null);
+  const [takeOverHolder, setTakeOverHolder] = useState<EditLockHolder | null>(
+    null,
+  );
   const [takingOver, setTakingOver] = useState<EditLockHolder | null>(null);
   const lockDate = day?.run_date ?? null;
   useEffect(() => {
@@ -1216,7 +1219,8 @@ export function DispatchView() {
   function apply(next: DispatchRow[], opts: { auto?: boolean } = {}) {
     if (!opts.auto) staffEditedRef.current = true;
     lock.markEdited();
-    setRows(next);
+    // CCL 去掉的红卡换了车号 ⇒ 不红（Annie「把车删掉或改其它车」）。
+    setRows(clearOnVehicleChange(rows, next));
     setUserEdited(true);
     setActionError(null);
   }
@@ -1826,12 +1830,39 @@ export function DispatchView() {
     const added: DispatchRow[] = [];
     for (const c of prefill.changes) {
       if (c.kind === "removed") {
-        // G300：有备注的车整台留着（司机、车、酒店都不动），要不要删由 staff 自己决定。
-        if (!c.kept_for_note) drop.add(c.row_id);
+        // 后端 32（Annie 2026-11-27「Q1选B，Q2选A，动手」）：CCL 去掉的车一律留着、整张卡标红，staff 删掉或换车号。
+        // 旧后端不带 kept：G300 有备注的车整台留着，其余照旧删。
+        if (keepsRemovedRed(c)) {
+          const r = byId.get(c.row_id);
+          if (r) r.ccl_removed = true;
+        } else if (!c.kept_for_note) drop.add(c.row_id);
         continue;
       }
       const n = prefill.rows[c.ccl_row];
       if (c.kind === "added") {
+        // CCL 又把留着的红卡加回来、后端还当 added 发（契约 ③ 是 changed）：不另加一张，红卡变回普通卡，
+        // 司机 / 导游 / Bus 字母照 CCL；酒店、备注不动。同一块、同一台车才算。
+        const back = [...byId.values()].find(
+          (r) =>
+            r.ccl_removed &&
+            r.vehicle_id != null &&
+            r.vehicle_id === n.vehicle_id &&
+            secOf(r) === secOf(n),
+        );
+        if (back) {
+          Object.assign(back, {
+            driver_hr_id: n.driver_hr_id,
+            driver_typed_name: n.driver_typed_name,
+            driver_name: null,
+            guide_hr_id: n.guide_hr_id,
+            guide_typed_name: n.guide_typed_name,
+            guide_name: null,
+            bus_label: n.bus_label,
+            ccl: n.ccl,
+            ccl_removed: false,
+          });
+          continue;
+        }
         added.push(cloneRow(n));
         continue;
       }
@@ -1854,6 +1885,8 @@ export function DispatchView() {
         else if (f === "bus_label") r.bus_label = n.bus_label;
       }
       r.ccl = n.ccl;
+      // CCL 又把这台车加回来（后端 32 发 changed）：变回普通卡。
+      if (r.ccl_removed) r.ccl_removed = false;
     }
     const next = rows
       .map((r) => (r.id != null && byId.has(r.id) ? byId.get(r.id)! : r))
@@ -2273,7 +2306,8 @@ export function DispatchView() {
                     setBlockedBy(null);
                     // 对方刚才存过的也要看到：重读这一天（锁已经是自己的，读回来 by_me）。
                     void (async () => {
-                      if (await load(day.run_date)) await maybePrefill(day.run_date);
+                      if (await load(day.run_date))
+                        await maybePrefill(day.run_date);
                     })();
                   }}
                   onFree={() => {
@@ -3252,8 +3286,8 @@ export function DispatchView() {
                   >
                     <span className="mr-auto">
                       ⚠ {plural(needLook.n, "order")} in Need a look — these
-                      guests will not get the morning reminder until each one
-                      is sorted out.
+                      guests will not get the morning reminder until each one is
+                      sorted out.
                     </span>
                     <button
                       type="button"
@@ -3621,10 +3655,10 @@ function HowToUse({
           published Staff Schedule, Dispatch opens on today each time you open
           it between <span data-howto-window>{winStart}</span> and{" "}
           <span data-howto-window-end>{winEnd}</span> (Las Vegas time; Super
-          Admin can change these times). Everyone else: if you signed in between 12:00 AM
-          and 8:30 AM (Las Vegas time), Dispatch opens on today until you sign
-          in again; otherwise it opens on tomorrow. Change the day any time
-          &mdash; the page stays on the day you picked.
+          Admin can change these times). Everyone else: if you signed in between
+          12:00 AM and 8:30 AM (Las Vegas time), Dispatch opens on today until
+          you sign in again; otherwise it opens on tomorrow. Change the day any
+          time &mdash; the page stays on the day you picked.
         </li>
         <li>
           CCL&rsquo;s schedule fills in the buses and drivers. Orange text means
@@ -3672,10 +3706,13 @@ function HowToUse({
           A yellow bar means CCL posted a change: Apply changes puts it on the
           page.
         </li>
-        <li>
-          Your private notes are never changed by CCL. If CCL drops a vehicle
-          that has a note, the bar shows it as Kept and Apply changes leaves it
-          on the page. Remove it yourself if it is not needed.
+        <li data-howto-ccl-removed>
+          Your private notes are never changed by CCL. When CCL drops a vehicle,
+          Apply changes keeps it on the page in red (&ldquo;CCL removed this
+          car&rdquo;) and Schedule check lists it at the top. Remove it or
+          change it to another vehicle, then Save. Until you do, Send to driver
+          and Send to guide are blocked for this day. Changing only the driver,
+          guide, hotels or bus letter keeps it red.
         </li>
         <li>
           Press Save next to Edit to save that tour &mdash; all its cars are

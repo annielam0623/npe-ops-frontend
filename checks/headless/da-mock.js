@@ -29,7 +29,10 @@ const ctl = { marks: false, noticeMarks: {}, completed: false, saveErr: "", fail
   lockOther: null, lock409: false, acquireErr: "", acquireDelay: 0, hb409: false, save409: false, copy409: false, timing: null,
   // Take over（lock-takeover 2026-11-27）：superAdmin ⇒ GET edit-lock 的 can_take_over；takeOverChanged = {by, since} ⇒ 下一次接手回 409 holder_changed、
   // 锁换成这个人；hbTaken ⇒ 心跳回 409 lock_taken_over（套两层）。
-  takeOverChanged: null, hbTaken: false };
+  takeOverChanged: null, hbTaken: false,
+  // CCL 去掉的车留着标红（后端 32 暂定契约，Annie 2026-11-27「Q1选B，Q2选A，动手」）：cclKept ⇒ driver-notice / guide-notice 带 ccl_removed[]
+  // （按存着的 ccl_removed 车算），有就 send 回 400 CCL_REMOVED；cclSend400 ⇒ GET 没有、send 时才 400（别人刚存过），之后 GET 也有。
+  cclKept: false, cclSend400: false };
 if (process.env.MOCK_CTL) Object.assign(ctl, JSON.parse(process.env.MOCK_CTL));
 const log = [];
 // G266：ctl.marks 开着时，driver-notice / guide-notice 的 people 每行带 sent_at / sent_by / failed_at（照后端 notice_marks）。
@@ -55,6 +58,12 @@ const saved = {
     row({ id: 951, shift: "relay", driver_hr_id: 1, vehicle_id: 10, note: "V please keep these hotels assigned to Bus A", location_ids: [100] }),
     row({ id: 952, shift: "relay_2", driver_hr_id: 2, vehicle_id: 11, location_ids: [101] }),
     row({ id: 953, shift: "relay", driver_hr_id: 4, vehicle_id: 12, note: "ZZ note stays", location_ids: [102] }),
+  ],
+  // CCL 去掉的车（后端 32）：961 Relay、962 West Rim Bus B 被 CCL 去掉（kept ⇒ 留着标红），963 改了司机。
+  "2026-11-04": [
+    row({ id: 961, shift: "relay", driver_hr_id: 1, vehicle_id: 10, location_ids: [100] }),
+    row({ id: 962, shift: "bus_tour", manifest_id: 3, driver_hr_id: 2, vehicle_id: 13, bus_label: "B", location_ids: [102] }),
+    row({ id: 963, shift: "relay", driver_hr_id: 4, vehicle_id: 12, location_ids: [101] }),
   ],
   "2026-10-05": [
     row({ id: 801, shift: "relay", driver_hr_id: 1, vehicle_id: 10, location_ids: [100, 101] }),
@@ -289,6 +298,9 @@ const prefills = {
   "2026-11-03": { import_id: 90, title: "NPE 11/3: Revision", status: "pending", is_revision: true, raw_content: "rev", applied: false,
     rows: [row({ shift: "relay", driver_hr_id: 5, vehicle_id: 12, ccl: ccl({ line_id: 390, driver_text: "BRUCE W", vehicle_text: "1328" }) })],
     unread: [], closures: [], changes: [{ kind: "removed", row_id: 951, kept_for_note: true }, { kind: "removed", row_id: 952 }, { kind: "changed", row_id: 953, ccl_row: 0, fields: ["driver"] }] },
+  "2026-11-04": { import_id: 91, title: "NPE 11/4: Revision", status: "pending", is_revision: true, raw_content: "rev", applied: false,
+    rows: [row({ shift: "relay", driver_hr_id: 5, vehicle_id: 12, ccl: ccl({ line_id: 391, driver_text: "BRUCE W", vehicle_text: "1328" }) })],
+    unread: [], closures: [], changes: [{ kind: "removed", row_id: 961, kept: true, reason: "ccl_removed" }, { kind: "removed", row_id: 962, kept: true, reason: "ccl_removed" }, { kind: "changed", row_id: 963, ccl_row: 0, fields: ["driver"] }] },
   // 自动填充 + CCL 确认（Annie 2026-10-11）：没存过的一天，名单要两台、CCL 只给一台 ⇒ CCL 那台填进 A，B 留空（等 farm out）。
   "2026-10-12": { import_id: 79, title: "NPE 10/12:", status: "pending", is_revision: false, raw_content: "NPE 10/12: WEST RIM BRUCE O - 1328", applied: false,
     rows: [row({ shift: "bus_tour", manifest_id: 3, driver_hr_id: 4, vehicle_id: 12, bus_label: "A", location_ids: [101, 102], ccl: ccl({ line_id: 360, driver_text: "BRUCE O", vehicle_text: "1328", route_label: "WESTRIM" }) })],
@@ -506,6 +518,13 @@ http.createServer(async (req, res) => {
   }
   // prefillDelay：CCL 那份晚到（生产上常见：人数卡片、私人团配单先回来，页面已经自动改过行）。
   if (p === "/api/dispatch/imports/day" && ctl.prefillDelay) await new Promise((r) => setTimeout(r, ctl.prefillDelay));
+  // CCL 又把红卡（Bus B 1960）加回来：ctl.cclReAdd = "changed"（契约 ③）| "added"（今天的后端，测前端不重复加）。
+  if (p === "/api/dispatch/imports/day" && q.date === "2026-11-04" && ctl.cclReAdd) {
+    const red = (saved["2026-11-04"] ?? []).find((r) => r.ccl_removed);
+    const back = row({ shift: "bus_tour", manifest_id: 3, driver_hr_id: 5, vehicle_id: 13, bus_label: "B", ccl: ccl({ line_id: 392, driver_text: "BRUCE W", vehicle_text: "1960", route_label: "WESTRIM" }) });
+    return send(res, 200, { last_ok: "11/04 02:13 PM", prefill: { import_id: 92, title: "NPE 11/4: Revision 2", status: "pending", is_revision: true, raw_content: "rev2", applied: false, rows: [back], unread: [], closures: [],
+      changes: ctl.cclReAdd === "added" ? [{ kind: "added", ccl_row: 0 }] : [{ kind: "changed", row_id: red?.id ?? -1, ccl_row: 0, fields: ["driver"] }] } });
+  }
   if (p === "/api/dispatch/imports/day") return send(res, 200, { last_ok: "10/04 02:13 PM", prefill: ctl.hideRev && q.date === "2026-10-07" ? null : (prefills[q.date] ?? null) });
   if (p === "/api/dispatch/imports/pull") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
@@ -597,8 +616,13 @@ http.createServer(async (req, res) => {
     return send(res, 200, { round: b.round, ...(b.tour != null ? { tour: b.tour } : {}), sent: sentNow.length, failed: 0, already_sent: skipped.length, already_sent_orders: skipped, resent, not_on_round: notOnRound, checked_at: "2026-10-05T12:01:00+00:00", blocked_cars: bl, overridden_orders: bl.flatMap((c) => c.overridden_orders).filter((o) => sentNow.includes(o)),
       results: sentNow.map((o) => ({ order: `CHD${o}`, name: "ZZ Test Relay", phone: "+15550000009", pickup_time: "6:15 AM", sms_status: b.send_type === "email" ? "" : "sent:SM1", email_status: b.send_type === "combined" || b.send_type === "email" ? "sent" : "", skipped: false })) });
   }
+  // 后端 32：这一天存着的 CCL 去掉、没处理的车。
+  const cclGone = (date) => !ctl.cclKept ? null : (saved[date] ?? []).filter((r) => r.ccl_removed).map((r) => ({ shift: r.shift, tour: r.shift === "bus_tour" ? "West Rim Bus Tour" : "Morning Relay · 1st Round", bus_label: r.bus_label, driver: { 1: "FREDDY", 2: "GIA", 4: "BOB", 5: "BRUCE W" }[r.driver_hr_id] ?? null, van: { 10: "768", 11: "2056", 12: "1328", 13: "1960" }[r.vehicle_id] ?? null }))
+    .concat(ctl.cclSendHit ? [{ shift: "bus_tour", tour: "West Rim Bus Tour", bus_label: "C", driver: null, van: "2056" }] : []);
+  const cclBlock = (date) => { const g = cclGone(date); if (!g) return null; if (ctl.cclSend400) { ctl.cclSend400 = false; ctl.cclSendHit = true; return true; } return g.length > 0; };
+  const CCL_400 = { detail: { detail: "CCL removed 1 vehicle on this day. Remove it or change it to another vehicle, then send.", code: "CCL_REMOVED" } };
   // G215（后端 49c400a）：ctl.driverPage = null（默认，旧后端不带字段）| true | false（司机页开关关着，带后端原文）；ctl.driver400 = 发送时后端拒发。
-  if (p === "/api/dispatch/driver-notice") return send(res, 200, { run_date: q.date, ...(ctl.driverPage == null ? {} : { page_open: ctl.driverPage, page_off_text: DRIVER_PAGE_OFF }), text: `NPE: Your manifest for Mon, Oct 5 is ready. Log in to see your bus and guests: https://confirm.nationalparkexpress.com/driver?date=${q.date}`, last_sent: ctl.driverSentAt ? { at: "2026-10-04T22:00:00+00:00", by: "annie", label: "Texted 1 driver" } : null,
+  if (p === "/api/dispatch/driver-notice") return send(res, 200, { run_date: q.date, ...(cclGone(q.date) ? { ccl_removed: cclGone(q.date) } : {}), ...(ctl.driverPage == null ? {} : { page_open: ctl.driverPage, page_off_text: DRIVER_PAGE_OFF }), text: `NPE: Your manifest for Mon, Oct 5 is ready. Log in to see your bus and guests: https://confirm.nationalparkexpress.com/driver?date=${q.date}`, last_sent: ctl.driverSentAt ? { at: "2026-10-04T22:00:00+00:00", by: "annie", label: "Texted 1 driver" } : null,
     people: [{ key: "hr:1", name: "FREDDY", phone: "+17025550101", can_send: true, why: "", cars: [{ shift: "relay", van: "768", tour: null }] },
              // driverAllOk：GIA 也能发（测收起状态的提示行显示 Last sent，而不是橙字）。
              ctl.driverAllOk
@@ -609,6 +633,7 @@ http.createServer(async (req, res) => {
   if (p === "/api/dispatch/driver-notice/send") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
     if (notToday(b)) return send(res, 400, { detail: NOT_TODAY(b.date) });
+    if (cclBlock(b.date)) return send(res, 400, CCL_400);
     ctl.driverSentAt = true;
     if (ctl.marks && !ctl.driver502 && !ctl.driver400) for (const k of b.recipients || []) ctl.noticeMarks[k] = { sent_at: "2026-10-05T04:53:00+00:00", sent_by: "Annie", failed_at: null };
     if (ctl.driver502) return send(res, 502, { detail: "Bad gateway" });
@@ -624,6 +649,7 @@ http.createServer(async (req, res) => {
     const fixed = `NPE guide ${q.date === "2026-10-05" ? "Mon Oct 5" : q.date}: https://confirm.nationalparkexpress.com/l/<your-link>`;
     return send(res, 200, {
       run_date: q.date,
+      ...(cclGone(q.date) ? { ccl_removed: cclGone(q.date) } : {}),
       ...(ctl.guidePage == null ? {} : { page_open: ctl.guidePage, page_off_text: GUIDE_PAGE_OFF }),
       text: fixed,
       ...(ctl.guideNoExtra ? {} : { preview_text: fixed.replace("<your-link>", "xxxxxxxxxxxxxxxx"), extra_max: GUIDE_EXTRA_MAX }),
@@ -639,6 +665,7 @@ http.createServer(async (req, res) => {
   if (p === "/api/dispatch/guide-notice/send") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
     if (notToday(b)) return send(res, 400, { detail: NOT_TODAY(b.date) });
+    if (cclBlock(b.date)) return send(res, 400, CCL_400);
     if (ctl.guide400) return send(res, 400, { detail: GUIDE_PAGE_OFF });
     // 后端 78 的三种 400 原话（纯字符串）：非 GSM 字符 / 超长 / 换行。
     // 原话照后端 76992dd3 guide_notice.py（1 character / N characters）。

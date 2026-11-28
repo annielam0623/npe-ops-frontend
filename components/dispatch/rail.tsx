@@ -139,12 +139,18 @@ export function Rail({
                         ? () => onGoTarget(it.target!)
                         : null;
             return (
-              <li key={i} className="flex items-start gap-2.5">
-                <Mark kind="warn" />
+              <li
+                key={i}
+                data-issue-bad={it.bad || undefined}
+                className="flex items-start gap-2.5"
+              >
+                <Mark kind={it.bad ? "bad" : "warn"} />
                 <span className="min-w-0 flex-1">
                   <span className="flex items-start justify-between gap-2">
                     <span className="min-w-0">
-                      <span className={T}>{it.title}</span>
+                      <span className={cn(T, it.bad && "text-[#fca5a5]")}>
+                        {it.title}
+                      </span>
                       {it.detail ? (
                         <span className={D}>{it.detail}</span>
                       ) : null}
@@ -272,7 +278,7 @@ const T = "block text-[12.5px] leading-[1.35] font-semibold text-[#e2e8f0]";
 const D = "mt-0.5 block text-[11.5px] leading-[1.45] text-[#64748b]";
 const NAMES = "mt-[7px] block text-[11.5px] leading-[1.55] text-[#fde68a]";
 
-function Mark({ kind }: { kind: "good" | "warn" | "idle" | "info" }) {
+function Mark({ kind }: { kind: "good" | "warn" | "bad" | "idle" | "info" }) {
   return (
     <span
       aria-hidden
@@ -283,14 +289,16 @@ function Mark({ kind }: { kind: "good" | "warn" | "idle" | "info" }) {
           ? "bg-[rgba(74,222,128,.16)] text-[#4ade80]"
           : kind === "warn"
             ? "bg-[rgba(251,191,36,.16)] text-[#fbbf24]"
-            : kind === "info"
-              ? "bg-[rgba(59,130,246,.16)] text-[#93c5fd]"
-              : "bg-white/[.07] text-[#64748b]",
+            : kind === "bad"
+              ? "bg-[rgba(248,113,113,.16)] text-[#fca5a5]"
+              : kind === "info"
+                ? "bg-[rgba(59,130,246,.16)] text-[#93c5fd]"
+                : "bg-white/[.07] text-[#64748b]",
       )}
     >
       {kind === "good"
         ? "✓"
-        : kind === "warn"
+        : kind === "warn" || kind === "bad"
           ? "!"
           : kind === "info"
             ? "i"

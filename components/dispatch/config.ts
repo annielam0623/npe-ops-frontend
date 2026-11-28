@@ -1,4 +1,5 @@
 import type { DispatchDay, DispatchMeta, DispatchRow } from "@/types";
+import { isCclRemoved } from "@/lib/ccl-removed";
 
 /**
  * 排车页的 7 个常量：以 `GET /api/dispatch/day` 的 `meta` 为准（后端 `dispatch.page_meta()`，与旧页面模板同一份），
@@ -114,6 +115,7 @@ export function cloneRow(
     order_number: r.order_number,
     order_number_set_by_staff: r.order_number_set_by_staff,
     seat_adjustment: r.seat_adjustment,
+    ccl_removed: r.ccl_removed,
   };
 }
 
@@ -139,6 +141,7 @@ export function rowKey(r: DispatchRow): string {
     r.seat_adjustment ?? 0,
     [...r.location_ids].sort((a, b) => a - b).join(","),
     r.farm_out ? `fo${r.partner_id ?? ""}` : "",
+    r.ccl_removed ? "cclx" : "",
   ].join("|");
 }
 
@@ -333,6 +336,8 @@ export interface RailIssue {
   farm?: { mid: number; label: string };
   /** G308 补：点 Fix 滚到页面上这一块（CSS 选择器，例如 Arrange seats 里的 Not on a bus）、闪黄。 */
   target?: string;
+  /** 红的一条（CCL 去掉的车，后端 32）：红「!」、红标题，排在最上面。 */
+  bad?: boolean;
 }
 
 export interface Analysis {
@@ -352,7 +357,9 @@ export interface Analysis {
  * 只有这个location不属于vegas酒店，就要提醒」）。后端 G253 pickup_is_vegas：true（Vegas 酒店，如 TI）⇒ 不提醒；
  * false（外地 shuttle 站）、null（空 / OFFICE / 对不上）、旧后端没这个键 ⇒ 提醒（宁多不漏）。
  */
-export function needsShuttlePickup(g: { pickup_is_vegas?: boolean | null }): boolean {
+export function needsShuttlePickup(g: {
+  pickup_is_vegas?: boolean | null;
+}): boolean {
   return g.pickup_is_vegas !== true;
 }
 
@@ -445,9 +452,7 @@ export function analyze(
       ? (relayNoCar[c] ?? [])
           .filter((h) => !relayHotels[c].has(h.location_id))
           .map((h) => `${h.name} (${h.pax})`)
-      : activeLocs
-          .filter((l) => !relayHotels[c].has(l.id))
-          .map((l) => l.name);
+      : activeLocs.filter((l) => !relayHotels[c].has(l.id)).map((l) => l.name);
     if (!names.length) return;
     const title = `${names.length} hotel${names.length === 1 ? "" : "s"} with no ${covName(c)} vehicle`;
     missingTitles.push(title);
@@ -675,6 +680,27 @@ export function analyze(
   });
 
   if (farmOut) issues.push(...farmOut);
+
+  // CCL 去掉、staff 还没删 / 换车号的车（Annie「在check list就要提示staff把车删掉或改其它车，因为CCL已经没有派这台车了」）：
+  // 一台一条，排最上面，红字。Send to driver / guide 也挡（Q1 B，relay-panel）。
+  const cclGone: RailIssue[] = [];
+  rows.forEach((row, idx) => {
+    if (!isCclRemoved(row)) return;
+    const v = L.vehicle(row.vehicle_id);
+    const who = row.bus_label
+      ? `Bus ${row.bus_label}`
+      : v
+        ? `vehicle ${v.van_no}`
+        : "a vehicle";
+    cclGone.push({
+      title: `CCL removed ${who} (${blockName(row)})`,
+      detail:
+        "CCL no longer sends this vehicle. Remove it or change it to another vehicle.",
+      idx,
+      bad: true,
+    });
+  });
+  issues.unshift(...cclGone);
 
   return {
     sections,

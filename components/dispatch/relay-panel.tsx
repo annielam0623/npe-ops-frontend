@@ -17,7 +17,7 @@ import {
 } from "@/components/tickets-send/legacy-ui";
 import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { describeError, isStatus } from "@/lib/api-errors";
+import { describeError, errorCode, isStatus } from "@/lib/api-errors";
 import { driverFollowedText } from "@/lib/driver-follow";
 import {
   type DriverNotice,
@@ -39,11 +39,18 @@ import { LA_TIME_ZONE } from "@/lib/la-date";
 import { inkOnSolid } from "@/lib/shuttle-colors";
 import { resolveTourColor } from "@/lib/tour-colors";
 import { gsmLength, nonGsmChars } from "@/lib/sms-gsm";
+import {
+  CCL_REMOVED_CODE,
+  cclRemovedCarText,
+  cclRemovedSendText,
+  type CclRemovedCar,
+} from "@/lib/ccl-removed";
 import { cn } from "@/lib/utils";
 
 import {
   ADDVAN,
   DARK_ERR,
+  ERRBAR,
   HOWTO_OL,
   HOWTO_SUMMARY,
   MONO,
@@ -674,6 +681,8 @@ export function RelayPanel({
       setHint(fresh);
       // 列名单之后有人把司机页关了：Send 键跟着灰掉、旁边出那句，不弹确认框。
       if (fresh.page_open === false) return;
+      // CCL 去掉、还没处理的车（Q1 B）：红框跟着出来，不弹确认框。
+      if (fresh.ccl_removed?.length) return;
       const canSend = fresh.people.filter((p) => p.can_send).length;
       if (!canSend) {
         setDriverError(
@@ -727,6 +736,12 @@ export function RelayPanel({
         onUnauthorized();
         return { status: "redirecting" };
       }
+      // 后端挡下（CCL 去掉的车还没处理，Q1 B）：关掉确认框、重读名单，红框出来。
+      if (isStatus(e, 400) && errorCode(e) === CCL_REMOVED_CODE) {
+        setConfirm(null);
+        await loadDrivers(true);
+        return { status: "ok" };
+      }
       if (isStatus(e, 400) || isStatus(e, 409)) {
         return {
           status: "error",
@@ -745,6 +760,7 @@ export function RelayPanel({
 
   // G215：司机页开关关着（只有明确 false 才算；旧后端不带这个字段照旧能发）。
   const pageOff = drivers?.page_open === false;
+  const driverCclGone = drivers?.ccl_removed ?? [];
   const lastText = drivers ? lastSentText(drivers) : null;
   const canText = drivers?.people.filter((p) => p.can_send) ?? [];
   const picked = drivers ? pickedPeople(drivers, skipped) : [];
@@ -983,6 +999,7 @@ export function RelayPanel({
                   type="button"
                   disabled={
                     pageOff ||
+                    driverCclGone.length > 0 ||
                     !picked.length ||
                     checkingDrivers ||
                     disabled ||
@@ -996,6 +1013,7 @@ export function RelayPanel({
               </span>
             }
           >
+            <CclRemovedBlock cars={driverCclGone} />
             {drivers.people.length ? (
               <Table
                 head={
@@ -1607,6 +1625,7 @@ function GuideBox({
   }
 
   const pageOff = guides.page_open === false;
+  const cclGone = guides.ccl_removed ?? [];
   const canText = guides.people.filter((p) => p.can_send);
   const picked = canText.filter((p) => !skipped.has(p.key));
   const allPicked = canText.length > 0 && picked.length === canText.length;
@@ -1641,6 +1660,7 @@ function GuideBox({
       setGuides(fresh);
       onLoaded(fresh);
       if (fresh.page_open === false) return;
+      if (fresh.ccl_removed?.length) return;
       const can = fresh.people.filter((p) => p.can_send);
       if (!can.length) {
         setError(
@@ -1698,6 +1718,11 @@ function GuideBox({
         onUnauthorized();
         return { status: "redirecting" };
       }
+      if (isStatus(e, 400) && errorCode(e) === CCL_REMOVED_CODE) {
+        setConfirm(null);
+        await load(true);
+        return { status: "ok" };
+      }
       if (isStatus(e, 400) || isStatus(e, 409)) {
         return {
           status: "error",
@@ -1750,6 +1775,7 @@ function GuideBox({
               data-guide-send
               disabled={
                 pageOff ||
+                cclGone.length > 0 ||
                 extraBlocked ||
                 !picked.length ||
                 checking ||
@@ -1764,6 +1790,7 @@ function GuideBox({
           </span>
         }
       >
+        <CclRemovedBlock cars={cclGone} />
         {extraMax != null ? (
           <div
             data-guide-extra
@@ -1931,6 +1958,27 @@ const GUEST_HEAD = [
   "Tour",
   "Status",
 ];
+
+/**
+ * Send to driver / guide 顶上的红框（Annie 2026-11-27 Q1 选 B）：这一天还有 CCL 去掉、没删 / 没换车号的车 ⇒ 列出来，
+ * Send texts now 灰掉。后端 send 也拒（400 CCL_REMOVED，lib/ccl-removed.ts）。
+ */
+function CclRemovedBlock({ cars }: { cars: CclRemovedCar[] }) {
+  if (!cars.length) return null;
+  const [first, ...rest] = cclRemovedSendText(cars.length).split(". ");
+  return (
+    <div data-ccl-removed-block className="px-[18px] pt-3">
+      <div role="alert" className={cn(ERRBAR, "px-3.5 py-2.5")}>
+        <b>{first}.</b> {rest.join(". ")}
+        <ul className="mt-1 mb-0 pl-[18px]">
+          {cars.map((c, i) => (
+            <li key={i}>{cclRemovedCarText(c)}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
 
 function Box({
   label,

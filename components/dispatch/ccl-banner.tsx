@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { keepsRemovedRed } from "@/lib/ccl-removed";
 import { cn } from "@/lib/utils";
 import type { DispatchPrefill, DispatchRow } from "@/types";
 
@@ -50,8 +51,16 @@ export function CclBanner({
   } else {
     const n = p.changes?.length ?? 0;
     title = `CCL posted a change “${p.title}” · ${n} ${n === 1 ? "change" : "changes"}`;
+    // 后端 32：去掉的车留着标红，说明里加半句（preview ①）。
+    const keepsRed = (p.changes ?? []).some(
+      (c) => c.kind === "removed" && keepsRemovedRed(c),
+    );
     text =
-      "Nothing on this day changes until you press Apply changes. Hotels you already picked stay. Press Save afterwards to keep the changes." +
+      "Nothing on this day changes until you press Apply changes. Hotels you already picked stay." +
+      (keepsRed
+        ? " Vehicles CCL removed stay on the page in red; remove them yourself if they are not needed."
+        : "") +
+      " Press Save afterwards to keep the changes." +
       unreadNote;
     const byId = new Map(rows.map((r) => [r.id, r]));
     items = (p.changes ?? []).flatMap((c) => {
@@ -78,6 +87,15 @@ export function CclBanner({
           ? [{ label: "Added", where: blockName(n2, L), what: vanText(n2, L) }]
           : [];
       if (!o) return [];
+      // 后端 32：一律 Removed，后面写明留着、标红（不再分 Kept / Removed）。
+      if (keepsRemovedRed(c))
+        return [
+          {
+            label: "Removed",
+            where: blockName(o, L),
+            what: `${vanText(o, L)} (stays in red; remove it yourself if it is not needed)`,
+          },
+        ];
       // G300：有备注的车 Apply 不删，写 Kept（同旧页面）。
       return c.kept_for_note
         ? [

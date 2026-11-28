@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { useViewOnly } from "@/components/ui/view-only";
+import { isCclRemoved } from "@/lib/ccl-removed";
 import { cn } from "@/lib/utils";
 import type { DispatchDay, DispatchPrivateOrder, DispatchRow } from "@/types";
 
@@ -1022,15 +1023,22 @@ export function RelayRow({
     const n = applyField(row, f, v, L);
     if (n) onChange(n);
   };
+  const removed = isCclRemoved(row);
   return (
     <fieldset
       data-idx={idx}
+      data-ccl-removed={removed || undefined}
       disabled={disabled}
       className={cn(
         ROW_RESET,
         "vrow grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.85fr)_minmax(0,1.35fr)_150px] items-start gap-[18px] border-b border-[#e5e7eb] py-3.5 last-of-type:border-b-0 max-[860px]:grid-cols-1 max-[860px]:items-stretch max-[860px]:gap-[9px]",
+        removed &&
+          "-mx-[18px] bg-[#fdeceb] px-[18px] shadow-[inset_3px_0_0_#b3261e]",
       )}
     >
+      {removed ? (
+        <CclRemovedStrip onRemove={onRemove} viewOnly={viewOnly} row />
+      ) : null}
       <div className={CELL}>
         <div className="flex min-w-0 items-start gap-3.5">
           <Avatar d={drv} ring={ring} />
@@ -1093,6 +1101,41 @@ export function RelayRow({
         </div>
       )}
     </fieldset>
+  );
+}
+
+/** CCL 去掉的车（后端 32）：卡 / 行顶上的红条「CCL removed this car」+ Remove。颜色同 ERRBAR（legacy-styles.ts）。 */
+function CclRemovedStrip({
+  onRemove,
+  viewOnly,
+  row = false,
+}: {
+  onRemove: () => void;
+  viewOnly: boolean;
+  /** Relay 一行（没有卡框）：不要圆角和底线。 */
+  row?: boolean;
+}) {
+  return (
+    <div
+      data-ccl-removed-strip
+      className={cn(
+        "col-span-full flex flex-wrap items-center gap-2.5 text-[12.5px] font-[650] text-[#b3261e]",
+        row
+          ? "-mb-1.5"
+          : "rounded-t-[10px] border-b border-[rgba(179,38,30,.25)] bg-[#fbdcd9] px-3 py-[7px]",
+      )}
+    >
+      CCL removed this car
+      <button
+        hidden={viewOnly}
+        type="button"
+        data-ccl-removed-remove
+        onClick={onRemove}
+        className="h-[26px] rounded-[7px] border border-[rgba(179,38,30,.35)] bg-paper px-2.5 text-[12px] text-[#b3261e] hover:bg-[#fff5f5]"
+      >
+        Remove
+      </button>
+    </div>
   );
 }
 
@@ -1255,18 +1298,25 @@ export function VanBlock({
       const n = applyField(row, f, v, L);
       if (n) onChange(n);
     };
+  const removed = isCclRemoved(row);
   return (
     <fieldset
       data-idx={idx}
+      data-ccl-removed={removed || undefined}
       disabled={disabled}
       className={cn(
         ROW_RESET,
         // ⚠️ 不能 overflow:hidden：Edit 菜单是绝对定位的弹层（同旧页面）。
         "vrow mt-3 grid grid-cols-[92px_minmax(0,1fr)] items-stretch rounded-[10px] border border-[#dfe3e8] max-[860px]:grid-cols-1",
-        notNeeded !== undefined && "bg-[#fff8db] shadow-[0_0_0_2px_#f5c518]",
+        removed
+          ? "bg-[#fdeceb] shadow-[0_0_0_2px_#b3261e]"
+          : notNeeded !== undefined &&
+              "bg-[#fff8db] shadow-[0_0_0_2px_#f5c518]",
       )}
     >
-      {notNeeded !== undefined ? (
+      {removed ? (
+        <CclRemovedStrip onRemove={onRemove} viewOnly={viewOnly} />
+      ) : notNeeded !== undefined ? (
         <div
           data-not-needed
           className="col-span-full flex flex-wrap items-center gap-2.5 rounded-t-[10px] border-b border-[#f5c518] bg-[#fdf1c4] px-3 py-[7px] text-[12.5px] font-[650] text-[#8a5a00]"

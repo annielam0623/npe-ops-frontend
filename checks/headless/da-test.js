@@ -3013,7 +3013,7 @@ async function run() {
     await waitFor("document.querySelector('section[aria-label=CCL]')", 30000);
     await helpers();
     check("G300 条上：有备注的车写 Kept + 原因，没备注的写 Removed", await evaluate("const t = document.querySelector('section[aria-label=CCL]').textContent; return t.includes('Kept') && t.includes('(has a note, so it stays; remove it yourself if it is not needed)') && t.includes('Removed') && (t.match(/has a note/g) || []).length === 1;"), await evaluate("return document.querySelector('section[aria-label=CCL]').textContent;"));
-    check("G300 How to use 有 Kept 那一条", await evaluate("return [...document.querySelectorAll('details')].some(d => d.textContent.replace(/\\s+/g, ' ').includes('Your private notes are never changed by CCL. If CCL drops a vehicle that has a note, the bar shows it as Kept and Apply changes leaves it on the page. Remove it yourself if it is not needed.'));"));
+    check("How to use：备注不被 CCL 改那一句还在（CCL 红卡那一条里）", await evaluate("return [...document.querySelectorAll('details')].some(d => d.textContent.replace(/\\s+/g, ' ').includes('Your private notes are never changed by CCL. When CCL drops a vehicle'));"));
     await evaluate("$btn('Apply changes').click();");
     await sleep(300);
     const notes = () => evaluate("return [...document.querySelectorAll('.vrow [data-f=note]')].map(e => e.value);");
@@ -3032,6 +3032,7 @@ async function run() {
     check("G300 存了以后：Changed 的车换了司机（5），备注 ZZ note stays 不变", !!changed && changed.driver_hr_id === 5 && changed.vehicle_id === 12, JSON.stringify(rows300));
   }
 
+  await cclRemovedRed();
   await otherDay();
 
   // 401
@@ -3043,6 +3044,106 @@ async function run() {
 }
 
 // ── 135：Dispatch 发送的日子不是今天（洛杉矶）⇒ 先弹 This is not today（Annie 2026-11-13，后端 54 转，风险方案 B）──
+// CCL 去掉的车留着标红（Annie 2026-11-27「Q1选B，Q2选A，动手」；R1「在check list就要提示staff把车删掉或改其它车」；后端 32 暂定契约）：
+// Apply 不删、整张卡 / 整行标红 + Remove；Schedule check 最上面红的一条；换车号不红、只换司机还红；存时带 ccl_removed、重开还红；
+// Send to driver / guide 红框 + Send texts now 灰掉；后端 send 400 CCL_REMOVED ⇒ 关确认框、重读、红框出来。
+async function cclRemovedRed() {
+  const dp = "document.querySelector('section[aria-label=\"Send to drivers & guides\"]')";
+  const gbox = `${dp}.querySelector('[aria-label="Send to guide"]')`;
+  const dbox = `${dp}.querySelector('[aria-label="Send to driver"]')`;
+  const dSend = `[...${dbox}.querySelectorAll('button')].find((b) => b.textContent === 'Send texts now')`;
+  const red = "[...document.querySelectorAll('.vrow[data-ccl-removed]')]";
+  const bus = `${red}.find((e) => e.querySelector('[data-f=guide]'))`;
+  const relay = `${red}.find((e) => !e.querySelector('[data-f=guide]'))`;
+  const bad = "[...document.querySelectorAll('[aria-label=Issues] > li[data-issue-bad]')]";
+  await ctl({ cclKept: true, cclSend400: false, cclSendHit: false, mockToday: "2026-11-04", driverAllOk: true, driverPage: null, guidePage: null, marks: false });
+  await goto(`${APP}/dispatch?date=2026-11-04`);
+  await waitFor("document.querySelector('section[aria-label=CCL]')", 30000);
+  await helpers();
+  const bar = "document.querySelector('section[aria-label=CCL]').textContent";
+  check("CCL 红卡：条上一律 Removed + (stays in red…)，不出 Kept；说明加半句", await evaluate(`const t = ${bar}; return !t.includes('Kept') && (t.match(/\\(stays in red; remove it yourself if it is not needed\\)/g) || []).length === 2 && t.includes('Vehicles CCL removed stay on the page in red; remove them yourself if they are not needed.');`), await evaluate(`return ${bar};`));
+  check("CCL 红卡：How to use 有那一条", await evaluate("const li = document.querySelector('[data-howto-ccl-removed]'); return !!li && li.textContent.replace(/\\s+/g, ' ').includes('Until you do, Send to driver and Send to guide are blocked for this day. Changing only the driver, guide, hotels or bus letter keeps it red.');"));
+  check("CCL 红卡：Apply 之前没有红卡", await evaluate(`return ${red}.length === 0;`));
+  await evaluate("$btn('Apply changes').click();");
+  await sleep(400);
+  check("CCL 红卡：Apply 以后两台都留着、标红，顶上「CCL removed this car」+ Remove", await evaluate(`const r = ${red}; return r.length === 2 && r.every((e) => e.querySelector('[data-ccl-removed-strip]')?.textContent.includes('CCL removed this car') && !!e.querySelector('[data-ccl-removed-remove]'));`), await evaluate(`return ${red}.map((e) => e.textContent.slice(0, 60)).join(' | ');`));
+  check("CCL 红卡：Bus card 整张红底 #fdeceb + 2px 红圈；Relay 一行红底 + 左边红线", await evaluate(`const b = getComputedStyle(${bus}); const r = getComputedStyle(${relay}); return b.backgroundColor === 'rgb(253, 236, 235)' && b.boxShadow.includes('179, 38, 30') && r.backgroundColor === 'rgb(253, 236, 235)' && r.boxShadow.includes('inset');`), await evaluate(`const b = getComputedStyle(${bus}); const r = getComputedStyle(${relay}); return [b.backgroundColor, b.boxShadow, r.backgroundColor, r.boxShadow].join(' / ');`));
+  check("CCL 红卡：改了司机的那台（963）不红", await evaluate("return document.querySelectorAll('.vrow').length >= 3;"));
+  check("CCL 红卡：Schedule check 两条红的排最上面，写法照 preview", await evaluate(`const b = ${bad}.map((li) => li.textContent); const all = [...document.querySelector('[aria-label=Issues]').children]; return b.length === 2 && all[0].hasAttribute('data-issue-bad') && all[1].hasAttribute('data-issue-bad') && b.some((t) => t.includes('CCL removed Bus B (West Rim Bus Tour)')) && b.some((t) => t.includes('CCL removed vehicle 768 (Morning Relay · 1st Round)')) && b.every((t) => t.includes('CCL no longer sends this vehicle. Remove it or change it to another vehicle.') && t.includes('Fix ›'));`), await evaluate(`return [...document.querySelectorAll('[aria-label=Issues] > li')].map((li) => li.textContent).join(' || ');`));
+  // 只换司机 ⇒ 还红；换车号 ⇒ 不红
+  const busIdx = await evaluate(`return ${bus}.dataset.idx;`);
+  const relayIdx = await evaluate(`return ${relay}.dataset.idx;`);
+  await pick(`${vrow(busIdx)}.querySelector('[data-f=driver]')`, "4");
+  check("CCL 红卡：Bus card 只换司机 ⇒ 还是红", await evaluate(`return ${vrow(busIdx)}.hasAttribute('data-ccl-removed');`));
+  await pick(`${vrow(relayIdx)}.querySelector('[data-f=vehicle]')`, "11");
+  check("CCL 红卡：Relay 换了车号（768 → 2056）⇒ 不红，Schedule check 剩一条红的", await evaluate(`return !${vrow(relayIdx)}.hasAttribute('data-ccl-removed') && ${bad}.length === 1 && ${bad}[0].textContent.includes('CCL removed Bus B');`), await evaluate(`return ${bad}.map((li) => li.textContent).join(' || ');`));
+  // 存：走自动保存（10 分钟没动，fe：Apply 过 CCL ⇒ 整天存），车行带 ccl_removed
+  const auto = (await saveNow())[0];
+  await sleep(300);
+  check("CCL 红卡：自动保存是整天存（POST /api/dispatch/day，带 ccl_import_id 91）", auto?.path === "/api/dispatch/day" && auto?.body?.ccl_import_id === 91, JSON.stringify(auto && { path: auto.path, id: auto.body?.ccl_import_id }));
+  const rs = auto?.body?.rows ?? [];
+  check("CCL 红卡：存时 Bus B（车 1960）带 ccl_removed: true，换了车号的 Relay（2056）带 false，改司机的那台不带", rs.some((r) => r.vehicle_id === 13 && r.ccl_removed === true) && rs.some((r) => r.vehicle_id === 11 && r.ccl_removed === false) && rs.some((r) => r.driver_hr_id === 5 && !("ccl_removed" in r)), JSON.stringify(rs.map((r) => [r.vehicle_id, r.driver_hr_id, r.ccl_removed])));
+  // 重开：还红（后端带回 ccl_removed）
+  await goto(`${APP}/dispatch?date=2026-11-04`);
+  await waitFor("document.querySelector('.vrow')", 30000);
+  await helpers();
+  await sleep(400);
+  check("CCL 红卡：重开页面 Bus B 还红，只有一张红卡", await evaluate(`return ${red}.length === 1 && !!${bus} && ${bad}.length === 1;`), await evaluate(`return ${red}.length + ' / ' + ${bad}.length;`));
+  // CCL 又把 Bus B（1960）加回来：契约 ③ 发 changed；今天的后端发 added（fe 2026-11-27）⇒ 两种都不多一张、红消失。不存。
+  const n1960 = "[...document.querySelectorAll('.vrow')].filter((e) => e.textContent.includes('#1960')).length";
+  for (const how of ["changed", "added"]) {
+    await ctl({ cclReAdd: how });
+    promptAnswer = "";
+    await goto(`${APP}/dispatch?date=2026-11-04`);
+    promptAnswer = null;
+    await waitFor("document.querySelector('section[aria-label=CCL]')", 30000);
+    await helpers();
+    await evaluate("$btn('Apply changes').click();");
+    await sleep(400);
+    check(`CCL 红卡：CCL 又加回 Bus B（${how}）⇒ 不红、Schedule check 没红的、1960 只有一张卡`, await evaluate(`return ${red}.length === 0 && ${bad}.length === 0 && ${n1960} === 1;`), await evaluate(`return ${red}.length + ' / ' + ${bad}.length + ' / ' + ${n1960};`));
+  }
+  await ctl({ cclReAdd: false });
+  promptAnswer = "";
+  await goto(`${APP}/dispatch?date=2026-11-04`);
+  promptAnswer = null;
+  await waitFor(`${red}.length === 1`, 30000);
+  await helpers();
+  check("CCL 红卡：加回来那次没存 ⇒ 重开还是红的", await evaluate(`return ${red}.length === 1;`));
+  // Send：红框 + 灰键（Q1 B）
+  await goto(`${APP}/dispatch?date=2026-11-04&tab=send`);
+  await waitFor(`${gbox}?.querySelector('tbody tr') && ${dbox}?.querySelector('tbody tr')`, 30000);
+  await helpers();
+  await sleep(300);
+  const blockOk = (box) => `const k = ${box}.querySelector('[data-ccl-removed-block]'); return !!k && k.textContent.includes('Can’t send yet: CCL removed 1 vehicle. Remove it or change it to another vehicle on the Assign tab, Save, then Refresh.') && k.textContent.includes('Bus B (West Rim Bus Tour) · BOB · 1960');`;
+  check("CCL 红卡：Send to driver 顶上红框列出 Bus B，Send texts now 灰掉", await evaluate(blockOk(dbox)) && await evaluate(`return ${dSend}.disabled;`), await evaluate(`return ${dbox}.querySelector('[data-ccl-removed-block]')?.textContent;`));
+  check("CCL 红卡：Send to guide 同样红框 + 灰键", await evaluate(blockOk(gbox)) && await evaluate(`return ${gbox}.querySelector('[data-guide-send]').disabled;`), await evaluate(`return ${gbox}.querySelector('[data-ccl-removed-block]')?.textContent;`));
+  // Remove 红卡、存 ⇒ Send 能按
+  await goto(`${APP}/dispatch?date=2026-11-04`);
+  await waitFor(`${red}.length === 1`, 30000);
+  await helpers();
+  await evaluate(`${bus}.querySelector('[data-ccl-removed-remove]').click();`);
+  await sleep(300);
+  check("CCL 红卡：点红条上的 Remove ⇒ 车没了，Schedule check 没有红的", await evaluate(`return ${red}.length === 0 && ${bad}.length === 0;`));
+  // 那一块没车了（行上的 Save 跟着没了）⇒ 走自动保存。
+  await saveNow();
+  await sleep(300);
+  await goto(`${APP}/dispatch?date=2026-11-04&tab=send`);
+  await waitFor(`${gbox}?.querySelector('tbody tr') && ${dbox}?.querySelector('tbody tr')`, 30000);
+  await helpers();
+  await sleep(300);
+  check("CCL 红卡：删掉存了以后 Send 没有红框、键能按", await evaluate(`return !${dp}.querySelector('[data-ccl-removed-block]') && !${dSend}.disabled && !${gbox}.querySelector('[data-guide-send]').disabled;`));
+  // 后端 send 400 CCL_REMOVED（别人刚存了一台红卡）⇒ 关确认框、重读、红框出来，什么都没发
+  await ctl({ cclSend400: true });
+  await evaluate(`${dSend}.click();`);
+  await waitFor(`${dialog}`, 15000);
+  await evaluate(`[...${dialog}.querySelectorAll('button')].find((b) => b.textContent.startsWith('Text ')).click();`);
+  await sleep(400);
+  await evaluate("document.querySelector('[data-other-day-confirm] [data-other-day-yes]')?.click();");
+  await waitFor(`!${dialog} && ${dbox}.querySelector('[data-ccl-removed-block]')`, 15000);
+  check("CCL 红卡：send 回 400 CCL_REMOVED ⇒ 确认框关了，红框出来列 Bus C，键灰掉", await evaluate(`return !${dialog} && ${dbox}.querySelector('[data-ccl-removed-block]').textContent.includes('Bus C (West Rim Bus Tour) · 2056') && ${dSend}.disabled;`), await evaluate(`return ${dbox}.querySelector('[data-ccl-removed-block]')?.textContent;`));
+  await ctl({ cclKept: false, cclSend400: false, cclSendHit: false, cclReAdd: false, mockToday: null, driverAllOk: false });
+}
+
 // 日期大号红字；确认键 "Yes, I need to send for Mon, Oct 5"（不能写 Send anyway）；Cancel 什么都不发；Yes 才发、带 confirm_date。
 // 今天 = 不弹框、不带 confirm_date。三个接口（relay-send 各轮 / 团车、driver-notice/send、guide-notice/send）都核。
 async function otherDay() {
