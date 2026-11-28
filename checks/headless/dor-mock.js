@@ -37,6 +37,26 @@ function seedUpdates() {
     { id: 2, report_id: 1, text: "ZZ Photos sent to the insurance company.\nWaiting for reply.", created_at: "2026-10-24T09:05:00-07:00", created_by: person(9) },
   ];
 }
+// G361 No show：ctl {ns: true} 时多一份 No show（id 5，Morning Tracking 建的，Farm out）；不开 = 旧套不受影响。
+function seedNoShow() {
+  return { id: 5, report_type: "no_show", complaint_about: null, headline: "ZZ Test Guest", order_number: "CHDNS0001", subject_name: "ZZ Test Guest",
+    what_happened: "", status: "open", follow_up: null, created_by: person(8), created_at: "2026-11-26T07:42:00-08:00", updated_at: "2026-11-26T07:42:00-08:00",
+    resolved_at: null, resolved_by: null,
+    details: { tour_date: "2026-11-26", product_code: "GCW01", product_name: "Grand Canyon West Rim Day Tour", pickup_location: "Circus Circus",
+      driver_name: "ZZ Test Driver", guide_name: "ZZ Test Guide", vehicle: "Bus 1328", reported_by: "office", reason: "wrong_pickup_info", source: "tracking", farm_out: true } };
+}
+let contacts = [];
+let nextContactId = 1;
+// 改期新单 CHDNS0009：ctl.nsBoarded = 新单已上车（ready_to_close）。
+const PREFILL = {
+  CHDNS0001: [
+    { tour_date: "2026-11-26", product_code: "GCW01", product_name: "Grand Canyon West Rim Day Tour", guest_name: "ZZ Test Guest", pickup_location: "Circus Circus", driver_name: "ZZ Test Driver", guide_name: "ZZ Test Guide", vehicle: "Bus 1328", farm_out: true, on_main_manifest: true },
+  ],
+  CHDNS0002: [
+    { tour_date: "2026-11-26", product_code: "GCW01", product_name: "Grand Canyon West Rim Day Tour", guest_name: "ZZ Two Days", pickup_location: "Excalibur", driver_name: "ZZ Test Driver", guide_name: "", vehicle: "Bus 1328", farm_out: false, on_main_manifest: true },
+    { tour_date: "2026-11-27", product_code: "HD01", product_name: "Hoover Dam Tour", guest_name: "ZZ Two Days", pickup_location: "Excalibur", driver_name: "", guide_name: "", vehicle: "", farm_out: false, on_main_manifest: true },
+  ],
+};
 let updates = seedUpdates();
 let nextUpdateId = 3;
 let reports = seed();
@@ -56,7 +76,7 @@ function raw(req) {
   });
 }
 function counts(items) {
-  const c = { complaint: 0, accident: 0, emergency: 0, total: items.length };
+  const c = { complaint: 0, accident: 0, emergency: 0, no_show: 0, total: items.length };
   items.forEach((r) => (c[r.report_type] += 1));
   return c;
 }
@@ -67,7 +87,8 @@ http.createServer(async (req, res) => {
   if (p === "/__log") return send(res, 200, log);
   if (p === "/__ctl") {
     const body = JSON.parse((await raw(req)) || "{}");
-    if (body.reset) { reports = seed(); nextId = 5; updates = seedUpdates(); nextUpdateId = 3; tokens.clear(); log.length = 0; }
+    if (body.reset) { reports = seed(); nextId = 5; updates = seedUpdates(); nextUpdateId = 3; tokens.clear(); log.length = 0; contacts = []; nextContactId = 1; }
+    if (body.ns) { reports = reports.filter((r) => r.id !== 5).concat(seedNoShow()); nextId = Math.max(nextId, 6); }
     Object.assign(ctl, body, { reset: undefined });
     return send(res, 200, ctl);
   }
@@ -106,6 +127,40 @@ http.createServer(async (req, res) => {
   if (p.startsWith("/api/operation-reports")) {
     if (ctl.reports403) return send(res, 403, { detail: "This section is not available yet." });
     if (p === "/api/operation-reports/assignees") return send(res, 200, { users: PEOPLE });
+    // G361：No show 带出（后端契约 §4）。
+    if (p === "/api/operation-reports/no-show/prefill") {
+      const o = (url.searchParams.get("order_number") || "").toUpperCase();
+      const days = PREFILL[o] || [];
+      return send(res, 200, { order_number: o, found: days.length > 0, days });
+    }
+    // G361 N6：这单以前的记录。ctl.noOrdersView = 没有 orders.view ⇒ 不带 staff_notes / no_show_marks。
+    if (p === "/api/operation-reports/order-context") {
+      const o = (url.searchParams.get("order_number") || "").toUpperCase();
+      const mine = reports.filter((r) => r.order_number === o || r.details?.new_order_number === o).sort((a, b) => b.id - a.id)
+        .map((r) => ({ ...r, updates: updates.filter((u) => u.report_id === r.id), rescheduled_into_this_order: r.order_number !== o }));
+      const out = { order_number: o, reports: mine };
+      if (!ctl.noOrdersView && o === "CHDNS0001") {
+        out.staff_notes = [{ id: 31, order_number: o, product_code: "GCW01", body: "ZZ Guest asked to change pickup to Circus Circus. The phone line gave Resorts World before, please double check with the guest.", source: "tracking", author: { username: "lizzie", display_name: "Lizzie" }, created_at: "2026-11-25T15:00:00-08:00" }];
+        out.no_show_marks = [{ tour_date: "2026-11-26", col: "bus", source: "field", by: "ZZ Test Driver", at: "2026-11-26T07:40:00-08:00" }];
+      } else if (!ctl.noOrdersView) { out.staff_notes = []; out.no_show_marks = []; }
+      return send(res, 200, out);
+    }
+    const mc = p.match(/^\/api\/operation-reports\/(\d+)\/contacts$/);
+    if (mc && req.method === "POST") {
+      const body = JSON.parse((await raw(req)) || "{}");
+      entry.body = body;
+      if (ctl.partner) return send(res, 403, { detail: "Partners can read reports but cannot add contacts." });
+      const r = reports.find((x) => x.id === Number(mc[1]));
+      if (!r || r.report_type !== "no_show") return send(res, 400, { detail: "Contact attempts are only for No show reports." });
+      const missing = ["method", "contacted_at", "reached"].filter((k) => body[k] === undefined || body[k] === "");
+      if (body.reached && !body.guest_said) missing.push("guest_said");
+      if (missing.length) return send(res, 400, { detail: "Please fill in: " + missing.join(", "), missing });
+      const LBL = { phone: "Phone", text: "Text", whatsapp: "WhatsApp", email: "Email", in_person: "In person" };
+      const c = { id: nextContactId++, report_id: r.id, method: body.method, method_label: LBL[body.method], contacted_at: body.contacted_at, reached: body.reached,
+        guest_said: body.guest_said || null, created_at: "2026-11-26T10:41:00-08:00", created_by: { username: "lizzie", display_name: "Lizzie" } };
+      contacts.push(c);
+      return send(res, 201, { contact: c });
+    }
     let m = p.match(/^\/api\/operation-reports\/(\d+)$/);
     if (m && req.method === "GET") {
       const r = reports.find((x) => x.id === Number(m[1]));
@@ -113,7 +168,12 @@ http.createServer(async (req, res) => {
       const mine = updates.filter((u) => u.report_id === r.id);
       // 加过 Updates 的，修改记录里多一条 add_update（changes 为空，前端不显示）。
       const added = mine.map((u) => ({ at: u.created_at, by: u.created_by.display_name, action: "add_update", changes: [] }));
-      return send(res, 200, { report: r, history: [{ at: r.created_at, by: "Annie", action: "create", changes: [] }, ...(r.status !== "open" ? [{ at: r.updated_at, by: "Annie", action: "update", changes: [{ field: "status", from: "open", to: r.status }] }] : []), ...added], ...(ctl.noUpdates ? {} : { updates: mine }) });
+      const extras = r.report_type !== "no_show" ? {} : (() => {
+        const no = r.details.new_order_number;
+        const resched = no ? { order_number: no, found: no === "CHDNS0009", tour_date: no === "CHDNS0009" ? "2026-11-29" : null, status: no === "CHDNS0009" ? "Confirmed" : "", live: no === "CHDNS0009", boarded: !!ctl.nsBoarded } : null;
+        return { contacts: contacts.filter((c) => c.report_id === r.id), rescheduled: resched, ready_to_close: r.status === "waiting_reschedule" && !!resched && resched.boarded && resched.live };
+      })();
+      return send(res, 200, { report: r, history: [{ at: r.created_at, by: "Annie", action: "create", changes: [] }, ...(r.status !== "open" ? [{ at: r.updated_at, by: "Annie", action: "update", changes: [{ field: "status", from: "open", to: r.status }] }] : []), ...added], ...(ctl.noUpdates ? {} : { updates: mine }), ...extras });
     }
     const mu = p.match(/^\/api\/operation-reports\/(\d+)\/updates$/);
     if (mu && req.method === "POST") {
@@ -134,14 +194,31 @@ http.createServer(async (req, res) => {
       entry.body = body;
       const r = reports.find((x) => x.id === Number(m[1]));
       if (!r) return send(res, 404, { detail: "That report does not exist." });
+      // G361 契约 §3：No show 的 details 整份替换 staff 那部分（系统键保留）；决定的必填照后端。
+      if (r.report_type === "no_show" && body.details) {
+        const SERVER = ["source", "farm_out", "follow_up_task_id", "follow_up_task_for", "tracking_cleared_at", "ready_to_close_at"];
+        if (SERVER.some((k) => k in body.details)) return send(res, 400, { detail: "Unknown or read-only details key." });
+        const d = body.details;
+        const fu = "follow_up_user_id" in body ? body.follow_up_user_id : r.follow_up?.id;
+        if ((d.decision === "declined" || d.decision === "no_reply") && (!fu || !d.follow_up_due)) {
+          const missing = [...(!fu ? ["follow_up_user_id"] : []), ...(!d.follow_up_due ? ["follow_up_due"] : [])];
+          return send(res, 400, { detail: "Please fill in: " + missing.join(", "), missing });
+        }
+        if (d.decision === "accepted" && !d.new_order_number) return send(res, 400, { detail: "Please fill in: new_order_number", missing: ["new_order_number"] });
+        const kept = Object.fromEntries(Object.entries(r.details).filter(([k]) => SERVER.includes(k)));
+        r.details = { ...kept, ...d };
+        if (d.decision === "accepted") r.status = "waiting_reschedule";
+        else if (d.decision && (r.status === "open" || r.status === "waiting_reschedule")) r.status = "in_progress";
+      }
       if (body.status) { r.status = body.status; r.resolved_at = body.status === "resolved" ? "2026-10-24T12:00:00-07:00" : null; }
       if ("follow_up_user_id" in body) r.follow_up = person(body.follow_up_user_id);
-      r.updated_at = "2026-10-24T12:00:00-07:00";
+      // 每次改都换（同后端）：前端靠 updated_at 变了才重拉详情。No show 才用跳动的，旧套照旧固定值。
+      r.updated_at = r.report_type === "no_show" ? new Date().toISOString() : "2026-10-24T12:00:00-07:00";
       return send(res, 200, { report: r });
     }
     if (p === "/api/operation-reports" && req.method === "GET") {
       const q = url.searchParams;
-      const statuses = (q.get("status") || "open,in_progress").split(",");
+      const statuses = (q.get("status") || "open,in_progress,waiting_reschedule").split(",");
       let items = reports.filter((r) => statuses.includes(r.status));
       if (q.get("type")) items = items.filter((r) => r.report_type === q.get("type"));
       if (q.get("q")) items = items.filter((r) => (r.what_happened + (r.order_number || "")).toLowerCase().includes(q.get("q").toLowerCase()));
@@ -152,6 +229,18 @@ http.createServer(async (req, res) => {
     if (p === "/api/operation-reports" && req.method === "POST") {
       const body = JSON.parse(await raw(req));
       entry.body = body;
+      if (body.report_type === "no_show") {
+        const missing = [...(!body.order_number ? ["order_number"] : []), ...(!body.details?.tour_date ? ["tour_date"] : [])];
+        if (missing.length) return send(res, 400, { detail: "Please fill in: " + missing.join(", "), missing });
+        const open = reports.find((r) => r.report_type === "no_show" && r.status !== "resolved" && r.order_number === body.order_number && r.details?.tour_date === body.details.tour_date);
+        if (open) return send(res, 409, { detail: "There is already an open No show report for this order and tour date.", existing_id: open.id });
+        const r = { id: nextId++, report_type: "no_show", complaint_about: null, headline: body.subject_name || body.order_number, order_number: body.order_number,
+          subject_name: body.subject_name, what_happened: body.what_happened || "", status: "open", follow_up: person(body.follow_up_user_id), created_by: person(8),
+          created_at: "2026-11-26T12:30:00-08:00", updated_at: "2026-11-26T12:30:00-08:00", resolved_at: null, resolved_by: null,
+          details: { ...body.details, source: "manual", ...(PREFILL[body.order_number]?.[0]?.farm_out ? { farm_out: true } : {}) } };
+        reports.push(r);
+        return send(res, 201, { report: r, duplicate: false, notification: { in_app: 3, email: 0, used_fallback: false } });
+      }
       if (!body.what_happened) return send(res, 400, { detail: "Please fill in: what_happened", missing: ["what_happened"] });
       const key = `${body.client_token}`;
       // 后端最终形状（5faa891e）：{report, duplicate, notification}；duplicate:true 时 notification 是 null；
@@ -172,7 +261,30 @@ http.createServer(async (req, res) => {
       return send(res, 201, { report: r, duplicate: false, notification });
     }
   }
+  // G361 Evidence：订单页现成接口（只给 Evidence 用到的键）；Phone AI 按号码搜（只 Super Admin）。
+  if (p.startsWith("/api/operations/orders/") && req.method === "GET") {
+    const o = decodeURIComponent(p.split("/").pop());
+    if (o !== "CHDNS0001") return send(res, 404, { detail: "Order not found." });
+    return send(res, 200, {
+      order_number: o, status: "Confirmed", source: "rezdy", booking_type: "", editable: true,
+      guest: { name: "ZZ Test Guest", email: "azhou@nationalparkexpress.com", phone: "+1 702 555 0101", pax: 2 },
+      product: { code: "GCW01", name: "Grand Canyon West Rim Day Tour", tour_date: "11/26/2026" },
+      confirmations: [
+        { module: "tour_confirmation", tour_date: "2026-11-26", status: "unanswered", submitted_at: null, send_state: "sent", sent_at: "2026-11-24T15:10:00-08:00", email_status: "delivered", sms_status: "delivered" },
+        { module: "morning", tour_date: "2026-11-26", status: "unanswered", submitted_at: null, send_state: "sent", sent_at: "2026-11-25T18:00:00-08:00", email_status: null, sms_status: "failed" },
+      ],
+      rezdy_changes: [{ at: "2026-11-25T10:00:00-08:00", source: "rezdy_push", by: "", changes: [{ field: "Pickup", before: "Resorts World", after: "Circus Circus" }] }],
+      day_of_tour: [{ tour_date: "2026-11-26", leg: "", product_code: "GCW01", relay_mark: null, relay_original: null,
+        bus_mark: { value: "no_show", label: "No show", by: "ZZ Test Driver", role: "guide", vehicle: "Bus 1328", at: "2026-11-26T07:40:00-08:00" }, bus_original: null }],
+      staff_notes: [{ id: 31 }, { id: 32 }],
+    });
+  }
+  if (p === "/api/voice/call-log/search" && req.method === "POST") {
+    entry.body = JSON.parse((await raw(req)) || "{}");
+    if (!ctl.superadmin) return send(res, 403, { detail: "Super Admin only." });
+    return send(res, 200, { count: 1, calls: [] });
+  }
   send(res, 404, { detail: "mock: not found" });
 }).listen(Number(process.env.MOCK_PORT) || 8799, () => console.log("dor mock on", process.env.MOCK_PORT || 8799));
 
-const TYPE_NAME = { complaint: "Complaint", accident: "Accident", emergency: "Emergency" };
+const TYPE_NAME = { complaint: "Complaint", accident: "Accident", emergency: "Emergency", no_show: "No show" };
