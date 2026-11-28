@@ -72,6 +72,8 @@ export interface RangeChangesBody {
 /** 2.2 成功回包；weeks 只含有班 op 的周。 */
 export interface RangeChangesResult {
   weeks: Record<string, ScheduleWeekChangesResult>;
+  /** 周锁加固（week-lock-hardening 2026-11-27）：列出的每一周现在的 token（锁过期被当场重占时是新的）；旧后端没有。 */
+  lock_tokens?: Record<string, string>;
   time_off: ScheduleTimeOff[];
   /** 还存在的旧违规。 */
   violations: ScheduleViolation[];

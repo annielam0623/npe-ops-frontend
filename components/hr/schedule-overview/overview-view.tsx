@@ -383,6 +383,21 @@ export function ScheduleOverview() {
     }
   };
 
+  /** 不知道是哪一周被占（range/changes 回 409 locked）：一周一周问，第一个别人占着的出 Take over。 */
+  const offerTakeOverAny = async (weeks: string[]) => {
+    for (const w of weeks) {
+      try {
+        const s = await fetchScheduleLockStatus(w);
+        if (s.edit_lock && !s.edit_lock.by_me) {
+          if (s.can_take_over) setTakeOverOf({ week: w, holder: s.edit_lock });
+          return;
+        }
+      } catch (error) {
+        if (isStatus(error, 401)) return redirectToLogin();
+      }
+    }
+  };
+
   /** 被接手 / 已结束：只能看。 */
   const loseEditing = (detail: string) => {
     setLost(detail);
@@ -475,21 +490,28 @@ export function ScheduleOverview() {
       loseEditing(v.detail);
       return false;
     }
-    const r = await locks.ensure([...diff.slotWeeks]);
+    // 周锁加固（后端 week-lock-hardening 2026-11-27）：range/changes 要列出的每一周都占着，只改假的周也一样 ⇒ 每周都先占、都带 token。
+    const listed = [...diff.weeks].sort();
+    const r = await locks.ensure(listed);
     if (!r.ok) {
       setSave({ kind: "error", text: r.detail });
+      if (r.busy && r.week) {
+        setEditError(r.detail);
+        void offerTakeOver(r.week);
+      }
       return false;
     }
     try {
       const res = await saveScheduleRange({
-        weeks: [...diff.weeks].sort().map((w) => ({
+        weeks: listed.map((w) => ({
           week_start: w,
-          lock_token: diff.slotWeeks.has(w) ? locks.token(w) : null,
+          lock_token: locks.token(w),
           base_version: weekInfo(w)?.version ?? null,
         })),
         ops: diff.ops,
       });
       for (const [w, out] of Object.entries(res.weeks ?? {})) locks.adopt(w, out.lock_token);
+      for (const [w, t] of Object.entries(res.lock_tokens ?? {})) locks.adopt(w, t);
       locks.releaseAll();
       setSave({ kind: "saved" });
       reloadRange();
@@ -501,6 +523,14 @@ export function ScheduleOverview() {
       }
       if (errorCode(error) === LOCK_TAKEN_OVER) {
         loseEditing(describeError(error));
+        return false;
+      }
+      if (errorCode(error) === "locked") {
+        // 别人占着其中一周：同动手改时的红框 + Take over（Super Admin）。
+        const text = describeError(error);
+        setSave({ kind: "error", text });
+        setEditError(text);
+        void offerTakeOverAny(listed);
         return false;
       }
       const e = leaveErrorOf(error, describeError(error));

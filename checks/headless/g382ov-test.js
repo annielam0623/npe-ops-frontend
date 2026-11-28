@@ -510,6 +510,68 @@ async function run() {
     if (hits.length) console.log("  tokenless callers:", hits.join(", "));
     return hits.length === 0;
   })());
+  // ── 周锁加固（后端 week-lock-hardening 2026-11-27）：只改假的周也要占锁、带 token；回包 lock_tokens 换上；被占走同一个红框 + Take over ──
+  const LEAVE_WEEK = "2026-11-29"; // mock 的假 id 31 在 12/2
+  const deleteSeedLeave = async () => {
+    await waitFor("document.querySelector('[data-ov-leave=\"31\"]')", 8000);
+    await evaluate("document.querySelector('[data-ov-leave=\"31\"]').click(); return 1;");
+    await waitFor("[...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Delete leave')", 5000);
+    await evaluate("[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Delete leave').click(); return 1;");
+  };
+  await maybe("周锁加固：只删一条假 ⇒ 先占那一周、Save 时这一周带 token（不是 null），列的是这条假所在的周", async () => {
+    await ctl({ reset: true, viewer: "editor" });
+    if (!(await openOverview())) throw new Error("overview did not open");
+    const before = (await mockLog()).length;
+    await deleteSeedLeave();
+    await waitFor(`document.querySelector('${SEL.unsaved}')`, 8000);
+    await evaluate(`document.querySelector('${SEL.save}').click(); return 1;`);
+    await waitFor(`document.querySelector('${SEL.saved}') || document.querySelector('[data-ov-save-error]')`, 10000);
+    const log = (await mockLog()).slice(before);
+    const acq = log.filter((l) => l.path === `/api/schedule/weeks/${LEAVE_WEEK}/edit-lock`);
+    const save = log.find((l) => l.path === "/api/schedule/range/changes");
+    const wk = save?.body?.weeks ?? [];
+    const saved = await evaluate(`return !!document.querySelector('${SEL.saved}');`);
+    check("周锁加固：只删一条假 ⇒ 先占那一周、Save 时这一周带 token（不是 null），列的是这条假所在的周",
+      acq.length >= 1 && wk.length === 1 && wk[0].week_start === LEAVE_WEEK && wk[0].lock_token === `lock-${LEAVE_WEEK}` &&
+        JSON.stringify(save.body.ops) === JSON.stringify([{ op: "time_off_delete", id: 31 }]) && saved,
+      JSON.stringify({ acq: acq.length, weeks: wk, ops: save?.body?.ops, saved }));
+  });
+  await maybe("周锁加固：回包 lock_tokens 换上（存完放锁用的是新 token）", async () => {
+    await ctl({ reset: true, viewer: "editor", renewTokens: true });
+    if (!(await openOverview())) throw new Error("overview did not open");
+    const before = (await mockLog()).length;
+    await deleteSeedLeave();
+    await waitFor(`document.querySelector('${SEL.unsaved}')`, 8000);
+    await evaluate(`document.querySelector('${SEL.save}').click(); return 1;`);
+    await waitFor(`document.querySelector('${SEL.saved}')`, 10000);
+    await sleep(500);
+    const rel = (await mockLog()).slice(before).filter((l) => l.path === `/api/schedule/weeks/${LEAVE_WEEK}/edit-lock/release`);
+    check("周锁加固：回包 lock_tokens 换上（存完放锁用的是新 token）", rel.length === 1 && rel[0].body?.token === `renewed-${LEAVE_WEEK}`, JSON.stringify(rel.map((r) => r.body)));
+  });
+  await maybe("周锁加固：只改假的周存的那一刻被别人占着（409 locked）⇒ 同一个红框 + Take over（Super Admin），没存", async () => {
+    await ctl({ reset: true, viewer: "editor", superAdmin: true });
+    if (!(await openOverview())) throw new Error("overview did not open");
+    await deleteSeedLeave();
+    await waitFor(`document.querySelector('${SEL.unsaved}')`, 8000);
+    await ctl({ lockedAtSave: [LEAVE_WEEK] });
+    await evaluate(`document.querySelector('${SEL.save}').click(); return 1;`);
+    const shown = await waitFor("document.querySelector('[data-ov-take-over]')", 8000);
+    const m = await evaluate(`return { box: document.querySelector('[data-ov-edit-error]')?.textContent ?? '', unsaved: !!document.querySelector('${SEL.unsaved}') };`);
+    await evaluate("document.querySelector('[data-ov-take-over]')?.click(); return 1;");
+    const dlg = await waitFor("document.querySelector('[data-take-over-text]')?.textContent.startsWith('ZZ Test Sam is editing this week')", 5000);
+    await evaluate("[...document.querySelectorAll('[role=dialog] button')].find((x) => x.textContent.trim() === 'Cancel')?.click(); return 1;");
+    check("周锁加固：只改假的周存的那一刻被别人占着（409 locked）⇒ 同一个红框 + Take over（Super Admin），没存",
+      shown && /ZZ Test Sam is editing this week/.test(m.box) && m.unsaved && dlg, JSON.stringify({ shown, m, dlg }));
+  });
+  await maybe("周锁加固：只改假的周一开始就被别人占着 ⇒ 动手那一下红框 + Take over，改动没进草稿", async () => {
+    await ctl({ reset: true, viewer: "editor", superAdmin: true, busyWeeks: [LEAVE_WEEK] });
+    if (!(await openOverview())) throw new Error("overview did not open");
+    await deleteSeedLeave();
+    const shown = await waitFor("document.querySelector('[data-ov-take-over]')", 8000);
+    const unsaved = await evaluate(`return !!document.querySelector('${SEL.unsaved}');`);
+    check("周锁加固：只改假的周一开始就被别人占着 ⇒ 动手那一下红框 + Take over，改动没进草稿", shown && !unsaved, JSON.stringify({ shown, unsaved }));
+  });
+
   // ── 只能批假的人 ──
   await ctl({ reset: true, viewer: "approver" });
   if (!skipAll && !(await openOverview())) skipAll = true;
