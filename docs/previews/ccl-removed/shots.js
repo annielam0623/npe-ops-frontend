@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- preview 截图用的 node 小脚本（同 checks/**），不进 app。 */
 // CCL removed preview 截图：next dev 3295（API_PROXY_TARGET=8964）+ da-mock 8964 起好后跑：node shots.js <outDir>
 const puppeteer = require("C:/Code/npe-ops-e2-g333/node_modules/puppeteer-core");
 const OUT = process.argv[2], APP = "http://localhost:3295";
