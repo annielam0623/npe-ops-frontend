@@ -53,7 +53,9 @@ const CONTRAST_HELPERS = `
     const c = over([fg[0], fg[1], fg[2], fg[3] * op], bg);
     return { ratio: Math.round(ratio(c, bg) * 100) / 100, light: lum(bg) >= 0.5, color: cs.color, bg: "rgb(" + bg.slice(0, 3).map(Math.round).join(",") + ")" };
   };
-  window.$lowContrast = (rootSel, min = 4.5) => {
+  // opts.lightOnly：只算字本身是浅色的（白 / 近白，亮度 > 0.4）——本次 bug 的样子；
+  // 用在窗里还有统一发送格式的琥珀字（#ba7517 等，Annie 定的发送页格式）的地方，那些不在这次范围。
+  window.$lowContrast = (rootSel, min = 4.5, opts = {}) => {
     const root = typeof rootSel === "string" ? document.querySelector(rootSel) : rootSel;
     if (!root) return [{ text: "(no root " + rootSel + ")", ratio: 0 }];
     const bad = [];
@@ -67,6 +69,7 @@ const CONTRAST_HELPERS = `
       if (el.closest(":disabled,[aria-disabled=true]")) continue;
       const k = window.$contrastOf(el);
       if (!k.light) continue;
+      if (opts.lightOnly && lum(parse(getComputedStyle(el).color)) <= 0.4) continue;
       if (k.ratio < min) bad.push({ text: txt.slice(0, 50), color: k.color, bg: k.bg, ratio: k.ratio });
     }
     return bad;

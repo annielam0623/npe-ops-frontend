@@ -383,8 +383,8 @@ async function run() {
     await cdp("Emulation.setDeviceMetricsOverride", { width: w, height: w === 390 ? 844 : 1000, deviceScaleFactor: 1, mobile: w === 390 });
     await sleep(300);
     await evaluate(CONTRAST_HELPERS);
-    const m = await evaluate("const d = document.querySelector('[role=dialog]'); const head = [...d.querySelectorAll('div')].find(x => x.textContent.startsWith('Guests on the farm out vehicle') && x.className.includes('bg-[#475569]')); return { bg: getComputedStyle(head).backgroundColor, title: $contrastOf(head.querySelector('b')).ratio, count: $contrastOf(head.querySelector('span')).ratio, bad: $lowContrast(d) };");
-    check(`发送窗 ${w}：标题条真的是灰蓝底（#475569）、白字对比度 ≥ 4.5；窗里浅色底上的字都 ≥ 4.5`, m.bg === "rgb(71, 85, 105)" && m.title >= 4.5 && m.count >= 4.5 && m.bad.length === 0, JSON.stringify(m));
+    const m = await evaluate("const d = document.querySelector('[role=dialog]'); const head = [...d.querySelectorAll('div')].find(x => x.textContent.startsWith('Guests on the farm out vehicle') && x.className.includes('bg-[#475569]')); return { bg: getComputedStyle(head).backgroundColor, title: $contrastOf(head.querySelector('b')).ratio, count: $contrastOf(head.querySelector('span')).ratio, bad: $lowContrast(d, 4.5, { lightOnly: true }) };");
+    check(`发送窗 ${w}：标题条真的是灰蓝底（#475569）、白字对比度 ≥ 4.5；窗里浅色底上没有浅色字（白 / 近白）`, m.bg === "rgb(71, 85, 105)" && m.title >= 4.5 && m.count >= 4.5 && m.bad.length === 0, JSON.stringify(m));
   }
   await cdp("Emulation.clearDeviceMetricsOverride");
   check("按钮：Send 1 notice (SMS + Email)；右边是通知原文", await evaluate(`return document.querySelector('[data-farm-out-send-go]').textContent.replace(/\\s+/g, ' ').trim() === 'Send 1 notice (SMS + Email)' && document.body.textContent.includes('Subject: Your West Rim pick-up');`), await evaluate(`return document.querySelector('[data-farm-out-send-go]').textContent;`));
