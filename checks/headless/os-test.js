@@ -591,6 +591,28 @@ async function run() {
     check("11-19 Updated 悬停：Refresh 写员工名、时间、旧值（空旧值写 —）",
       upd.phone && upd.phone.tip === "Updated by Refresh from Rezdy (Annie Z) 10/11/2026 9:01 AM · was +1 555 0000" && upd.email && upd.email.tip === "Updated by Refresh from Rezdy (Annie Z) 10/11/2026 9:01 AM · was —", JSON.stringify(upd));
     check("11-19 How to use 多一句 Updated 标签说明", upd.howto === true);
+    // G361 Q5 A（preview UAhRhQfyGQYt2D8hWjHqZz ⑥）：Daily report 一格——键不在 ⇒ 不出；[] ⇒ None 灰；有没关的 ⇒ 黄、点了就地展开。
+    {
+      const DR = "document.querySelector('[data-lifecycle-card] [data-lifecycle-field=\"Daily report\"]')";
+      check("G361 Daily report：看不到 DOR（键不在）⇒ 生命周期没有这一格", await evaluate(`return !${DR};`));
+      await ctl({ dor: "none" });
+      await goto(`${APP}/orders/ZZTEST1`);
+      await waitFor(`${DR}`, 60000);
+      check("G361 Daily report：没有登记 ⇒「None」灰字", await evaluate(`const d = ${DR}.querySelector('dd'); return d.textContent.trim() === 'None' && getComputedStyle(d).color === 'rgb(107, 114, 128)';`), await evaluate(`return ${DR}?.textContent;`));
+      await ctl({ dor: "some" });
+      await goto(`${APP}/orders/ZZTEST1`);
+      await waitFor(`${DR}?.querySelector('[data-lifecycle-reports]')`, 60000);
+      check("G361 Daily report：「1 open · 1 resolved ▸」黄字、放在 Tour ended 后面", await evaluate(`const b = ${DR}.querySelector('[data-lifecycle-reports]'); const keys = [...document.querySelectorAll('[data-lifecycle-card] [data-lifecycle-field]')].map(x => x.dataset.lifecycleField); return b.textContent === '1 open · 1 resolved ▸' && getComputedStyle(${DR}.querySelector('dd')).color === 'rgb(180, 83, 9)' && keys.indexOf('Daily report') === keys.indexOf('Tour ended') + 1;`), await evaluate(`return ${DR}?.textContent;`));
+      await evaluate(`${DR}.querySelector('[data-lifecycle-reports]').click(); return 1;`);
+      await waitFor("document.querySelector('[data-lifecycle-report-list]')");
+      const items = await evaluate("return [...document.querySelectorAll('[data-lifecycle-report]')].map(li => ({ id: li.dataset.lifecycleReport, t: li.textContent.replace(/\\s+/g, ' ').trim(), href: li.querySelector('a')?.getAttribute('href') }));");
+      check("G361 Daily report 点开：就地列两份（新的在前）：No show · Farm out · Nov 26, 2026 · Waiting for rescheduled tour / Reason · Accepted reschedule · Follow-up / 最后一条 Update；Complaint · Office / Booking Resolved；各自 Open in Daily report →",
+        items.length === 2 && items[0].id === "5" && items[0].t.includes("No show") && items[0].t.includes("Farm out") && items[0].t.includes("Nov 26, 2026") && items[0].t.includes("Waiting for rescheduled tour") && items[0].t.includes("Reason: Wrong pickup info given to guest · Accepted reschedule · Follow-up: Annie") && items[0].t.includes("ZZ Rebooked for Nov 29, no charge.") && items[0].href === "/daily-report?id=5" && items[1].t.includes("Complaint · Office / Booking") && items[1].t.includes("Resolved") && items[1].href === "/daily-report?id=3",
+        JSON.stringify(items));
+      await evaluate(`${DR}.querySelector('[data-lifecycle-reports]').click(); return 1;`);
+      check("G361 Daily report 再点收起（▴ → ▸）", await waitFor(`!document.querySelector('[data-lifecycle-report-list]') && ${DR}.querySelector('[data-lifecycle-reports]').textContent.endsWith('▸')`));
+      await ctl({ dor: null });
+    }
     // 第 4 件 · 订单详情页：两格放 Guest reply 后面；各种情况出不出橙字。
     const lunchCard = () => evaluate(`const c = document.querySelector('[data-lifecycle-card]'); const f = (l) => c.querySelector('[data-lifecycle-field="' + l + '"] dd')?.textContent.replace(/\\s+/g, ' ').trim(); const keys = [...c.querySelectorAll('[data-lifecycle-field]')].map(x => x.getAttribute('data-lifecycle-field')); return { pick: f("Guest's lunch pick"), bus: f('Bus manifest lunch'), orange: !!c.querySelector('[data-lunch-mismatch]'), afterReply: keys.indexOf("Guest's lunch pick") > keys.indexOf('Guest reply') && keys.indexOf('Bus manifest lunch') === keys.indexOf("Guest's lunch pick") + 1 };`);
     const NOT_IN = "Not in the bus manifest yet. Copy the guest's pick to the Rezdy order (special requirements).";

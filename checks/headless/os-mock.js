@@ -295,6 +295,19 @@ http
           ];
         }
       }
+      // G361 Q5 A：ctl.dor = "some"（一份没关的 No show + 一份已解决的投诉）/ "none"（[]）/ 没设 = 键不在（看不到 DOR 的人）。
+      if (on === "ZZTEST1" && ctl.dor) {
+        const P = { username: "lizzie", display_name: "Lizzie" };
+        o = { ...o, operation_reports: ctl.dor === "none" ? [] : [
+          { id: 5, report_type: "no_show", complaint_about: null, headline: "ZZ Test", order_number: "ZZTEST1", subject_name: "ZZ Test", what_happened: "",
+            status: "waiting_reschedule", follow_up: { id: 7, username: "annie", display_name: "Annie" }, created_by: P, created_at: "2026-11-26T07:42:00-08:00", updated_at: "2026-11-26T10:45:00-08:00", resolved_at: null, resolved_by: null,
+            details: { tour_date: "2026-11-26", reason: "wrong_pickup_info", decision: "accepted", new_order_number: "ZZTEST9", farm_out: true },
+            updates: [{ id: 1, report_id: 5, text: "ZZ Rebooked for Nov 29, no charge.", created_at: "2026-11-26T10:50:00-08:00", created_by: P }], rescheduled_into_this_order: false },
+          { id: 3, report_type: "complaint", complaint_about: "office", headline: "Phone AI", order_number: "ZZTEST1", subject_name: "Phone AI", what_happened: "ZZ Guest says the phone line gave the wrong pickup.",
+            status: "resolved", follow_up: null, created_by: P, created_at: "2026-11-20T16:20:00-08:00", updated_at: "2026-11-20T17:00:00-08:00", resolved_at: "2026-11-20T17:00:00-08:00", resolved_by: "lizzie",
+            details: {}, updates: [], rescheduled_into_this_order: false },
+        ] };
+      }
       // ⑦ G360：每次请求按 ctl.tourEnd 给 live_by_day 加回程到站（ORDERS 是启动时建好的）。
       if (o.live_by_day) o.live_by_day = o.live_by_day.map((x) => ({ ...x, ...tourEnd(ctl.tourEnd) }));
       // multiDay：2 日团第 1 天大巴不回 LV（null），第 2 天回程才有；sameDay：同一天两行，一行空、一行有（空的在前）。
