@@ -11,7 +11,8 @@ import {
 import { DARK_PRIMARY_BUTTON_CLASS } from "@/components/ui/buttons";
 import { HowToUse } from "@/components/ui/how-to-use";
 import { describeError, isStatus } from "@/lib/api-errors";
-import { shiftYmd } from "@/lib/la-date";
+import { laToday, shiftYmd } from "@/lib/la-date";
+import { requestsNotPast } from "@/lib/schedule-past";
 import {
   approveRequest,
   type ConfirmRequest,
@@ -181,7 +182,8 @@ export function ResponsesCard({
       try {
         const res = await fetchWeekConfirmations(weekStart, signal);
         if (signal?.aborted) return;
-        setData(res);
+        // 过去的改班请求不列、不计数（Annie 2026-11-27「P1选A，动手」）；已决定 / 已关的照旧。
+        setData({ ...res, requests: requestsNotPast(res.requests ?? [], laToday()) });
         setError(null);
       } catch (e) {
         if (signal?.aborted) return;

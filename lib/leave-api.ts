@@ -1,4 +1,6 @@
 import { apiFetch } from "@/lib/api-client";
+import { laToday } from "@/lib/la-date";
+import { leaveNotPast } from "@/lib/schedule-past";
 
 /*
  * G282 员工申请休假 + 按管理层级批复（Annie 2026-11-11「同意全部推荐。动手」，preview v3 https://claude.ai/artifact/5PMGSaW5Rxz6AvcCkmAArG）。
@@ -146,11 +148,14 @@ export async function fetchLeaveQueue(
     cache: "no-store",
     signal,
   });
-  const requests = res.requests ?? [];
+  const all = res.requests ?? [];
+  // 过去的待批请假不列、不计数（Annie 2026-11-27「P1选A，动手」）：date_to 早于今天（洛杉矶）的去掉，请求本身还在系统里。
+  // 后端 pending_count 就是 pending 列表的条数（leave_requests.py queue），所以数也照滤过的算。
+  const requests = status === "pending" ? leaveNotPast(all, laToday()) : all;
   return {
-    is_approver: res.is_approver ?? requests.length > 0,
+    is_approver: res.is_approver ?? all.length > 0,
     pending_count:
-      res.pending_count ?? (status === "pending" ? requests.length : 0),
+      status === "pending" ? requests.length : (res.pending_count ?? 0),
     requests,
   };
 }

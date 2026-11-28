@@ -2532,6 +2532,19 @@ function NotesCell({
           not saved
         </span>
       ) : null}
+      {/* G333 Q2 B（Annie 2026-11-27「其他同意推荐，动手」）：不带餐却写了三明治 ⇒ 红字下面一行小红字原因（后端 lunch_note），
+          位置同下面 G364 橙字、在它上面；只在屏幕上（View only / 打印 / Excel 不出），悬停照旧。staff 改过这一格（不再红）就不出。 */}
+      {!viewOnly && g.notes_check && g.lunch_note ? (
+        <span
+          data-no-lunch-why
+          className={cn(
+            "block text-[11.5px] leading-[1.25] font-semibold text-[#c00000]",
+            fit ? "whitespace-normal" : "whitespace-nowrap",
+          )}
+        >
+          {g.lunch_note}
+        </span>
+      ) : null}
       {/* G364 Q2 (a)：后端说客人选的不一样 ⇒ 一行橙字提醒去 Rezdy 查。只显示，不存、不印（View only = 纸上的样子，不出）。 */}
       {!viewOnly && g.guest_lunch_differs === true && g.guest_lunch ? (
         <span
@@ -3431,7 +3444,10 @@ function HowToUse({ layout, columns }: { layout: boolean; columns: boolean }) {
         <li>
           Red text under Special Requirements means the sandwiches could not be
           read, so the full Rezdy text is shown. Check the booking in Rezdy and
-          tell the lunch place.
+          tell the lunch place. Red text can also mean the guest wrote
+          sandwiches but has no lunch (a tour without lunch, a shuttle, or a No
+          Lunch ticket). The reason is under the red text. Those sandwiches are
+          not counted and are not on the lunch sheet. Check the order.
         </li>
         <li>
           Version (next to Print all buses): General, Lankun, Marcello or West

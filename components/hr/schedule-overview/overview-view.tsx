@@ -23,6 +23,7 @@ import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Modal } from "@/components/ui/modal";
 import { describeError, isStatus } from "@/lib/api-errors";
+import { leaveNotPast, notPastGaps, notPastViolations, requestsNotPast } from "@/lib/schedule-past";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import { laToday, weekStartYmd } from "@/lib/la-date";
 import { usePageVisibility } from "@/lib/page-visibility";
@@ -379,7 +380,7 @@ export function ScheduleOverview() {
         setDialog({
           kind: "rule-box",
           blocking: e.violations ?? [],
-          other: (range.violations ?? []).filter((v) => !isBlocking(v)),
+          other: notPastViolations(range.violations ?? [], today).filter((v) => !isBlocking(v)),
         });
       } else {
         setSave({
@@ -475,11 +476,14 @@ export function ScheduleOverview() {
     );
 
   const r = load.range;
+  // 过去的问题不提醒（Annie 2026-11-27「动手」）：只滤显示，保存 / 发布照旧（lib/schedule-past.ts）。
+  const shownGaps = notPastGaps(r.gaps, today);
+  const shownViolations = notPastViolations(r.violations, today);
   const weeks = Array.from({ length: r.weeks }, (_, i) => addDaysYmd(r.from, i * 7));
   const end = addDaysYmd(r.from, r.weeks * 7 - 1);
-  const pending = r.leave_requests.filter((x) => x.status === "pending");
-  const changeRequests = r.change_requests
-    .flatMap((c) => c.requests ?? [])
+  // 过去的请求不列、不计数（Annie 2026-11-27「P1选A，动手」）：请假看 date_to，改班看它的日子。
+  const pending = leaveNotPast(r.leave_requests, today).filter((x) => x.status === "pending");
+  const changeRequests = requestsNotPast(r.change_requests.flatMap((c) => c.requests ?? []), today)
     .filter((x) => x.status === "pending" || x.status === "awaiting_peer");
   const shiftTypes = settings?.shift_types ?? [];
   const canPublish = r.can_publish;
@@ -626,8 +630,8 @@ export function ScheduleOverview() {
         <AlertBars
           canEdit={canEdit}
           leaveRequests={pending}
-          gaps={r.gaps}
-          violations={r.violations}
+          gaps={shownGaps}
+          violations={shownViolations}
           changeRequests={changeRequests}
           shiftTypes={shiftTypes}
           isDraftWeek={(d) => weekStatusOf(d) !== "published"}
@@ -660,8 +664,8 @@ export function ScheduleOverview() {
                 employees={r.employees}
                 slots={draft.slots}
                 timeOff={draft.timeOff}
-                gaps={r.gaps}
-                violations={r.violations.filter(isBlocking)}
+                gaps={shownGaps}
+                violations={shownViolations.filter(isBlocking)}
                 pending={pending}
                 shiftTypes={shiftTypes}
                 categories={categories}
@@ -893,20 +897,22 @@ export function ScheduleOverview() {
       case "publish": {
         const published = weekInfo(dialog.week)?.status === "published";
         const weekGaps = range.gaps.filter((g) => weekStartYmd(g.date) === dialog.week);
+        // 列出来的只留今天以后的；发不发 allowGaps 照旧按全部（不改发布行为）。
+        const shownWeekGaps = notPastGaps(weekGaps, today);
         return (
           <ConfirmDialog
             title={`${published ? "Publish again" : "Publish"} the week of ${md(dialog.week)}?`}
-            confirmLabel={`${published ? "Publish again" : "Publish"}${weekGaps.length && isAdmin ? " anyway" : ""}`}
+            confirmLabel={`${published ? "Publish again" : "Publish"}${shownWeekGaps.length && isAdmin ? " anyway" : ""}`}
             busyLabel="Publishing…"
             submit
             onClose={close}
             onConfirm={() => doPublish(dialog.week, weekGaps.length > 0 && isAdmin)}
           >
-            {weekGaps.length ? (
+            {shownWeekGaps.length ? (
               <div data-publish-gaps>
                 <p>Nobody is scheduled on this part of the week:</p>
                 <ul className="mt-1 list-disc pl-5 text-[#b91c1c] night:text-red-300">
-                  {weekGaps.map((g, i) => (
+                  {shownWeekGaps.map((g, i) => (
                     <li key={i}>
                       <b>{dayLabel(g.date)}</b> · {clockRange(g.start_time, g.end_time)}
                     </li>

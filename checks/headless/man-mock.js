@@ -454,6 +454,8 @@ function page(url) {
         ...(ctl.g364 && r.tab === "bus"
           ? (() => { const g = G364[r.order_number]; return { guest_lunch: g?.guest_lunch ?? null, manifest_lunch: g?.manifest_lunch ?? null, guest_lunch_differs: !!g?.guest_lunch_differs }; })()
           : {}),
+        // G333 (backend 82f9fec8): ctl.g333 => Bus rows carry lunch_no_booked / lunch_note; CHD1001 = booked without lunch but wrote sandwiches.
+        ...(ctl.g333 && r.tab === "bus" ? (r.order_number === "CHD1001" ? { lunch_no_booked: true, lunch_note: "Booked without lunch, but Special requirements ask for 2 T. Check the order." } : { lunch_no_booked: false, lunch_note: null }) : {}),
         ...(ctl.mismatch ? { cfm_mismatch: mismatchOf(r.order_number, key) } : {}),
         // 产品名标红：ctl.productDiffers = { 订单号: 大多数产品的主要文字 }；开着时每行都带两个键，不在里面的 false / null；没设 = 旧后端，不带。
         ...(ctl.productDiffers

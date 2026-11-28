@@ -271,6 +271,17 @@ export function saveRelayRound(
   });
 }
 
+/** G333：团的「Includes lunch」（只有 admin；不是 bool ⇒ 400 原话）。 */
+export function saveTourLunch(
+  manifestId: number,
+  includesLunch: boolean,
+): Promise<{ ok: boolean; includes_lunch: boolean }> {
+  return apiFetch(`${SETUP_API}/groups/${manifestId}/includes-lunch`, {
+    method: "PUT",
+    body: { includes_lunch: includesLunch },
+  });
+}
+
 /**
  * 整组替换这个团的 Extra（后端 2026-10-12 `ad8b7ab`）：新的不带 id；没送回来的删掉（挂着它的产品变回普通 Tour）。
  * 名字 1–40 字、同团不分大小写不能重名，座位 1–999 必填；seats 按输入框原样传，由后端校验，不合规矩 400 + 原话。

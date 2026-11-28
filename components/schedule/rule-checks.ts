@@ -6,6 +6,7 @@ import {
   shiftHours,
   weeklyHoursLimit,
 } from "@/lib/schedule-engine";
+import { laToday } from "@/lib/la-date";
 import type {
   ScheduleEmployee,
   ScheduleShiftType,
@@ -48,6 +49,7 @@ export function ruleChecks(
   shiftTypes: ScheduleShiftType[],
 ): RuleChecks {
   if (!rules || !rules.some((r) => r.enabled)) return EMPTY;
+  const today = laToday();
   const on = rules.filter((r) => r.enabled);
   const shown = new Set(employees.map((e) => e.id));
   const live = slots.filter(
@@ -73,6 +75,8 @@ export function ruleChecks(
     const [date, type] = k.split("|");
     const d = dayOf(date);
     if (d < 0 || d > 6) continue;
+    // 过去的日子不提醒（Annie 2026-11-27「动手」）。
+    if (date < today) continue;
     const max = maxPeopleOn(on, date, type);
     const count = new Set(list.map((s) => s.employee_id)).size;
     if (max == null || count <= max) continue;
@@ -101,7 +105,11 @@ export function ruleChecks(
 
   const overHours = new Map<number, number>();
   const limit = weeklyHoursLimit(on);
-  if (limit != null) {
+  // 只有一周里还有今天或以后的日子才提醒（同后端口径：数照旧按整周算）。
+  const weekEnd = new Date(Date.parse(`${weekStart}T00:00:00Z`) + 6 * 86400000)
+    .toISOString()
+    .slice(0, 10);
+  if (limit != null && weekEnd >= today) {
     const sum = new Map<number, number>();
     for (const s of live) {
       const id = s.employee_id!;

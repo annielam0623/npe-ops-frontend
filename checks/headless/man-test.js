@@ -2157,6 +2157,7 @@ async function run() {
   await redProductChecks();
   await busViewChecks();
   await guestLunchChecks();
+  await noLunchChecks();
   await unsentChecks();
 
   // ── 未登录：跳 ops 自己的登录页带 next ──
@@ -3216,3 +3217,38 @@ async function staffNoteManifestChecks() {
 }
 
 main();
+
+// ── G333（Annie 2026-11-20「这个订单在main manifest里标红，并在餐上写原因」，11-27「其他同意推荐，动手」；preview Nu5iBNZDo9NqVyqyPxVXRf ④）：
+//    lunch_no_booked ⇒ 整行淡红（同没填 Cfm # 的门票行），Special requirements 原文下面一行红字 lunch_note，在 G364 橙字上面 ──
+async function noLunchChecks() {
+  const BUS = `${APP}/manifests?date=${today}&tab=bus&pill=g%3A3`;
+  const why = "Booked without lunch, but Special requirements ask for 2 T. Check the order.";
+  const cols = ["order_number", "guest_name", "pax", "special_requirements"];
+  const cell = (o) => `(() => { const tr = $box('${o}')?.closest('tr'); const i = $heads().indexOf('Special requirements'); return tr && i >= 0 ? tr.querySelectorAll('td')[i + 2] : null; })()`;
+  await ctl({ role: "staff", sessions: false, rezdyTix: false, cfmMix: false, sections: false, g364: true, g333: true, prefs: { bus: JSON.stringify(cols), tickets: null } });
+  await openPage(BUS);
+  await waitFor(`${cell("CHD1001")}?.querySelector('[data-no-lunch-why]')`, 20000);
+  const one = await evaluate(`const c = ${cell("CHD1001")}; const tr = c.closest('tr'); const w = c.querySelector('[data-no-lunch-why]'); const o = c.querySelector('[data-guest-lunch-differs]'); return { why: w.textContent, color: getComputedStyle(w).color, bg: getComputedStyle(tr).backgroundColor, flag: tr.hasAttribute('data-no-lunch-booked'), title: tr.title, order: !!o && !!(w.compareDocumentPosition(o) & Node.DOCUMENT_POSITION_FOLLOWING), cell: c.textContent };`);
+  check("G333 Main manifest：不带餐却写了三明治的单整行淡红（#fdeceb），悬停行写原因",
+    one.flag && one.bg === "rgb(253, 236, 235)" && one.title === why, JSON.stringify(one));
+  check("G333 Main manifest：Special requirements 原文下面一行红字原因，在 G364 橙字上面", one.cell.startsWith("2 Turkey") && one.why === why && one.color === "rgb(192, 0, 0)" && one.order, JSON.stringify(one));
+  check("G333 Main manifest：别的单（CHD1002，lunch_no_booked = false）不红、没原因",
+    await evaluate(`const c = ${cell("CHD1002")}; const tr = c.closest('tr'); return !tr.hasAttribute('data-no-lunch-booked') && !c.querySelector('[data-no-lunch-why]') && getComputedStyle(tr).backgroundColor !== 'rgb(253, 236, 235)';`));
+  check("G333 How to use — Manifests：Lunch 那条加了淡红行那句",
+    await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return !!d && d.textContent.replace(/\\s+/g, ' ').includes('A light red row with a red reason under Special requirements means the guest wrote sandwiches but has no lunch (a tour without lunch, a shuttle, or a No Lunch ticket). Those sandwiches are not counted. Check the order.');"));
+  // Special requirements 列关了 ⇒ 没有原因行，整行淡红照旧（悬停行看原因）
+  await ctl({ prefs: { bus: JSON.stringify(["order_number", "guest_name", "pax"]), tickets: null } });
+  await openPage(BUS);
+  await waitFor(`$box('CHD1001')`, 20000);
+  await sleep(300);
+  check("G333 Main manifest：Special requirements 列关了 ⇒ 没有原因行，整行照旧淡红、悬停有原因",
+    await evaluate(`const tr = $box('CHD1001').closest('tr'); return !document.querySelector('[data-no-lunch-why]') && getComputedStyle(tr).backgroundColor === 'rgb(253, 236, 235)' && tr.title === ${JSON.stringify(why)};`));
+  // 旧后端 / partner（行上没有这两个键）⇒ 照旧
+  await ctl({ g333: false, g364: false, prefs: { bus: JSON.stringify(cols), tickets: null } });
+  await openPage(BUS);
+  await waitFor(`$box('CHD1001')`, 20000);
+  await sleep(300);
+  check("G333 Main manifest：旧后端 / partner 没有这两个键 ⇒ 不红、没原因、页面照常",
+    await evaluate("return !document.querySelector('[data-no-lunch-booked], [data-no-lunch-why]') && !document.body.textContent.includes('Something went wrong');"));
+  await ctl({ g333: false, g364: false, prefs: { bus: null, tickets: null } });
+}

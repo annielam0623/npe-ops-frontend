@@ -16,6 +16,7 @@ import {
   saveManifestSection,
   saveGroupShortName,
   saveRelayRound,
+  saveTourLunch,
   saveSectionShortName,
   saveSectionTourType,
 } from "@/lib/products-api";
@@ -152,7 +153,17 @@ export function ManifestSetupPanel({
   function replaceGroup(next: ManifestSetupGroup) {
     setData((d) =>
       d
-        ? { ...d, groups: d.groups.map((g) => (g.id === next.id ? next : g)) }
+        ? {
+            ...d,
+            groups: d.groups.map((g) =>
+              g.id === next.id
+                ? next
+                : // G333：勾上一个团的 Includes lunch ⇒ 后端写了名单 ⇒ 其他「没设过」的团变成「没勾」（同旧页 saveTourLunch）。
+                  next.includes_lunch === true && g.includes_lunch === null
+                  ? { ...g, includes_lunch: false }
+                  : g,
+            ),
+          }
         : d,
     );
   }
@@ -337,6 +348,8 @@ function GroupEditor({
   const [orderEdit, setOrderEdit] = useState<string | null>(null);
   const [busOrderEdit, setBusOrderEdit] = useState<string | null>(null);
   const [relayEdit, setRelayEdit] = useState<string | null>(null);
+  /** G333 Includes lunch（Annie 2026-11-27 Q1 B：先选后存）：null = 没动。 */
+  const [tourLunchEdit, setTourLunchEdit] = useState<boolean | null>(null);
   const [cfmEdit, setCfmEdit] = useState<string[] | null>(null);
   const [tourTypeEdits, setTourTypeEdits] = useState<Record<string, string>>(
     {},
@@ -374,6 +387,7 @@ function GroupEditor({
   const order = orderEdit ?? (group.section_order ?? []).join(", ");
   const busOrder = busOrderEdit ?? (group.bus_section_order ?? []).join(", ");
   const relay = relayEdit ?? group.relay_round ?? "";
+  const tourLunch = tourLunchEdit ?? group.includes_lunch === true;
   const cfmOn = cfmEdit ?? group.cfm_sections ?? [];
   const extras = extrasEdit ?? savedExtras;
   const tickets = ticketsEdit ?? savedTickets;
@@ -590,6 +604,31 @@ function GroupEditor({
         const d = await saveRelayRound(group.id, relay);
         onGroupChange({ ...groupRef.current, relay_round: d.relay_round });
         setRelayEdit(null);
+        return null;
+      } catch (e) {
+        return failText(e);
+      }
+    },
+  });
+
+  // G333「Includes lunch」（后端 82f9fec8；Annie 2026-11-27「其他同意推荐，动手」= Q1 B 先选后存，不照旧页勾了马上存）。
+  const tourLunchBlock = useBlockSave({
+    id: sid("tourlunch"),
+    label: label("Includes lunch"),
+    dirty: tourLunch !== (group.includes_lunch === true),
+    draftKey: String(tourLunch),
+    auto: true,
+    doSave: async () => {
+      try {
+        const d = await saveTourLunch(group.id, tourLunch);
+        const was = groupRef.current.includes_lunch;
+        // 没设过时存「没勾」：后端什么都没写（旧页 code-reviewer CR-3），照旧算没设过。
+        onGroupChange({
+          ...groupRef.current,
+          includes_lunch:
+            was === null && !d.includes_lunch ? null : d.includes_lunch,
+        });
+        setTourLunchEdit(null);
         return null;
       } catch (e) {
         return failText(e);
@@ -1469,10 +1508,48 @@ function GroupEditor({
             </MapField>
           ) : null}
 
+          {group.includes_lunch !== undefined ? (
+            // G333（preview Nu5iBNZDo9NqVyqyPxVXRf ①）：每个团一个勾，放在 Lunch vendor 上面，地图上同 Lunch 那块。
+            <MapField
+              {...field("lunch")}
+              title="Includes lunch"
+              hint="Tick it for a tour that includes lunch (for example Antelope Canyon, South Rim, Bryce & Zion). Guests in its tour sections then count in LUNCH and get a sandwich on the lunch sheet. Shuttle sections and tickets that say No Lunch get no lunch. Leave it unticked for a tour without lunch (West Rim, Hoover Dam). Click Save to keep it."
+            >
+              <div className="flex flex-wrap items-center gap-3">
+                <label
+                  className={cn(
+                    "inline-flex cursor-pointer items-center gap-1.5 rounded-[5px] px-0.5 text-[13px] font-semibold",
+                    tourLunchBlock.dirty && CHANGED_RING,
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    data-tour-lunch
+                    checked={tourLunch}
+                    disabled={tourLunchBlock.state.kind === "saving"}
+                    onChange={(event) => setTourLunchEdit(event.target.checked)}
+                  />
+                  Includes lunch
+                </label>
+                {group.includes_lunch === null && !tourLunchBlock.dirty ? (
+                  <span
+                    data-tour-lunch-unset
+                    className="text-[12px] text-[#6b7280] night:text-white/50"
+                  >
+                    Not set yet: lunch still follows the ticket and product
+                    name.
+                  </span>
+                ) : null}
+                <SaveControl block={tourLunchBlock} />
+              </div>
+            </MapField>
+          ) : null}
+
           {restaurantMode ? (
             // G199（preview 第 4 版 ③）：只读一行，改在 Supplier › Restaurant。
             <MapField
               {...field("lunch")}
+              sub={group.includes_lunch !== undefined}
               title="Lunch vendor"
               hint="The lunch sheet prints only for a tour with a lunch vendor. Its name and contact lines are kept in Supplier › Restaurant."
             >
@@ -1497,6 +1574,7 @@ function GroupEditor({
           ) : (
             <MapField
               {...field("lunch")}
+              sub={group.includes_lunch !== undefined}
               title="Lunch sheet line"
               hint="Printed at the bottom of this tour's lunch sheet (the sandwich order sheet), for example who to text about sandwiches. Up to two lines. Leave it empty and this tour prints no lunch sheet."
             >
@@ -1729,6 +1807,20 @@ function GroupEditor({
             and the Driver and Guide pages; empty keeps the earliest pickup
             first.
           </li>
+          {group.includes_lunch !== undefined ? (
+            // G333：后端 75 原文；Q1 B 先选后存 ⇒ 「It saves right away and Saved shows next to it.」换成「Click Save to keep it.」
+            <li data-howto-tour-lunch>
+              Includes lunch: tick it for a tour that includes lunch (for
+              example Antelope Canyon, South Rim, Bryce &amp; Zion). Click Save
+              to keep it. Guests in its tour sections then count in LUNCH, get a
+              sandwich on the lunch sheet (Turkey if they wrote none) and show
+              on the driver and guide lunch. Shuttle sections and tickets that
+              say No Lunch get no lunch. Leave it unticked for a tour without
+              lunch (West Rim, Hoover Dam). Meal and Grab and Go tickets on West
+              Rim are still counted in their own boxes at the bottom of the Bus
+              Manifest.
+            </li>
+          ) : null}
           {group.ticket_labels !== undefined ? (
             // G374（Annie 2026-11-23「同意，动手」）：第一句照后端窗口 47 建议的原文。
             <li data-howto-ticket-labels>
