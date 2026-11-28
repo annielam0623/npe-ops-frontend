@@ -9,6 +9,11 @@ export const HOW_TO_USE: readonly string[] = [
   "Publish each week from its title bar. After changing a published week, use Send to confirm.",
 ];
 
+/** K3 A：只给 Super Admin 看（preview v3 第 6 节）。 */
+export const HOW_TO_USE_TAKE_OVER: readonly string[] = [
+  "Super Admin: if someone else is editing a week, press Take over in the red message to edit it yourself. Their changes that weren’t saved are lost, and they see a message within a minute.",
+];
+
 export const HOW_TO_USE_APPROVER: readonly string[] = [
   "If you can only approve leave, you see the whole schedule but can’t change shifts. Click a leave request to approve or reject it.",
 ];

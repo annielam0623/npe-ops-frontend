@@ -134,6 +134,12 @@ import {
 import { StepBox, useStepInfoHide } from "./step-box";
 import { PhoneMore, usePhoneInfo } from "@/components/ui/phone";
 import { lockedByText, useEditLock } from "./use-edit-lock";
+import { TakeOverDialog } from "@/components/ui/take-over-dialog";
+import {
+  fetchDispatchLockStatus,
+  takeOverDispatchLock,
+  type EditLockHolder,
+} from "@/lib/edit-lock-takeover";
 import { OpenWindowLink, useOpenTodayWindow } from "./open-window-setting";
 import { PickupMoveBox } from "./pickup-move";
 import { fmtHhmm, type OpenTodayWindow } from "@/lib/dispatch-open-today-api";
@@ -727,6 +733,30 @@ export function DispatchView() {
     (day?.edit_lock && !day.edit_lock.by_me && !lock.holding
       ? lockedByText(day.edit_lock)
       : null);
+
+  /**
+   * Super Admin 接手（preview v3 第 2 节）：别人在改时问后端 GET edit-lock，can_take_over 是 true（只有 Super Admin）
+   * 而且不是自己 ⇒ 琥珀条上多一个白键 Take over。别人看到的照旧。
+   */
+  const [takeOverHolder, setTakeOverHolder] = useState<EditLockHolder | null>(null);
+  const [takingOver, setTakingOver] = useState<EditLockHolder | null>(null);
+  const lockDate = day?.run_date ?? null;
+  useEffect(() => {
+    setTakeOverHolder(null);
+    if (!readOnlyText || !lockDate) return;
+    let live = true;
+    fetchDispatchLockStatus(lockDate)
+      .then((s) => {
+        if (live && s.can_take_over && s.edit_lock && !s.edit_lock.by_me)
+          setTakeOverHolder(s.edit_lock);
+      })
+      .catch(() => {
+        // 读不到就不出 Take over，照旧只能看。
+      });
+    return () => {
+      live = false;
+    };
+  }, [readOnlyText, lockDate]);
 
   /** CCL：预填（没存过的一天）/ 改版（存过的一天）/ 关闭的线。动过手就不碰。 */
   const prefillInner = useCallback(async (date: string) => {
@@ -2210,7 +2240,49 @@ export function DispatchView() {
                   >
                     Check again
                   </button>
+                  {/* K2 A：条上的 Take over 是白键（只打开确认框），确认框里的才是红色。 */}
+                  {takeOverHolder ? (
+                    <button
+                      type="button"
+                      data-take-over
+                      disabled={navDisabled}
+                      onClick={() => setTakingOver(takeOverHolder)}
+                      className={LOCK_BTN}
+                    >
+                      Take over
+                    </button>
+                  ) : null}
                 </div>
+              ) : null}
+              {takingOver ? (
+                <TakeOverDialog
+                  scope="day"
+                  holder={takingOver}
+                  take={async (holderSince) => {
+                    const r = await takeOverDispatchLock(
+                      day.run_date,
+                      day.version ?? null,
+                      holderSince,
+                    );
+                    lock.adopt(r.token);
+                  }}
+                  reread={() => fetchDispatchLockStatus(day.run_date)}
+                  onTaken={() => {
+                    setTakingOver(null);
+                    setTakeOverHolder(null);
+                    setBlockedBy(null);
+                    // 对方刚才存过的也要看到：重读这一天（锁已经是自己的，读回来 by_me）。
+                    void (async () => {
+                      if (await load(day.run_date)) await maybePrefill(day.run_date);
+                    })();
+                  }}
+                  onFree={() => {
+                    setTakingOver(null);
+                    void recheckLock();
+                  }}
+                  onClose={() => setTakingOver(null)}
+                  onUnauthorized={redirectToLogin}
+                />
               ) : null}
               <ManifestsPanel
                 key={day.run_date}
@@ -2373,6 +2445,7 @@ export function DispatchView() {
                   <HowToUse
                     farmOut={farmOutVisible}
                     openWindow={openWin.window}
+                    takeOver={isSuperAdmin}
                   />
                 )}
 
@@ -3525,8 +3598,11 @@ function DiscordIcon() {
 function HowToUse({
   farmOut,
   openWindow,
+  takeOver,
 }: {
   farmOut: boolean;
+  /** K3 A：Take over 那一行只给 Super Admin 看。 */
+  takeOver: boolean;
   /** 147：Super Admin 读得到时写存着的时间段；别人读不到 ⇒ 写默认 12:00 AM–10:00 AM（同 preview ④ 原文）。 */
   openWindow: OpenTodayWindow | null;
 }) {
@@ -3608,6 +3684,13 @@ function HowToUse({
           saving, the page asks first. A red message says what to fix. Only one
           person can edit a day at a time.
         </li>
+        {takeOver ? (
+          <li data-howto-take-over>
+            Super Admin: if someone else is editing this day, press Take over on
+            the yellow bar to edit it yourself. Their changes that weren&rsquo;t
+            saved are lost, and they see a message within a minute.
+          </li>
+        ) : null}
       </ol>
     </details>
   );

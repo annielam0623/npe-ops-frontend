@@ -26,7 +26,10 @@ const ctl = { marks: false, noticeMarks: {}, completed: false, saveErr: "", fail
   // G71 编辑锁：lockOther = {by, since, by_me?}（GET 带 edit_lock；by_me 不为 true 时占的时候 409）；lock409 = 只有占的时候 409（GET 不带）；
   // acquireErr = 占的时候 400 的原话；acquireDelay = 占得慢（ms）；hb409 / save409 / copy409 = 那一步 409；
   // timing = {remind_after_s, auto_save_after_s, heartbeat_every_s}（不设 = GET 不带 edit_timing，页面用 600/300/60）。
-  lockOther: null, lock409: false, acquireErr: "", acquireDelay: 0, hb409: false, save409: false, copy409: false, timing: null };
+  lockOther: null, lock409: false, acquireErr: "", acquireDelay: 0, hb409: false, save409: false, copy409: false, timing: null,
+  // Take over（lock-takeover 2026-11-27）：superAdmin ⇒ GET edit-lock 的 can_take_over；takeOverChanged = {by, since} ⇒ 下一次接手回 409 holder_changed、
+  // 锁换成这个人；hbTaken ⇒ 心跳回 409 lock_taken_over（套两层）。
+  takeOverChanged: null, hbTaken: false };
 if (process.env.MOCK_CTL) Object.assign(ctl, JSON.parse(process.env.MOCK_CTL));
 const log = [];
 // G266：ctl.marks 开着时，driver-notice / guide-notice 的 people 每行带 sent_at / sent_by / failed_at（照后端 notice_marks）。
@@ -407,6 +410,25 @@ http.createServer(async (req, res) => {
         { id: "0-1", at: "2026-10-20T16:00:00+00:00", by: "Max", action: "update", label: "Farm out order ZZ1001", what: "Hotel " + date, from: null, to: null },
       ] });
     }
+  if (p === "/api/dispatch/edit-lock" && req.method === "GET") {
+    const lk = ctl.lockOther ? { by_me: false, last_edit: null, ...ctl.lockOther } : null;
+    return send(res, 200, { edit_lock: lk, can_take_over: !!ctl.superAdmin });
+  }
+  if (p === "/api/dispatch/edit-lock/take-over") {
+    const b = JSON.parse(await readRaw(req)); entry.body = b;
+    if (!ctl.superAdmin) return send(res, 403, { detail: "Only a Super Admin can take over editing." });
+    if (ctl.takeOverChanged) {
+      ctl.lockOther = { ...ctl.takeOverChanged };
+      ctl.takeOverChanged = null;
+      return send(res, 409, { detail: { detail: `${ctl.lockOther.by} is editing this day now. Look again before taking over.`, code: "holder_changed" } });
+    }
+    if (ctl.lockOther && b.holder_since && b.holder_since !== ctl.lockOther.since)
+      return send(res, 409, { detail: { detail: `${ctl.lockOther.by} is editing this day now. Look again before taking over.`, code: "holder_changed" } });
+    const from = ctl.lockOther ? { by: ctl.lockOther.by, since: ctl.lockOther.since, last_edit: ctl.lockOther.last_edit ?? null } : null;
+    ctl.lockOther = null;
+    entry.resp = { token: `tok-${++tokenSeq}`, stale: b.version !== ver(b.date), version: ver(b.date), took_over_from: from, ...(ctl.timing ? { edit_timing: ctl.timing } : {}) };
+    return send(res, 200, entry.resp);
+  }
   if (p === "/api/dispatch/edit-lock") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
     if (ctl.acquireDelay) await new Promise((r) => setTimeout(r, ctl.acquireDelay));
@@ -417,6 +439,7 @@ http.createServer(async (req, res) => {
   }
   if (p === "/api/dispatch/edit-lock/heartbeat") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
+    if (ctl.hbTaken) return send(res, 409, { detail: { detail: "Annie took over editing at 3:30 PM. Your changes that weren't saved were not kept.", code: "lock_taken_over" } });
     if (ctl.hb409) return send(res, 409, { detail: "Your editing session ended (no activity for a while). Reload to see the latest schedule." });
     return send(res, 200, { ok: true });
   }

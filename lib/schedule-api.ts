@@ -7,17 +7,10 @@ import type {
   ScheduleEmployeeInput,
   ScheduleEmployeeUpdate,
   ScheduleEmployeesResponse,
-  ScheduleOk,
   SchedulePublishResult,
   ScheduleSendChangesResult,
   ScheduleSettings,
   ScheduleShiftType,
-  ScheduleSlot,
-  ScheduleSlotAssignInput,
-  ScheduleSlotCreateInput,
-  ScheduleSlotTimeInput,
-  ScheduleTimeOff,
-  ScheduleTimeOffInput,
   ScheduleWeek,
   ScheduleWeekChangesError,
   ScheduleWeekChangesResult,
@@ -124,68 +117,6 @@ export function fetchScheduleWeek(
   });
 }
 
-/** 新加一个时段（supervisor 及以上），一开始没有人。 */
-export function createScheduleSlot(
-  weekStart: string,
-  input: ScheduleSlotCreateInput,
-): Promise<ScheduleSlot> {
-  return apiFetch<ScheduleSlot>(`/api/schedule/weeks/${weekStart}/slots`, {
-    method: "POST",
-    body: input,
-  });
-}
-
-/** 删掉一个时段（带着的人一起消失，supervisor 及以上）。 */
-export function deleteScheduleSlot(
-  weekStart: string,
-  slotId: number,
-): Promise<ScheduleOk> {
-  return apiFetch<ScheduleOk>(
-    `/api/schedule/weeks/${weekStart}/slots/${slotId}`,
-    { method: "DELETE" },
-  );
-}
-
-/** 改一个时段的上下班时间，不改派的人（supervisor 及以上）。 */
-export function updateScheduleSlotTime(
-  weekStart: string,
-  slotId: number,
-  input: ScheduleSlotTimeInput,
-): Promise<ScheduleSlot> {
-  return apiFetch<ScheduleSlot>(
-    `/api/schedule/weeks/${weekStart}/slots/${slotId}/time`,
-    { method: "PUT", body: input },
-  );
-}
-
-/** 改 / 清除一个时段的备注（supervisor 及以上）；`null` 或空串 = 清除。后端：≤120 字、不能含换行。 */
-export function updateScheduleSlotNote(
-  weekStart: string,
-  slotId: number,
-  note: string | null,
-): Promise<ScheduleSlot> {
-  return apiFetch<ScheduleSlot>(
-    `/api/schedule/weeks/${weekStart}/slots/${slotId}/note`,
-    { method: "PUT", body: { note } },
-  );
-}
-
-/** 录休假（supervisor 及以上）；一人一天一条，再录同一天 = 更新；和已有班冲突时后端 400 带原话。 */
-export function setScheduleTimeOff(
-  input: ScheduleTimeOffInput,
-): Promise<{ time_off: ScheduleTimeOff[] }> {
-  return apiFetch<{ time_off: ScheduleTimeOff[] }>("/api/schedule/time-off", {
-    method: "PUT",
-    body: input,
-  });
-}
-
-export function deleteScheduleTimeOff(id: number): Promise<ScheduleOk> {
-  return apiFetch<ScheduleOk>(`/api/schedule/time-off/${id}`, {
-    method: "DELETE",
-  });
-}
-
 /** 新增 / 改班次类型要送的字段（置顶 85）；默认时间两个都给 = 设置，两个都 null = 不设。 */
 export interface ShiftTypeInput {
   label: string;
@@ -245,21 +176,6 @@ export function shiftTypeKeyFor(
     const key = `${base.slice(0, 20 - tail.length)}${tail}`;
     if (!used.has(key)) return key;
   }
-}
-
-/**
- * 把人拖进 / 挪出一个时段（supervisor 及以上）；`employee_id: null` 清空。
- * 挪动（从别的时段拖过来）由调用方先后发两次：目标时段 assign 新人，原时段 assign null。
- */
-export function assignScheduleSlot(
-  weekStart: string,
-  slotId: number,
-  input: ScheduleSlotAssignInput,
-): Promise<ScheduleSlot> {
-  return apiFetch<ScheduleSlot>(
-    `/api/schedule/weeks/${weekStart}/slots/${slotId}/assign`,
-    { method: "PUT", body: input },
-  );
 }
 
 /**
