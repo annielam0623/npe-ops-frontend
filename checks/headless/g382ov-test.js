@@ -415,6 +415,13 @@ async function run() {
   // ── Settings › Rules 弹窗：浅色底板上的字看得清（Annie 2026-11-27「检查所有浅色底板，这个是staff schedule的rules」）──
   // 以前弹窗是浅色 bg-paper、里面的 RulesView 是深色外框的白字 ⇒ 规则名、说明、Edit / Delete、标题都几乎看不见。
   await ctl({ reset: true, viewer: "editor", canPublish: true, rules: RULES_FIXTURE });
+  // 班卡右上角的「!」（规则问题）：白字 9px，底色同一个橙色系里深一档（orange-700），对比度 ≥ 4.5（fe 转 f2 量的 orange-600 只有 3.58）。
+  await maybe("班卡「!」：白字对比度 ≥ 4.5、还是 13px 圆点", async () => {
+    if (!(await openOverview())) throw new Error("overview did not open");
+    await evaluate(CONTRAST_HELPERS);
+    const m = await evaluate(`const b = [...document.querySelectorAll('${SEL.shift} > span')].filter((s) => s.textContent.trim() === '!'); return { n: b.length, marks: b.map((x) => ({ r: $contrastOf(x).ratio, w: Math.round(x.getBoundingClientRect().width), round: getComputedStyle(x).borderRadius })) };`);
+    check("班卡「!」：白字对比度 ≥ 4.5、还是 13px 圆点", m.n > 0 && m.marks.every((x) => x.r >= 4.5 && x.w === 13 && x.round !== "0px"), JSON.stringify(m));
+  });
   for (const w of [1600, 390]) {
     await maybe(`Rules 弹窗 ${w}：浅色底上的字对比度都 ≥ 4.5（标题、说明、规则名、说明行、Edit / Delete）`, async () => {
       if (w === 390) await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
