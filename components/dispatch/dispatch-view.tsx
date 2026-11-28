@@ -2365,7 +2365,11 @@ export function DispatchView() {
                       {/* Dispatch Imports 合进 Dispatch、侧栏不再单列（Annie 2026-10-11）：入口放在用得着它的地方——
                     拉 Discord 旁边，看拉过哪些、读没读懂。 */}
                       <PageLink
-                        href="/dispatch/imports"
+                        href={
+                          day
+                            ? `/dispatch/imports?back=${day.run_date}`
+                            : "/dispatch/imports"
+                        }
                         className={cn(
                           BTN_GHOST,
                           "inline-flex items-center no-underline",

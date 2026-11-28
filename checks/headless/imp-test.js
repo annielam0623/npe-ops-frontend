@@ -176,6 +176,15 @@ async function run() {
   await waitFor("document.querySelector('article[data-import]')");
   await helpers();
   check("?since= 不是日期：不传（用服务端默认），不报错", await evaluate("return document.getElementById('since').value;") === "2026-09-27");
+  check("返回键（Annie 2026-11-27）：没带 back= 时回 /dispatch", await evaluate("const a = document.querySelector('[data-testid=back-to-dispatch]'); return !!a && a.textContent.includes('Back to Dispatch') && new URL(a.href).pathname === '/dispatch' && new URL(a.href).search === '';"));
+  await goto(`${APP}/dispatch/imports?back=2026-11-28&since=2026-10-30`);
+  await waitFor("document.querySelector('[data-testid=back-to-dispatch]')");
+  await helpers();
+  check("返回键：从 Dispatch 进来带 back=2026-11-28，回到那一天", await evaluate("const a = document.querySelector('[data-testid=back-to-dispatch]'); return new URL(a.href).pathname + new URL(a.href).search;") === "/dispatch?date=2026-11-28");
+  await goto(`${APP}/dispatch/imports?back=bad`);
+  await waitFor("document.querySelector('[data-testid=back-to-dispatch]')");
+  await helpers();
+  check("返回键：back= 不是日期就回 /dispatch（不带日期）", await evaluate("return new URL(document.querySelector('[data-testid=back-to-dispatch]').href).search;") === "");
 
   // 拉取
   await ctl({ pullStatus: "nothing" });
