@@ -27,7 +27,7 @@ import {
   type ApproveBody,
   type OverviewLeaveRequest,
 } from "@/lib/schedule-leave-api";
-import { weekStartYmd } from "@/lib/la-date";
+import { laToday, weekStartYmd } from "@/lib/la-date";
 import { fetchScheduleRange } from "@/lib/schedule-overview-api";
 import { cn } from "@/lib/utils";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -587,12 +587,11 @@ export function LeaveRequestDialog({
           {daySlots
             .filter((s) => give[s.id] === "delete")
             .map((s) => {
-              const left = deleteSlotGaps(
-                s,
-                data.employees,
-                data.slots,
-                otherOff,
-              );
+              // 过去的日子不提醒（Annie 2026-11-27「动手」）：后端的 Gaps 本来就只算今天以后。
+              const left =
+                s.date < laToday()
+                  ? []
+                  : deleteSlotGaps(s, data.employees, data.slots, otherOff);
               return left.length ? (
                 <div key={s.id} className={RED} data-delete-gap={s.id}>
                   {dayLabel(s.date)}: deleting the {label(s.shift_type)} leaves{" "}

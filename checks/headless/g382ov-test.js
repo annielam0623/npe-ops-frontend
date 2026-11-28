@@ -397,6 +397,49 @@ async function run() {
     check("can_edit=false：没有任何编辑键、没有 Save、只有 Leave requests 能点、没有 Shift change requests 栏", m.edit === 0 && !m.save && m.leave && !m.change && m.cells === 0 && /View only/.test(m.viewOnly), JSON.stringify(m));
   });
 
+  // ── 过去的问题不提醒（Annie 2026-11-27「过去的周有任何问题都不要再来做现在的限制或提醒了」「动手」）：
+  //    日期全在今天（11-25）以前的违规 / 空档不出卡片 ! 和橙框、不进 Rule problems / Gaps 栏；跨天的（昨天 Close + 今天早班、min_rest 12h）留着；以后的留着。
+  await ctl({ reset: true, viewer: "editor", canPublish: true });
+  if (!skipAll && !(await openOverview())) skipAll = true;
+  await maybe("过去的问题不提醒：只全在过去的藏、跨到今天的和以后的留", async () => {
+    const TODAY = "2026-11-25";
+    const rng = await (await fetch(`${MOCK}/api/schedule/range?from=2026-11-15&weeks=4`)).json();
+    const bad0 = await evaluate(`return [...document.querySelectorAll('[data-ov-shift][data-ov-bad]')].map((e) => e.dataset.ovShift);`);
+    const free = rng.slots.filter((s) => s.employee_id != null && !bad0.includes(String(s.id)));
+    const past = free.filter((s) => s.date < "2026-11-24").slice(0, 2);
+    const yest = free.find((s) => s.date === "2026-11-24");
+    const tod = free.find((s) => s.date === TODAY);
+    const fut = free.find((s) => s.date > TODAY);
+    if (past.length < 2 || !yest || !tod || !fut) throw new Error("mock has no free slots for the fixture: " + JSON.stringify({ past: past.length, yest: !!yest, tod: !!tod, fut: !!fut }));
+    const rest = (a, b, msg) => ({ rule: "min_rest", rule_id: "zz-rest", blocking: true, employee_id: a.employee_id, employee_name: "ZZ", dates: [a.date, b.date].sort(), slot_ids: [a.id, b.id], message: msg });
+    const countOf = (sel) => evaluate(`const t = document.querySelector('${sel}')?.textContent ?? ''; const m = t.match(/· (\\d+)/); return m ? Number(m[1]) : 0;`);
+    const rules0 = await countOf("[data-ov-rules]");
+    const gaps0 = await countOf("[data-ov-gaps]");
+    await ctl({
+      extraViolations: [
+        rest(past[0], past[1], "ZZ PAST pair: 8 h rest (needs 12)."),
+        rest(yest, tod, "ZZ CROSS pair: yesterday Close then today early, 8 h rest (needs 12)."),
+        { rule: "max_per_shift_day", rule_id: "zz-max", blocking: true, employee_id: null, employee_name: null, dates: [fut.date], slot_ids: [fut.id], message: "ZZ FUTURE: 3 people on Morning (max 2)." },
+        { rule: "weekly_hours_alert", rule_id: "zz-hours", blocking: false, employee_id: past[0].employee_id, employee_name: "ZZ", dates: ["2026-11-16", "2026-11-17"], slot_ids: [], week: "2026-11-15", message: "ZZ PAST WEEK hours alert." },
+      ],
+      extraGaps: [
+        { date: "2026-11-20", start_time: "03:00", end_time: "04:00", reason: { kind: "nobody" } },
+        { date: "2026-11-27", start_time: "03:00", end_time: "04:00", reason: { kind: "nobody" } },
+      ],
+    });
+    await openOverview();
+    await sleep(300);
+    const rulesText = await evaluate(`return document.querySelector('[data-ov-rules]')?.textContent ?? '';`);
+    check("过去的问题不提醒 · Rule problems：多了跨天的和以后的两条（+2），全在过去的那对、过去那周的 hours alert 不出", (await countOf("[data-ov-rules]")) === rules0 + 2 && rulesText.includes("ZZ CROSS pair") && rulesText.includes("ZZ FUTURE") && !rulesText.includes("ZZ PAST"), `${rules0} → ${await countOf("[data-ov-rules]")} · ${rulesText}`);
+    const bad = await evaluate(`return [...document.querySelectorAll('[data-ov-shift][data-ov-bad]')].map((e) => e.dataset.ovShift);`);
+    check("过去的问题不提醒 · 卡片 ! 和橙框：过去那对的两张没有；跨天那对（昨天 + 今天）和以后那张有", !bad.includes(String(past[0].id)) && !bad.includes(String(past[1].id)) && bad.includes(String(yest.id)) && bad.includes(String(tod.id)) && bad.includes(String(fut.id)), JSON.stringify({ bad, past: past.map((s) => s.id), yest: yest.id, tod: tod.id, fut: fut.id }));
+    const gapsText = await evaluate(`return document.querySelector('[data-ov-gaps]')?.textContent ?? '';`);
+    check("过去的问题不提醒 · Gaps：只多以后那个（+1），11/20 那个不出", (await countOf("[data-ov-gaps]")) === gaps0 + 1 && !/11\/20/.test(gapsText) && /11\/27/.test(gapsText), `${gaps0} → ${await countOf("[data-ov-gaps]")} · ${gapsText}`);
+    const pastWeekGaps = await evaluate(`return document.querySelector('[data-ov-week="2026-11-15"]')?.textContent.includes('3:00') ?? null;`);
+    check("过去的问题不提醒 · 过去那周的 Gaps 行没有 11/20 那个", pastWeekGaps === false, String(pastWeekGaps));
+    await ctl({ extraViolations: [], extraGaps: [] });
+  });
+
   // ── 手机 390 ──
   await ctl({ reset: true, viewer: "editor", canPublish: true });
   await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
